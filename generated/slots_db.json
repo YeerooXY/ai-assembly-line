@@ -1,0 +1,144 @@
+[
+  {
+    "slot_id": "planning-agent-slot",
+    "role": "Planning Agent",
+    "status": "ready",
+    "inputs": [
+      "PROJECT_SPEC.md",
+      "PROJECT_SPEC_TEMPLATE.md",
+      "PRODUCT_RULES.md",
+      "contracts/"
+    ],
+    "outputs": [
+      "generated/project_spec.json",
+      "generated/repo_plan.json",
+      "generated/task_backlog.json"
+    ],
+    "allowed_actions": [
+      "compile spec state",
+      "update generated artifacts",
+      "preserve scope boundaries"
+    ],
+    "verification_requirements": [
+      "Artifacts trace back to the product spec.",
+      "No forbidden phase 0 scope is introduced."
+    ],
+    "notes": "Planning slot for contract-first decomposition only."
+  },
+  {
+    "slot_id": "contract-steward-slot",
+    "role": "Contract Steward",
+    "status": "ready",
+    "inputs": [
+      "contracts/",
+      "generated/",
+      "prompts/"
+    ],
+    "outputs": [
+      "contracts/agent_prompt.schema.json",
+      "schema-aligned generated artifacts"
+    ],
+    "allowed_actions": [
+      "edit schemas",
+      "tighten validation rules",
+      "reject undocumented structure"
+    ],
+    "verification_requirements": [
+      "Canonical generated files validate against contracts.",
+      "Schema changes remain traceable to the current spec."
+    ]
+  },
+  {
+    "slot_id": "frontend-builder-slot",
+    "role": "Frontend Builder",
+    "status": "planned",
+    "inputs": [
+      "generated/project_spec.json",
+      "generated/repo_plan.json",
+      "generated/task_backlog.json",
+      "generated/agent_prompts.json",
+      "generated/slots_db.json"
+    ],
+    "outputs": [
+      "read-only frontend rendering plan"
+    ],
+    "allowed_actions": [
+      "render generated state",
+      "map screens to source files",
+      "surface contract failures"
+    ],
+    "verification_requirements": [
+      "The frontend does not invent task, repo, prompt, slot, or contract structure.",
+      "Every displayed field maps to a source-of-truth artifact."
+    ]
+  },
+  {
+    "slot_id": "backend-builder-slot",
+    "role": "Backend Builder",
+    "status": "planned",
+    "inputs": [
+      "contracts/api_contract.openapi.yaml",
+      "contracts/*.schema.json",
+      "generated/*.json"
+    ],
+    "outputs": [
+      "validation tooling",
+      "future read-only API plan"
+    ],
+    "allowed_actions": [
+      "parse generated state",
+      "validate contract alignment",
+      "prepare read-only interfaces"
+    ],
+    "verification_requirements": [
+      "No auth or database dependencies are added.",
+      "Tooling reports failures clearly."
+    ]
+  },
+  {
+    "slot_id": "core-engine-builder-slot",
+    "role": "Core Engine Builder",
+    "status": "planned",
+    "inputs": [
+      "PROJECT_SPEC.md",
+      "PRODUCT_RULES.md",
+      "generated/project_spec.json"
+    ],
+    "outputs": [
+      "deterministic planning compiler behaviors"
+    ],
+    "allowed_actions": [
+      "enforce deterministic planning transforms",
+      "preserve traceability",
+      "support validation"
+    ],
+    "verification_requirements": [
+      "Core logic remains planning-only.",
+      "Generated outputs stay deterministic."
+    ]
+  },
+  {
+    "slot_id": "red-team-verifier-slot",
+    "role": "Red Team Verifier",
+    "status": "planned",
+    "inputs": [
+      "PROJECT_SPEC.md",
+      "PRODUCT_RULES.md",
+      "generated/",
+      "contracts/"
+    ],
+    "outputs": [
+      "red-team attack cases",
+      "rejection notes"
+    ],
+    "allowed_actions": [
+      "probe boundary drift",
+      "test unsafe reinterpretation",
+      "review frontend source-of-truth discipline"
+    ],
+    "verification_requirements": [
+      "Attack cases cover automation, auth, persistence, realtime sync, and hidden frontend state.",
+      "Findings reference the triggering rule or contract."
+    ]
+  }
+]

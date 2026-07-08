@@ -1,0 +1,146 @@
+[
+  {
+    "id": "phase0-project-spec-template",
+    "title": "Add reusable project spec template",
+    "summary": "Create a reusable planning template for future project-planning runs with the required phase 0 sections.",
+    "owner_role": "Planning Agent",
+    "repo_target": "seed-docs-and-rules",
+    "depends_on": [],
+    "inputs": [
+      "PROJECT_SPEC.md",
+      "PRODUCT_RULES.md"
+    ],
+    "outputs": [
+      "PROJECT_SPEC_TEMPLATE.md"
+    ],
+    "acceptance_criteria": [
+      "The template contains every required section from the phase 0 hardening brief.",
+      "The template reinforces contract-first planning and source-of-truth discipline."
+    ],
+    "verification": [
+      "Manual review confirms the required headings are present."
+    ],
+    "risk_tags": [
+      "template-drift"
+    ]
+  },
+  {
+    "id": "phase0-agent-prompt-contract",
+    "title": "Add agent prompt schema",
+    "summary": "Define a schema for generated role prompts so future prompt packs stay machine-readable and bounded.",
+    "owner_role": "Contract Steward",
+    "repo_target": "seed-contracts",
+    "depends_on": [
+      "phase0-project-spec-template"
+    ],
+    "inputs": [
+      "PROJECT_SPEC.md",
+      "prompts/"
+    ],
+    "outputs": [
+      "contracts/agent_prompt.schema.json"
+    ],
+    "acceptance_criteria": [
+      "The schema requires prompt id, role, repo target, file boundaries, context requirements, outputs, and verification requirements.",
+      "Undocumented fields are rejected."
+    ],
+    "verification": [
+      "generated/agent_prompts.json validates against the schema."
+    ],
+    "risk_tags": [
+      "schema-drift"
+    ]
+  },
+  {
+    "id": "phase0-canonical-generated-state",
+    "title": "Add canonical generated seed artifacts",
+    "summary": "Create the generated project spec, repo plan, task backlog, prompt pack, and slot database for the current phase 0 seed.",
+    "owner_role": "Planning Agent",
+    "repo_target": "seed-generated-state",
+    "depends_on": [
+      "phase0-agent-prompt-contract"
+    ],
+    "inputs": [
+      "PROJECT_SPEC.md",
+      "PRODUCT_RULES.md",
+      "contracts/"
+    ],
+    "outputs": [
+      "generated/project_spec.json",
+      "generated/repo_plan.json",
+      "generated/task_backlog.json",
+      "generated/agent_prompts.json",
+      "generated/slots_db.json"
+    ],
+    "acceptance_criteria": [
+      "Every generated file is valid JSON.",
+      "The generated files match the current phase 0 scope and avoid forbidden runtime features.",
+      "Task and slot records conform to the existing contracts."
+    ],
+    "verification": [
+      "The seed validator parses all JSON files.",
+      "Canonical generated artifacts validate against the contracts."
+    ],
+    "risk_tags": [
+      "consistency",
+      "scope-lock"
+    ]
+  },
+  {
+    "id": "phase0-seed-validator",
+    "title": "Add repository JSON validation utility",
+    "summary": "Create a lightweight validation script that parses every JSON file and schema-validates the canonical generated outputs.",
+    "owner_role": "Backend Builder",
+    "repo_target": "seed-contracts",
+    "depends_on": [
+      "phase0-canonical-generated-state"
+    ],
+    "inputs": [
+      "contracts/*.schema.json",
+      "generated/*.json",
+      "examples/**/*.json"
+    ],
+    "outputs": [
+      "tools/validate_seed.py"
+    ],
+    "acceptance_criteria": [
+      "The validator reports every valid JSON file.",
+      "Failures include the file path and parse or schema error detail.",
+      "The script stays on the Python standard library except for optional jsonschema support."
+    ],
+    "verification": [
+      "python tools/validate_seed.py exits successfully on the hardened seed."
+    ],
+    "risk_tags": [
+      "tooling"
+    ]
+  },
+  {
+    "id": "phase0-readme-hardening",
+    "title": "Document validation and frontend consumption rules",
+    "summary": "Update the README so future contributors know how to validate the seed and what the frontend is allowed to consume.",
+    "owner_role": "Frontend Builder",
+    "repo_target": "seed-docs-and-rules",
+    "depends_on": [
+      "phase0-seed-validator"
+    ],
+    "inputs": [
+      "README.md",
+      "generated/*.json",
+      "contracts/"
+    ],
+    "outputs": [
+      "README.md"
+    ],
+    "acceptance_criteria": [
+      "The README explains validation, source-of-truth files, and frontend rendering constraints.",
+      "The README explicitly states that the frontend must not invent task, repo, prompt, slot, or contract structure."
+    ],
+    "verification": [
+      "README.md contains the required hardening guidance."
+    ],
+    "risk_tags": [
+      "documentation"
+    ]
+  }
+]

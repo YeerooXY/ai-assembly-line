@@ -1,0 +1,212 @@
+{
+  "project_name": "AI Assembly Line",
+  "prompts": [
+    {
+      "prompt_id": "planning-agent-phase0",
+      "role": "Planning Agent",
+      "target_repo": "seed-generated-state",
+      "allowed_files": [
+        "PROJECT_SPEC.md",
+        "PROJECT_SPEC_TEMPLATE.md",
+        "PRODUCT_RULES.md",
+        "docs/",
+        "generated/"
+      ],
+      "forbidden_files": [
+        "web/app/",
+        "db/",
+        "auth/",
+        "workers/"
+      ],
+      "input_context_required": [
+        "Current phase specification",
+        "Product rules",
+        "Existing contracts"
+      ],
+      "task_boundaries": [
+        "Produce planning artifacts only.",
+        "Do not add frontend implementation, auth, databases, realtime sync, or agent automation.",
+        "Keep outputs traceable to the source-of-truth spec."
+      ],
+      "output_required": [
+        "Updated generated project state",
+        "Traceable repo split",
+        "Bounded task backlog"
+      ],
+      "verification_required": [
+        "Generated outputs remain within phase 0 scope.",
+        "JSON artifacts parse successfully."
+      ]
+    },
+    {
+      "prompt_id": "contract-steward-phase0",
+      "role": "Contract Steward",
+      "target_repo": "seed-contracts",
+      "allowed_files": [
+        "contracts/",
+        "generated/",
+        "README.md"
+      ],
+      "forbidden_files": [
+        "web/app/",
+        "database/",
+        "infra/"
+      ],
+      "input_context_required": [
+        "Current project spec",
+        "Generated artifacts",
+        "Existing prompt files"
+      ],
+      "task_boundaries": [
+        "Define strict contracts for machine-readable planning artifacts.",
+        "Reject undocumented fields unless explicitly approved in source-of-truth files."
+      ],
+      "output_required": [
+        "Updated schemas",
+        "Contract-consistent generated data"
+      ],
+      "verification_required": [
+        "Canonical generated files validate against contracts.",
+        "Schema additions preserve phase 0 scope boundaries."
+      ]
+    },
+    {
+      "prompt_id": "frontend-builder-phase0",
+      "role": "Frontend Builder",
+      "target_repo": "seed-web-placeholder",
+      "allowed_files": [
+        "web/static-docs-or-dashboard-placeholder/",
+        "README.md",
+        "generated/",
+        "contracts/"
+      ],
+      "forbidden_files": [
+        "web/app/",
+        "generated/custom-ui-state.json",
+        "database/",
+        "auth/"
+      ],
+      "input_context_required": [
+        "Generated project spec",
+        "Generated repo plan",
+        "Generated task backlog",
+        "Prompt schema"
+      ],
+      "task_boundaries": [
+        "Render generated state directly.",
+        "Do not invent task, repo, prompt, slot, or contract structure.",
+        "Do not add mutable dashboards or realtime synchronization."
+      ],
+      "output_required": [
+        "Read-only rendering plan",
+        "Consumer mapping from generated files to screens"
+      ],
+      "verification_required": [
+        "Every rendered field traces to a source-of-truth file.",
+        "Missing or invalid generated state fails visibly."
+      ]
+    },
+    {
+      "prompt_id": "backend-builder-phase0",
+      "role": "Backend Builder",
+      "target_repo": "seed-contracts",
+      "allowed_files": [
+        "contracts/",
+        "tools/",
+        "generated/"
+      ],
+      "forbidden_files": [
+        "db/",
+        "auth/",
+        "workers/",
+        "realtime/"
+      ],
+      "input_context_required": [
+        "OpenAPI contract",
+        "Generated state artifacts",
+        "Validation rules"
+      ],
+      "task_boundaries": [
+        "Support contract-first validation and future read-only interfaces only.",
+        "Do not add persistence, authentication, or orchestration systems."
+      ],
+      "output_required": [
+        "Validation tooling",
+        "Read-only API planning inputs"
+      ],
+      "verification_required": [
+        "Validation tooling reports parse and schema failures clearly.",
+        "Outputs remain compatible with the declared contracts."
+      ]
+    },
+    {
+      "prompt_id": "core-engine-builder-phase0",
+      "role": "Core Engine Builder",
+      "target_repo": "seed-generated-state",
+      "allowed_files": [
+        "PROJECT_SPEC.md",
+        "PRODUCT_RULES.md",
+        "generated/",
+        "contracts/"
+      ],
+      "forbidden_files": [
+        "agents/runtime/",
+        "workers/",
+        "task-claimer/",
+        "realtime/"
+      ],
+      "input_context_required": [
+        "Current project specification",
+        "Product rules",
+        "Repo plan"
+      ],
+      "task_boundaries": [
+        "Stay within deterministic planning compilation and validation responsibilities.",
+        "Do not build autonomous execution paths."
+      ],
+      "output_required": [
+        "Deterministic generated planning artifacts",
+        "Traceability notes across contracts and prompts"
+      ],
+      "verification_required": [
+        "Artifacts stay deterministic and schema-aligned.",
+        "No forbidden runtime scope is introduced."
+      ]
+    },
+    {
+      "prompt_id": "red-team-verifier-phase0",
+      "role": "Red Team Verifier",
+      "target_repo": "seed-docs-and-rules",
+      "allowed_files": [
+        "PROJECT_SPEC.md",
+        "PRODUCT_RULES.md",
+        "docs/",
+        "generated/",
+        "contracts/"
+      ],
+      "forbidden_files": [
+        "production-secrets/",
+        "auth/",
+        "db/"
+      ],
+      "input_context_required": [
+        "Project rules",
+        "Generated artifacts",
+        "Prompt pack"
+      ],
+      "task_boundaries": [
+        "Search for unsafe reinterpretation, schema drift, and hidden state invention.",
+        "Keep review findings tied to current contracts and source-of-truth files."
+      ],
+      "output_required": [
+        "Attack cases",
+        "Rejection rationale",
+        "Verification gaps"
+      ],
+      "verification_required": [
+        "Attack cases cover auth, database, realtime, automation, and invented frontend state drift.",
+        "Each finding maps to a rule or contract boundary."
+      ]
+    }
+  ]
+}

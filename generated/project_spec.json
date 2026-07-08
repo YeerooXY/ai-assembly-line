@@ -1,0 +1,256 @@
+{
+  "project_name": "AI Assembly Line",
+  "product_summary": {
+    "goal": "Turn rough software ideas into structured, reviewable planning artifacts before implementation begins.",
+    "users": [
+      "founders",
+      "product leads",
+      "technical planners",
+      "engineering teams supervising AI-assisted work"
+    ],
+    "non_goals": [
+      "frontend implementation in phase 0",
+      "authentication",
+      "database persistence",
+      "realtime sync",
+      "background agent automation",
+      "autonomous task claiming"
+    ]
+  },
+  "safety_boundaries": [
+    "The repository is planning-first and not an autonomous execution runtime.",
+    "Human review is required before generated planning artifacts are treated as approved.",
+    "Unsafe requests must be rejected or safely reinterpreted into planning-only outputs.",
+    "The initial frontend may render generated state but must not invent task, repo, prompt, slot, or contract structure.",
+    "The phase 0 seed must remain free of authentication, databases, realtime sync, and agent automation."
+  ],
+  "repo_split": [
+    {
+      "name": "seed-docs-and-rules",
+      "purpose": "Store the human-readable phase 0 specification, product rules, workflow notes, and reusable planning template.",
+      "contains": [
+        "PROJECT_SPEC.md",
+        "PROJECT_SPEC_TEMPLATE.md",
+        "PRODUCT_RULES.md",
+        "docs/"
+      ],
+      "depends_on": []
+    },
+    {
+      "name": "seed-contracts",
+      "purpose": "Define machine-readable contracts for project specs, repo plans, tasks, slots, prompts, and future read-only APIs.",
+      "contains": [
+        "contracts/*.schema.json",
+        "contracts/api_contract.openapi.yaml"
+      ],
+      "depends_on": [
+        "seed-docs-and-rules"
+      ]
+    },
+    {
+      "name": "seed-generated-state",
+      "purpose": "Provide canonical generated artifacts for the current seed repository state.",
+      "contains": [
+        "generated/project_spec.json",
+        "generated/repo_plan.json",
+        "generated/task_backlog.json",
+        "generated/agent_prompts.json",
+        "generated/slots_db.json"
+      ],
+      "depends_on": [
+        "seed-docs-and-rules",
+        "seed-contracts"
+      ]
+    },
+    {
+      "name": "seed-prompts",
+      "purpose": "Store role-specific prompt source material aligned to the contracts and current project spec.",
+      "contains": [
+        "prompts/*.md"
+      ],
+      "depends_on": [
+        "seed-docs-and-rules",
+        "seed-contracts"
+      ]
+    },
+    {
+      "name": "seed-web-placeholder",
+      "purpose": "Reserve a future read-only frontend surface that consumes generated state without inventing new models.",
+      "contains": [
+        "web/static-docs-or-dashboard-placeholder/"
+      ],
+      "depends_on": [
+        "seed-generated-state",
+        "seed-contracts"
+      ]
+    }
+  ],
+  "domain_model": [
+    {
+      "name": "ProjectSpec",
+      "fields": [
+        "project_name",
+        "product_summary",
+        "safety_boundaries",
+        "repo_split",
+        "domain_model",
+        "frontend_screens",
+        "backend_services",
+        "core_engine_responsibilities",
+        "verification_tasks",
+        "starter_prompts"
+      ],
+      "relations": [
+        "ProjectSpec drives RepoPlan, Task, AgentPrompt, and AgentSlot artifacts."
+      ]
+    },
+    {
+      "name": "RepoPlan",
+      "fields": [
+        "project_name",
+        "repos"
+      ],
+      "relations": [
+        "RepoPlan decomposes the project into contract-defined ownership units."
+      ]
+    },
+    {
+      "name": "Task",
+      "fields": [
+        "id",
+        "title",
+        "summary",
+        "owner_role",
+        "repo_target",
+        "depends_on",
+        "inputs",
+        "outputs",
+        "acceptance_criteria",
+        "verification"
+      ],
+      "relations": [
+        "Tasks trace back to RepoPlan units and verification goals."
+      ]
+    },
+    {
+      "name": "AgentPrompt",
+      "fields": [
+        "prompt_id",
+        "role",
+        "target_repo",
+        "allowed_files",
+        "forbidden_files",
+        "input_context_required",
+        "task_boundaries",
+        "output_required",
+        "verification_required"
+      ],
+      "relations": [
+        "AgentPrompt constrains role behavior to project-approved inputs and outputs."
+      ]
+    },
+    {
+      "name": "AgentSlot",
+      "fields": [
+        "slot_id",
+        "role",
+        "status",
+        "inputs",
+        "outputs",
+        "allowed_actions",
+        "verification_requirements"
+      ],
+      "relations": [
+        "AgentSlot is the operational slot view of role-scoped work against source-of-truth artifacts."
+      ]
+    }
+  ],
+  "frontend_screens": [
+    {
+      "name": "Overview",
+      "renders_from": [
+        "PROJECT_SPEC.md",
+        "generated/project_spec.json"
+      ],
+      "notes": "Read-only summary of product goal, scope, and rules."
+    },
+    {
+      "name": "Repo Split",
+      "renders_from": [
+        "generated/repo_plan.json"
+      ],
+      "notes": "Display contract-defined ownership boundaries only."
+    },
+    {
+      "name": "Task Backlog",
+      "renders_from": [
+        "generated/task_backlog.json"
+      ],
+      "notes": "Render task cards directly from the generated backlog."
+    },
+    {
+      "name": "Prompt Pack",
+      "renders_from": [
+        "generated/agent_prompts.json",
+        "prompts/"
+      ],
+      "notes": "Show role prompts and contract-defined constraints."
+    },
+    {
+      "name": "Contracts and Verification",
+      "renders_from": [
+        "contracts/",
+        "generated/slots_db.json",
+        "docs/verification-rules.md"
+      ],
+      "notes": "Expose schemas, slot requirements, and verification rules without mutable workflow state."
+    }
+  ],
+  "backend_services": [
+    {
+      "name": "read-only project state api draft",
+      "responsibility": "Describe a future read-only API surface that serves generated planning artifacts without adding auth or persistence.",
+      "inputs": [
+        "generated/*.json",
+        "contracts/api_contract.openapi.yaml"
+      ],
+      "outputs": [
+        "contract-defined read-only responses"
+      ]
+    },
+    {
+      "name": "seed validation utility",
+      "responsibility": "Parse repository JSON artifacts and validate canonical generated state against contracts.",
+      "inputs": [
+        "contracts/*.schema.json",
+        "generated/*.json",
+        "examples/**/*.json"
+      ],
+      "outputs": [
+        "validation report"
+      ]
+    }
+  ],
+  "core_engine_responsibilities": [
+    "Compile rough planning intent into explicit project structure.",
+    "Maintain contract-first generated artifacts for the seed repository.",
+    "Preserve traceability from product rules to repo plan, tasks, prompts, and slots.",
+    "Reject or reinterpret unsafe scope expansion into planning-only outputs.",
+    "Support deterministic validation of machine-readable seed artifacts."
+  ],
+  "verification_tasks": [
+    "Parse every JSON file in the repository and fail clearly on invalid syntax.",
+    "Validate canonical generated project state against the contracts in contracts/.",
+    "Verify that the generated artifacts stay aligned with the current phase 0 scope limits.",
+    "Verify that future frontend work renders generated state and does not invent hidden models.",
+    "Red-team prompt drift toward automation, auth, persistence, or realtime scope."
+  ],
+  "starter_prompts": {
+    "planning_agent": "Turn rough software ideas into a safe project spec, repo split, backlog, and prompt pack before implementation begins.",
+    "contract_steward": "Maintain strict schemas and reject undocumented structure across project specs, repo plans, tasks, prompts, and slots.",
+    "frontend_builder": "Build only read-only views that render generated state and contract-defined structure without inventing frontend-only models.",
+    "backend_builder": "Define and later implement read-only contract-driven APIs only; do not add auth, databases, realtime sync, or mutable orchestration.",
+    "core_engine_builder": "Keep planning compilation deterministic, traceable, and bounded to phase 0 artifact generation and validation.",
+    "red_team_verifier": "Probe for unsafe reinterpretation, schema drift, invented frontend state, and any attempt to add forbidden phase 0 scope."
+  }
+}

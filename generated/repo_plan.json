@@ -1,0 +1,96 @@
+{
+  "project_name": "AI Assembly Line",
+  "repos": [
+    {
+      "name": "seed-docs-and-rules",
+      "purpose": "Own the reusable planning spec template and human-readable product rules for phase 0.",
+      "contains": [
+        "PROJECT_SPEC.md",
+        "PROJECT_SPEC_TEMPLATE.md",
+        "PRODUCT_RULES.md",
+        "docs/"
+      ],
+      "depends_on": [],
+      "excludes": [
+        "runtime automation",
+        "frontend implementation",
+        "database state"
+      ]
+    },
+    {
+      "name": "seed-contracts",
+      "purpose": "Own JSON schemas and the future read-only API contract.",
+      "contains": [
+        "contracts/project_spec.schema.json",
+        "contracts/repo_plan.schema.json",
+        "contracts/task.schema.json",
+        "contracts/slot.schema.json",
+        "contracts/agent_prompt.schema.json",
+        "contracts/api_contract.openapi.yaml"
+      ],
+      "depends_on": [
+        "seed-docs-and-rules"
+      ],
+      "excludes": [
+        "business logic",
+        "invented consumer models"
+      ]
+    },
+    {
+      "name": "seed-generated-state",
+      "purpose": "Own the canonical machine-readable planning artifacts consumed by future read-only interfaces.",
+      "contains": [
+        "generated/project_spec.json",
+        "generated/repo_plan.json",
+        "generated/task_backlog.json",
+        "generated/agent_prompts.json",
+        "generated/slots_db.json"
+      ],
+      "depends_on": [
+        "seed-docs-and-rules",
+        "seed-contracts"
+      ],
+      "excludes": [
+        "schema drift",
+        "undeclared JSON structures"
+      ]
+    },
+    {
+      "name": "seed-prompts",
+      "purpose": "Own copy-paste role prompts constrained by the project spec and contracts.",
+      "contains": [
+        "prompts/00-planning-agent.md",
+        "prompts/01-contract-steward.md",
+        "prompts/02-frontend-builder.md",
+        "prompts/03-backend-builder.md",
+        "prompts/04-core-engine-builder.md",
+        "prompts/05-red-team-verifier.md"
+      ],
+      "depends_on": [
+        "seed-docs-and-rules",
+        "seed-contracts",
+        "seed-generated-state"
+      ],
+      "excludes": [
+        "self-authorized scope expansion",
+        "unverified automation behavior"
+      ]
+    },
+    {
+      "name": "seed-web-placeholder",
+      "purpose": "Reserve the future read-only frontend mount point for rendering generated state.",
+      "contains": [
+        "web/static-docs-or-dashboard-placeholder/README.md"
+      ],
+      "depends_on": [
+        "seed-generated-state",
+        "seed-contracts"
+      ],
+      "excludes": [
+        "invented task or prompt structure",
+        "authentication",
+        "realtime sync"
+      ]
+    }
+  ]
+}

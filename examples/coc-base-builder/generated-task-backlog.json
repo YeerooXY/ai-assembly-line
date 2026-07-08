@@ -1,0 +1,182 @@
+[
+  {
+    "id": "contracts-layout-and-report-schemas",
+    "title": "Define layout and report contracts",
+    "summary": "Create strict schemas for base layouts, score reports, simulation reports, and planner state.",
+    "owner_role": "Contract Steward",
+    "repo_target": "coc-base-contracts",
+    "depends_on": [],
+    "inputs": [
+      "generated-project-spec.md",
+      "PRODUCT_RULES.md"
+    ],
+    "outputs": [
+      "layout schema",
+      "score report schema",
+      "simulation report schema",
+      "planner state schema"
+    ],
+    "acceptance_criteria": [
+      "Schemas reject undocumented fields where not explicitly allowed.",
+      "Schemas cover frontend-rendered artifacts.",
+      "Fixtures include both valid and invalid examples."
+    ],
+    "verification": [
+      "Schema tests pass for valid fixtures and fail for invalid fixtures."
+    ],
+    "risk_tags": [
+      "schema-drift"
+    ]
+  },
+  {
+    "id": "engine-placement-validation",
+    "title": "Implement deterministic placement validation",
+    "summary": "Add bounds checks and collision rules for building placement on the planner grid.",
+    "owner_role": "Core Engine Builder",
+    "repo_target": "coc-base-engine",
+    "depends_on": [
+      "contracts-layout-and-report-schemas"
+    ],
+    "inputs": [
+      "layout schema",
+      "building definitions"
+    ],
+    "outputs": [
+      "placement validator",
+      "invalid placement fixtures"
+    ],
+    "acceptance_criteria": [
+      "Out-of-bounds placements are rejected.",
+      "Overlapping buildings are rejected.",
+      "The same input yields the same validation output."
+    ],
+    "verification": [
+      "Unit tests cover valid and invalid layouts."
+    ],
+    "risk_tags": [
+      "determinism"
+    ]
+  },
+  {
+    "id": "engine-score-and-simulate",
+    "title": "Implement score and simulation-style evaluation",
+    "summary": "Produce reproducible score reports and offline simulation-style reports for saved layouts.",
+    "owner_role": "Core Engine Builder",
+    "repo_target": "coc-base-engine",
+    "depends_on": [
+      "contracts-layout-and-report-schemas",
+      "engine-placement-validation"
+    ],
+    "inputs": [
+      "rule set definitions",
+      "validated layouts"
+    ],
+    "outputs": [
+      "score module",
+      "simulation module",
+      "report fixtures"
+    ],
+    "acceptance_criteria": [
+      "Reports conform to the declared contracts.",
+      "Outputs are repeatable for the same layout and rule set.",
+      "No live client hooks or service integrations are present."
+    ],
+    "verification": [
+      "Fixture-based tests confirm structure and repeatability."
+    ],
+    "risk_tags": [
+      "safety",
+      "scope-drift"
+    ]
+  },
+  {
+    "id": "backend-local-api-draft",
+    "title": "Implement local-only planner API draft",
+    "summary": "Expose validate, score, simulate, save, and load routes matching the declared contract style.",
+    "owner_role": "Backend Builder",
+    "repo_target": "coc-base-backend",
+    "depends_on": [
+      "contracts-layout-and-report-schemas",
+      "engine-score-and-simulate"
+    ],
+    "inputs": [
+      "OpenAPI draft",
+      "engine modules"
+    ],
+    "outputs": [
+      "route handlers",
+      "request and response fixtures"
+    ],
+    "acceptance_criteria": [
+      "Input validation happens before engine execution.",
+      "Responses match contract-defined shapes.",
+      "No auth or database dependencies are introduced."
+    ],
+    "verification": [
+      "Integration tests cover success and rejection cases."
+    ],
+    "risk_tags": [
+      "boundary-control"
+    ]
+  },
+  {
+    "id": "frontend-read-only-board",
+    "title": "Build read-only project board",
+    "summary": "Render project name, goal, repo split, roles, backlog, contracts, prompt pack, and verification rules from source artifacts.",
+    "owner_role": "Frontend Builder",
+    "repo_target": "coc-base-frontend",
+    "depends_on": [
+      "contracts-layout-and-report-schemas"
+    ],
+    "inputs": [
+      "PROJECT_SPEC.md",
+      "generated-repo-plan.json",
+      "generated-task-backlog.json",
+      "prompt files",
+      "verification rules"
+    ],
+    "outputs": [
+      "read-only board UI"
+    ],
+    "acceptance_criteria": [
+      "The UI reads source artifacts directly.",
+      "No hidden UI state model replaces the contract structures.",
+      "Contract mismatches fail visibly."
+    ],
+    "verification": [
+      "UI tests render fixture artifacts and assert visible output."
+    ],
+    "risk_tags": [
+      "frontend-state-invention"
+    ]
+  },
+  {
+    "id": "red-team-unsafe-reinterpretation",
+    "title": "Create unsafe reinterpretation test set",
+    "summary": "Add cases that try to turn the planner into a bot or expand it into live integration.",
+    "owner_role": "Red Team Verifier",
+    "repo_target": "coc-base-contracts",
+    "depends_on": [
+      "contracts-layout-and-report-schemas"
+    ],
+    "inputs": [
+      "PRODUCT_RULES.md",
+      "generated-project-spec.md"
+    ],
+    "outputs": [
+      "rejection fixtures",
+      "guardrail notes"
+    ],
+    "acceptance_criteria": [
+      "Cases cover botting, account login, emulator control, client hooks, and hidden frontend state invention.",
+      "Each case maps to a clear rejection reason."
+    ],
+    "verification": [
+      "Human review confirms the rejection set covers likely drift paths."
+    ],
+    "risk_tags": [
+      "safety",
+      "scope-drift"
+    ]
+  }
+]
