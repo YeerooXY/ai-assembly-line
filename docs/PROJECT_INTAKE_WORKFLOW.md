@@ -33,6 +33,12 @@ When a user starts a project with only a rough idea, the first response must beg
 The Intake Interviewer must not immediately output:
 
 - a full guideline document
+- temporary or starter project guidelines
+- technical steering rules
+- target repository layout
+- repo/package split
+- definition of done
+- suggested answers or default answers for the user to accept
 - a full architecture
 - a final stack decision
 - a full MVP scope
@@ -48,7 +54,28 @@ Instead, it should output:
 
 This is true even if the user asks for guidelines or says they want to bring the idea to life. Those requests still start intake unless a complete intake record already exists.
 
+If `readiness.can_generate_intake` is `false`, the first response must stop after the questions. It must not continue with project guidelines, technical steering, repository layout, default answers, stack choices, or definition-of-done rules.
+
 See `docs/INTAKE_SESSION_FORMAT.md`.
+
+## Guidelines wording trap
+
+A user may say something like:
+
+```text
+Here is the ai-assembly-line repo that helps with planning. I want to build a multiplayer Tron game. Can you help me set guidelines for the project based on the repo's steering help?
+```
+
+That is still a request to start intake, not a request to produce guidelines.
+
+The correct first response is:
+
+1. short acknowledgement
+2. `intake_session` state
+3. high-impact questions
+4. stop
+
+The incorrect response is anything that continues with starter steering rules, a recommended stack, repo/package split, project layout, definition of done, suggested answers, or planning-run guidelines.
 
 ## Recommended target-project layout
 
@@ -87,6 +114,8 @@ my-project/
 
 The `ai-assembly-line` repository is the upstream template and steering kit. The target project repository should contain the snapshot that agents and humans actually use.
 
+Do not output this layout in the first response to a rough idea when `readiness.can_generate_intake` is `false`. This layout is guidance for later workspace initialization, not a substitute for intake.
+
 ## Intake modes
 
 ### Quick mode
@@ -95,8 +124,8 @@ Use when the user wants a fast first draft.
 
 Rules:
 
-- Ask at most five high-impact questions.
-- Make low-risk assumptions explicitly.
+- Ask at most five questions.
+- Make low-risk assumptions explicit.
 - Mark risky unknowns as open questions.
 - Produce a draft intake record quickly.
 
@@ -107,7 +136,7 @@ Use as the default.
 Rules:
 
 - Ask questions in small sections.
-- Suggest reasonable stack options when the user has not chosen one.
+- Suggest reasonable stack options when the user has not chosen one and enough platform/MVP context exists.
 - Confirm the MVP before planning.
 - Confirm team/agent working style before task decomposition.
 - Produce a structured intake record after enough information is known.
@@ -146,6 +175,8 @@ The Intake Interviewer should cover these sections, but not necessarily all in o
 - Are there existing tools, local paths, SDKs, credentials, or hardware constraints?
 
 When suggesting a stack, provide options with tradeoffs and a recommendation. Do not force a stack silently.
+
+Do not suggest concrete stack options on the first response to a rough idea when high-risk answers such as platform, multiplayer mode, existing project state, and team/agent layout are still unknown.
 
 ### 4. Existing project state
 
@@ -205,6 +236,8 @@ The session should include:
 - open questions
 - readiness to generate `project_intake.json`
 - next action
+
+If `readiness.can_generate_intake` is `false`, the output is not allowed to continue into guidelines or planning artifacts.
 
 ## Required intake output
 
