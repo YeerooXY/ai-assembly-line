@@ -142,11 +142,15 @@ It should display:
 - `PRODUCT_RULES.md`: hard rules and safety boundaries
 - `docs/`: public overview, workflow, roles, task format, verification rules
 - `docs/EXTERNAL_REVIEW_PROMPT.md`: fresh-clone external reviewer prompt
+- `docs/PLANNING_RUN_WORKFLOW.md`: manual planning-run workflow
 - `contracts/`: schemas and OpenAPI contract
 - `generated/`: canonical machine-readable planning artifacts for the current seed state
 - `examples/coc-base-builder/`: example decomposition for a safe base layout planner
+- `planning_runs/`: manual planning-run folders and review artifacts
 - `prompts/`: copy-paste role prompts
 - `tools/validate_seed.py`: repository JSON validation utility
+- `tools/init_planning_run.py`: manual planning-run folder initializer
+- `tools/validate_planning_run.py`: planning-run output validator
 - `web/`: static multi-page read-only viewer over generated state
 
 ## Remote AI Review
@@ -160,12 +164,32 @@ For remote AI or web-only review environments, start with:
 
 These files provide broad review context for the current repository state. They are intended to reduce setup friction for web-only review environments, not to imply that one file permanently contains the entire repository.
 
+## Planning Runs
+
+The first real product workflow is a manual planning run:
+
+1. initialize a run folder with `python tools/init_planning_run.py <run-slug>`
+2. write the rough idea into `planning_runs/<run-slug>/input-idea.md`
+3. refresh and copy the generated prompt from `planning_runs/<run-slug>/planning-run.md`
+4. paste it into a web AI or Codex-style tool
+5. save the returned JSON artifacts into `planning_runs/<run-slug>/outputs/`
+6. validate them with `python tools/validate_planning_run.py planning_runs/<run-slug>`
+7. review and accept or reject the plan
+
+See `docs/PLANNING_RUN_WORKFLOW.md` and `planning_runs/README.md`.
+
 ## Validation
 
 Run:
 
 ```powershell
 python tools/validate_seed.py
+```
+
+Planning run outputs can be validated separately with:
+
+```powershell
+python tools/validate_planning_run.py planning_runs\<run-slug>
 ```
 
 The validator:

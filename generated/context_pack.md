@@ -154,11 +154,15 @@ It should display:
 - `PRODUCT_RULES.md`: hard rules and safety boundaries
 - `docs/`: public overview, workflow, roles, task format, verification rules
 - `docs/EXTERNAL_REVIEW_PROMPT.md`: fresh-clone external reviewer prompt
+- `docs/PLANNING_RUN_WORKFLOW.md`: manual planning-run workflow
 - `contracts/`: schemas and OpenAPI contract
 - `generated/`: canonical machine-readable planning artifacts for the current seed state
 - `examples/coc-base-builder/`: example decomposition for a safe base layout planner
+- `planning_runs/`: manual planning-run folders and review artifacts
 - `prompts/`: copy-paste role prompts
 - `tools/validate_seed.py`: repository JSON validation utility
+- `tools/init_planning_run.py`: manual planning-run folder initializer
+- `tools/validate_planning_run.py`: planning-run output validator
 - `web/`: static multi-page read-only viewer over generated state
 
 ## Remote AI Review
@@ -172,12 +176,32 @@ For remote AI or web-only review environments, start with:
 
 These files provide broad review context for the current repository state. They are intended to reduce setup friction for web-only review environments, not to imply that one file permanently contains the entire repository.
 
+## Planning Runs
+
+The first real product workflow is a manual planning run:
+
+1. initialize a run folder with `python tools/init_planning_run.py <run-slug>`
+2. write the rough idea into `planning_runs/<run-slug>/input-idea.md`
+3. refresh and copy the generated prompt from `planning_runs/<run-slug>/planning-run.md`
+4. paste it into a web AI or Codex-style tool
+5. save the returned JSON artifacts into `planning_runs/<run-slug>/outputs/`
+6. validate them with `python tools/validate_planning_run.py planning_runs/<run-slug>`
+7. review and accept or reject the plan
+
+See `docs/PLANNING_RUN_WORKFLOW.md` and `planning_runs/README.md`.
+
 ## Validation
 
 Run:
 
 ```powershell
 python tools/validate_seed.py
+```
+
+Planning run outputs can be validated separately with:
+
+```powershell
+python tools/validate_planning_run.py planning_runs\<run-slug>
 ```
 
 The validator:
@@ -740,6 +764,87 @@ Validate contracts, check rule compliance, and red-team likely drift paths.
 ## 8. Human Review
 
 Accept, revise, or reject the planning outputs before any implementation phase begins.
+
+```
+
+## `docs/PLANNING_RUN_WORKFLOW.md`
+
+- Category: `review-doc`
+- Purpose: Manual planning-run workflow for turning a rough idea into saved planning artifacts and human-reviewed outputs.
+- Required: `true`
+
+```markdown
+# Planning Run Workflow
+
+This repository supports a repeatable manual planning-run workflow for turning a rough software idea into structured planning artifacts.
+
+## Workflow
+
+1. Create a planning run folder:
+
+   ```powershell
+   python tools\init_planning_run.py <run-slug>
+   ```
+
+2. Open `planning_runs/<run-slug>/input-idea.md` and write or paste the rough idea.
+3. Run the initializer again to refresh `planning_runs/<run-slug>/planning-run.md` with the current idea embedded in the prompt:
+
+   ```powershell
+   python tools\init_planning_run.py <run-slug>
+   ```
+
+4. Copy the generated prompt from `planning_runs/<run-slug>/planning-run.md`.
+5. Paste that prompt into a web AI or Codex-style tool.
+6. Save the returned planning artifacts into `planning_runs/<run-slug>/outputs/`.
+7. Validate the saved outputs:
+
+   ```powershell
+   python tools\validate_planning_run.py planning_runs\<run-slug>
+   ```
+
+8. Review the artifacts and mark them accepted or rejected in `planning_runs/<run-slug>/review-notes.md`.
+
+## Human-In-The-Loop Rules
+
+- Generated outputs are drafts until a human accepts them.
+- Unsafe automation-oriented ideas must be safely reinterpreted into the nearest safe planning-only scope or explicitly rejected.
+- This workflow does not call AI APIs, run autonomous agents, or implement the planned software.
+- The workflow is file-based and intended for manual review and acceptance.
+
+## Required Planning Artifacts
+
+Every planning run must produce the same artifact types:
+
+- `project_spec.json`
+- `repo_plan.json`
+- `task_backlog.json`
+- `agent_prompts.json`
+- `slots_db.json`
+
+## Expected Run Folder Layout
+
+```text
+planning_runs/<run-slug>/
+  input-idea.md
+  planning-run.md
+  review-notes.md
+  outputs/
+    project_spec.json
+    repo_plan.json
+    task_backlog.json
+    agent_prompts.json
+    slots_db.json
+```
+
+## Review Outcome
+
+Reviewers should confirm:
+
+- the rough idea was interpreted safely
+- the artifact set is structurally valid
+- repo targets and task dependencies are coherent
+- prompts and slots align with the proposed repo split
+- the plan is useful enough to accept, revise, or reject
 
 ```
 
@@ -1881,6 +1986,12 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "required": true
     },
     {
+      "path": "docs/PLANNING_RUN_WORKFLOW.md",
+      "category": "review-doc",
+      "purpose": "Manual planning-run workflow for turning a rough idea into saved planning artifacts and human-reviewed outputs.",
+      "required": true
+    },
+    {
       "path": "docs/roles.md",
       "category": "review-doc",
       "purpose": "Role descriptions for the planning kernel and static viewer work.",
@@ -2043,6 +2154,36 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "required": false
     },
     {
+      "path": "planning_runs/README.md",
+      "category": "workflow",
+      "purpose": "Explains planning-run folders and what run artifacts should be committed.",
+      "required": true
+    },
+    {
+      "path": "planning_runs/coc-base-builder-v1/input-idea.md",
+      "category": "workflow-example",
+      "purpose": "Safe sample planning-run input idea for an offline strategy-game base layout planner.",
+      "required": true
+    },
+    {
+      "path": "planning_runs/coc-base-builder-v1/planning-run.md",
+      "category": "workflow-example",
+      "purpose": "Sample generated planning-run prompt for the safe coc-base-builder-v1 run.",
+      "required": true
+    },
+    {
+      "path": "planning_runs/coc-base-builder-v1/outputs/README.md",
+      "category": "workflow-example",
+      "purpose": "Explains that the five required JSON outputs are intentionally absent until a planning agent produces them.",
+      "required": true
+    },
+    {
+      "path": "planning_runs/coc-base-builder-v1/review-notes.md",
+      "category": "workflow-example",
+      "purpose": "Sample review-notes scaffold for the coc-base-builder-v1 planning run.",
+      "required": true
+    },
+    {
       "path": "web/README.md",
       "category": "viewer",
       "purpose": "Static viewer documentation and file:// versus local server usage notes.",
@@ -2148,6 +2289,18 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "path": "tools/build_context_pack.py",
       "category": "tool",
       "purpose": "Builds the remote-review context pack from this manifest.",
+      "required": true
+    },
+    {
+      "path": "tools/init_planning_run.py",
+      "category": "tool",
+      "purpose": "Initializes a manual planning-run folder and refreshes the AI-ready planning prompt.",
+      "required": true
+    },
+    {
+      "path": "tools/validate_planning_run.py",
+      "category": "tool",
+      "purpose": "Validates saved planning-run output artifacts against existing contracts and cross-artifact consistency checks.",
       "required": true
     }
   ]
@@ -3317,6 +3470,216 @@ Implement deterministic layout validation, scoring, and simulation-style evaluat
 ## Red Team Verifier
 
 Probe for unsafe reinterpretation, hidden operational state, schema drift, frontend structure invention, client integration, and unverifiable prompt behavior. Produce concrete failing cases.
+
+```
+
+## `planning_runs/README.md`
+
+- Category: `workflow`
+- Purpose: Explains planning-run folders and what run artifacts should be committed.
+- Required: `true`
+
+```markdown
+# Planning Runs
+
+This directory stores manual planning runs created from rough software ideas.
+
+Each planning run should live in its own folder:
+
+```text
+planning_runs/<run-slug>/
+```
+
+Typical contents:
+
+- `input-idea.md`: the rough idea captured for the run
+- `planning-run.md`: the AI-ready prompt generated from that idea
+- `review-notes.md`: human acceptance or rejection notes
+- `outputs/`: saved planning artifacts returned by the AI tool
+
+What should be committed:
+
+- run folders that are accepted, shared for review, or useful as traceable examples
+- the original input idea when it is safe to store in the repository
+- the generated planning prompt
+- the saved output artifacts
+- the human review outcome
+
+What should not be committed:
+
+- secrets
+- tokens
+- credentials
+- unsafe or sensitive proprietary input that should not live in Git
+
+Planning runs remain human-reviewed planning artifacts. They do not imply implemented software or autonomous execution.
+
+```
+
+## `planning_runs/coc-base-builder-v1/input-idea.md`
+
+- Category: `workflow-example`
+- Purpose: Safe sample planning-run input idea for an offline strategy-game base layout planner.
+- Required: `true`
+
+```markdown
+# Input Idea
+
+Create a safe offline strategy-game base layout planner for players who want to compare and organize defensive layouts outside the game.
+
+The tool should help users:
+
+- sketch layout ideas on a grid
+- compare tradeoffs between layouts
+- record notes about strengths and weaknesses
+- review planning outputs before any later implementation work
+
+Safety and scope requirements:
+
+- no botting
+- no game-client automation
+- no account automation
+- no emulator control
+- no live-service interaction
+- no cheating
+- no scraping private game APIs
+
+```
+
+## `planning_runs/coc-base-builder-v1/planning-run.md`
+
+- Category: `workflow-example`
+- Purpose: Sample generated planning-run prompt for the safe coc-base-builder-v1 run.
+- Required: `true`
+
+```markdown
+# Planning Run Prompt
+
+You are producing a manual planning run for the `ai-assembly-line` workflow.
+
+## Run Slug
+
+`coc-base-builder-v1`
+
+## Goal
+
+Convert the rough software idea below into a safe, structured planning artifact set.
+
+Generated outputs are drafts until a human accepts them.
+If the idea implies unsafe automation, botting, account control, live-service interference, or other unsafe behavior, safely reinterpret it into the nearest safe planning-only scope or explicitly reject the unsafe parts.
+
+## Rough Idea
+
+# Input Idea
+
+Create a safe offline strategy-game base layout planner for players who want to compare and organize defensive layouts outside the game.
+
+The tool should help users:
+
+- sketch layout ideas on a grid
+- compare tradeoffs between layouts
+- record notes about strengths and weaknesses
+- review planning outputs before any later implementation work
+
+Safety and scope requirements:
+
+- no botting
+- no game-client automation
+- no account automation
+- no emulator control
+- no live-service interaction
+- no cheating
+- no scraping private game APIs
+
+## Required Output Files
+
+Return exactly these artifact types:
+
+- `project_spec.json`
+- `repo_plan.json`
+- `task_backlog.json`
+- `agent_prompts.json`
+- `slots_db.json`
+
+## Output Requirements
+
+- `project_spec.json` must describe the product summary, boundaries, repo split, domain model, frontend screens, backend services, core engine responsibilities, verification tasks, and starter prompts.
+- `repo_plan.json` must define the repo ownership split.
+- `task_backlog.json` must define tasks with owners, dependencies, acceptance criteria, and verification.
+- `agent_prompts.json` must define prompt boundaries tied to the repo split.
+- `slots_db.json` must define role slots and verification requirements.
+
+## Constraints
+
+- Produce planning artifacts only.
+- Do not implement software.
+- Do not add hidden workflow state.
+- Keep outputs human-reviewable and machine-readable.
+- Keep repo targets, task dependencies, prompts, and slots internally consistent.
+
+## Response Format
+
+Return each file in its own fenced code block with the filename immediately above the fence, for example:
+
+`project_spec.json`
+```json
+{ ... }
+```
+
+Use valid JSON for all five files.
+
+```
+
+## `planning_runs/coc-base-builder-v1/outputs/README.md`
+
+- Category: `workflow-example`
+- Purpose: Explains that the five required JSON outputs are intentionally absent until a planning agent produces them.
+- Required: `true`
+
+```markdown
+# Outputs
+
+This sample planning run intentionally does not include final generated output JSON yet.
+
+The five required output files are expected to appear here only after a planning agent produces them:
+
+- `project_spec.json`
+- `repo_plan.json`
+- `task_backlog.json`
+- `agent_prompts.json`
+- `slots_db.json`
+
+Until then, their absence is intentional for this draft sample folder.
+
+When outputs are added, validate them with:
+
+```powershell
+python tools\validate_planning_run.py planning_runs\coc-base-builder-v1
+```
+
+```
+
+## `planning_runs/coc-base-builder-v1/review-notes.md`
+
+- Category: `workflow-example`
+- Purpose: Sample review-notes scaffold for the coc-base-builder-v1 planning run.
+- Required: `true`
+
+```markdown
+# Review
+
+## Outcome
+
+- [ ] Accepted
+- [ ] Needs revision
+- [ ] Rejected
+
+## Review Notes
+
+- Safety interpretation:
+- Structural validity:
+- Repo/task/prompt/slot coherence:
+- Reviewer decision rationale:
 
 ```
 
@@ -5585,5 +5948,423 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
+```
+
+## `tools/init_planning_run.py`
+
+- Category: `tool`
+- Purpose: Initializes a manual planning-run folder and refreshes the AI-ready planning prompt.
+- Required: `true`
+
+```python
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+PLANNING_RUNS_DIR = ROOT / "planning_runs"
+REQUIRED_OUTPUTS = [
+    "project_spec.json",
+    "repo_plan.json",
+    "task_backlog.json",
+    "agent_prompts.json",
+    "slots_db.json",
+]
+
+
+def usage() -> int:
+    print("Usage: python tools/init_planning_run.py <run-slug>")
+    return 1
+
+
+def validate_slug(run_slug: str) -> None:
+    if re.fullmatch(r"[a-z0-9][a-z0-9\\-]*", run_slug) is None:
+        raise ValueError("run-slug must match ^[a-z0-9][a-z0-9\\-]*$")
+
+
+def default_input_idea() -> str:
+    return (
+        "# Input Idea\n\n"
+        "Replace this text with the rough software idea for the planning run.\n"
+        "Describe the product, target users, constraints, and any known safety concerns.\n"
+    ).strip()
+
+
+def planning_prompt(run_slug: str, input_idea: str) -> str:
+    output_list = "\n".join(f"- `{name}`" for name in REQUIRED_OUTPUTS)
+    return f"""# Planning Run Prompt
+
+You are producing a manual planning run for the `ai-assembly-line` workflow.
+
+## Run Slug
+
+`{run_slug}`
+
+## Goal
+
+Convert the rough software idea below into a safe, structured planning artifact set.
+
+Generated outputs are drafts until a human accepts them.
+If the idea implies unsafe automation, botting, account control, live-service interference, or other unsafe behavior, safely reinterpret it into the nearest safe planning-only scope or explicitly reject the unsafe parts.
+
+## Rough Idea
+
+{input_idea}
+
+## Required Output Files
+
+Return exactly these artifact types:
+
+{output_list}
+
+## Output Requirements
+
+- `project_spec.json` must describe the product summary, boundaries, repo split, domain model, frontend screens, backend services, core engine responsibilities, verification tasks, and starter prompts.
+- `repo_plan.json` must define the repo ownership split.
+- `task_backlog.json` must define tasks with owners, dependencies, acceptance criteria, and verification.
+- `agent_prompts.json` must define prompt boundaries tied to the repo split.
+- `slots_db.json` must define role slots and verification requirements.
+
+## Constraints
+
+- Produce planning artifacts only.
+- Do not implement software.
+- Do not add hidden workflow state.
+- Keep outputs human-reviewable and machine-readable.
+- Keep repo targets, task dependencies, prompts, and slots internally consistent.
+
+## Response Format
+
+Return each file in its own fenced code block with the filename immediately above the fence, for example:
+
+`project_spec.json`
+```json
+{{ ... }}
+```
+
+Use valid JSON for all five files.
+"""
+
+
+def review_template() -> str:
+    return """# Review
+
+## Outcome
+
+- [ ] Accepted
+- [ ] Needs revision
+- [ ] Rejected
+
+## Review Notes
+
+- Safety interpretation:
+- Structural validity:
+- Repo/task/prompt/slot coherence:
+- Reviewer decision rationale:
+"""
+
+
+def outputs_readme() -> str:
+    expected = "\n".join(f"- `{name}`" for name in REQUIRED_OUTPUTS)
+    return f"""# Outputs
+
+Save the AI-returned planning artifacts for this run in this folder.
+
+Expected files:
+
+{expected}
+
+Validate them with:
+
+```powershell
+python tools\\validate_planning_run.py <path-to-this-folder>
+```
+"""
+
+
+def write_if_missing(path: Path, content: str) -> str:
+    if path.exists():
+        return "exists"
+    path.write_text(content.rstrip() + "\n", encoding="utf-8")
+    return "created"
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) != 2:
+        return usage()
+
+    run_slug = argv[1]
+    try:
+        validate_slug(run_slug)
+    except ValueError as exc:
+        print(f"ERROR {exc}")
+        return 1
+
+    run_dir = PLANNING_RUNS_DIR / run_slug
+    outputs_dir = run_dir / "outputs"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    outputs_dir.mkdir(parents=True, exist_ok=True)
+
+    input_idea_path = run_dir / "input-idea.md"
+    input_status = write_if_missing(input_idea_path, default_input_idea())
+    input_idea = input_idea_path.read_text(encoding="utf-8").strip()
+
+    planning_prompt_path = run_dir / "planning-run.md"
+    planning_prompt_path.write_text(planning_prompt(run_slug, input_idea).rstrip() + "\n", encoding="utf-8")
+
+    review_status = write_if_missing(run_dir / "review-notes.md", review_template())
+    outputs_status = write_if_missing(outputs_dir / "README.md", outputs_readme())
+
+    print(f"RUN DIR   {run_dir.relative_to(ROOT).as_posix()}")
+    print(f"INPUT     {input_status} {input_idea_path.relative_to(ROOT).as_posix()}")
+    print(f"PROMPT    updated {planning_prompt_path.relative_to(ROOT).as_posix()}")
+    print(f"REVIEW    {review_status} {run_dir.joinpath('review-notes.md').relative_to(ROOT).as_posix()}")
+    print(f"OUTPUTS   {outputs_status} {outputs_dir.joinpath('README.md').relative_to(ROOT).as_posix()}")
+    print("NEXT      edit input-idea.md, rerun this script, paste planning-run.md into a web AI, save outputs/, validate, and review")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
+
+```
+
+## `tools/validate_planning_run.py`
+
+- Category: `tool`
+- Purpose: Validates saved planning-run output artifacts against existing contracts and cross-artifact consistency checks.
+- Required: `true`
+
+```python
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+import validate_seed
+
+
+ROOT = Path(__file__).resolve().parents[1]
+REQUIRED_OUTPUTS = {
+    "project_spec.json": "contracts/project_spec.schema.json",
+    "repo_plan.json": "contracts/repo_plan.schema.json",
+    "task_backlog.json": "contracts/task.schema.json",
+    "agent_prompts.json": "contracts/agent_prompt.schema.json",
+    "slots_db.json": "contracts/slot.schema.json",
+}
+
+
+def usage() -> int:
+    print("Usage: python tools/validate_planning_run.py <run-dir-or-outputs-dir>")
+    return 1
+
+
+def load_json(path: Path) -> Any:
+    with path.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def resolve_outputs_dir(path_arg: str) -> Path:
+    candidate = Path(path_arg).resolve()
+    if not candidate.exists() or not candidate.is_dir():
+        raise ValueError(f"run or outputs directory not found: {path_arg}")
+    if candidate.name == "outputs":
+        return candidate
+    outputs_dir = candidate / "outputs"
+    if outputs_dir.exists() and outputs_dir.is_dir():
+        return outputs_dir
+    return candidate
+
+
+def validate_required_outputs(outputs_dir: Path) -> int:
+    missing_count = 0
+    for file_name in REQUIRED_OUTPUTS:
+        path = outputs_dir / file_name
+        if not path.exists():
+            print(f"MISSING FAIL {path.relative_to(ROOT).as_posix()}")
+            missing_count += 1
+    return missing_count
+
+
+def validate_builtin_payloads(outputs_dir: Path, payloads: dict[str, Any]) -> list[str]:
+    messages: list[str] = []
+
+    validate_seed.validate_project_spec(payloads["project_spec.json"], f"{outputs_dir.name}/project_spec.json")
+    messages.append("SCHEMA OK   project_spec.json -> contracts/project_spec.schema.json (builtin)")
+
+    validate_seed.validate_repo_plan(payloads["repo_plan.json"], f"{outputs_dir.name}/repo_plan.json")
+    messages.append("SCHEMA OK   repo_plan.json -> contracts/repo_plan.schema.json (builtin)")
+
+    validate_seed.validate_agent_prompt_set(payloads["agent_prompts.json"], f"{outputs_dir.name}/agent_prompts.json")
+    messages.append("SCHEMA OK   agent_prompts.json -> contracts/agent_prompt.schema.json (builtin)")
+
+    task_backlog = payloads["task_backlog.json"]
+    validate_seed.expect_type(task_backlog, list, f"{outputs_dir.name}/task_backlog.json")
+    for index, task in enumerate(task_backlog):
+        validate_seed.validate_task(task, f"{outputs_dir.name}/task_backlog.json[{index}]")
+        messages.append(f"SCHEMA OK   task_backlog.json[{index}] -> contracts/task.schema.json (builtin)")
+
+    slots_db = payloads["slots_db.json"]
+    validate_seed.expect_type(slots_db, list, f"{outputs_dir.name}/slots_db.json")
+    for index, slot in enumerate(slots_db):
+        validate_seed.validate_slot(slot, f"{outputs_dir.name}/slots_db.json[{index}]")
+        messages.append(f"SCHEMA OK   slots_db.json[{index}] -> contracts/slot.schema.json (builtin)")
+
+    return messages
+
+
+def validate_jsonschema_payloads(outputs_dir: Path, payloads: dict[str, Any]) -> list[str]:
+    jsonschema_module = validate_seed.load_optional_jsonschema()
+    if jsonschema_module is None:
+        return validate_builtin_payloads(outputs_dir, payloads)
+
+    messages: list[str] = []
+    schemas = {
+        schema_path: load_json(ROOT / schema_path)
+        for schema_path in REQUIRED_OUTPUTS.values()
+    }
+
+    jsonschema_module.validate(payloads["project_spec.json"], schemas["contracts/project_spec.schema.json"])
+    messages.append("SCHEMA OK   project_spec.json -> contracts/project_spec.schema.json")
+
+    jsonschema_module.validate(payloads["repo_plan.json"], schemas["contracts/repo_plan.schema.json"])
+    messages.append("SCHEMA OK   repo_plan.json -> contracts/repo_plan.schema.json")
+
+    jsonschema_module.validate(payloads["agent_prompts.json"], schemas["contracts/agent_prompt.schema.json"])
+    messages.append("SCHEMA OK   agent_prompts.json -> contracts/agent_prompt.schema.json")
+
+    task_backlog = payloads["task_backlog.json"]
+    validate_seed.expect_type(task_backlog, list, f"{outputs_dir.name}/task_backlog.json")
+    for index, task in enumerate(task_backlog):
+        jsonschema_module.validate(task, schemas["contracts/task.schema.json"])
+        messages.append(f"SCHEMA OK   task_backlog.json[{index}] -> contracts/task.schema.json")
+
+    slots_db = payloads["slots_db.json"]
+    validate_seed.expect_type(slots_db, list, f"{outputs_dir.name}/slots_db.json")
+    for index, slot in enumerate(slots_db):
+        jsonschema_module.validate(slot, schemas["contracts/slot.schema.json"])
+        messages.append(f"SCHEMA OK   slots_db.json[{index}] -> contracts/slot.schema.json")
+
+    return messages
+
+
+def run_consistency_checks(payloads: dict[str, Any]) -> list[str]:
+    project_spec = payloads["project_spec.json"]
+    repo_plan = payloads["repo_plan.json"]
+    task_backlog = payloads["task_backlog.json"]
+    agent_prompts = payloads["agent_prompts.json"]
+    slots_db = payloads["slots_db.json"]
+
+    repo_names = {repo["name"] for repo in repo_plan["repos"]}
+    task_ids = {task["id"] for task in task_backlog}
+
+    validate_seed.expect(
+        project_spec["project_name"] == repo_plan["project_name"] == agent_prompts["project_name"],
+        "project_name must match across project_spec.json, repo_plan.json, and agent_prompts.json",
+    )
+
+    for index, task in enumerate(task_backlog):
+        validate_seed.expect(
+            task["repo_target"] in repo_names,
+            f"task_backlog.json[{index}].repo_target must exist in repo_plan.json",
+        )
+        for dependency in task["depends_on"]:
+            validate_seed.expect(
+                dependency in task_ids,
+                f"task_backlog.json[{index}].depends_on must refer to an existing task id: {dependency}",
+            )
+
+    for index, prompt in enumerate(agent_prompts["prompts"]):
+        validate_seed.expect(
+            prompt["target_repo"] in repo_names,
+            f"agent_prompts.json[{index}].target_repo must exist in repo_plan.json",
+        )
+
+    prompt_roles = {prompt["role"] for prompt in agent_prompts["prompts"]}
+    warnings = []
+    for slot in slots_db:
+        if slot["role"] not in prompt_roles:
+            warnings.append(f"CONSISTENCY WARN slot role has no matching prompt role: {slot['role']}")
+
+    return [
+        "CONSISTENCY OK project_name aligns across primary artifacts",
+        "CONSISTENCY OK task repo_target values map to repo_plan.json",
+        "CONSISTENCY OK task depends_on values refer to existing task ids",
+        "CONSISTENCY OK prompt target_repo values map to repo_plan.json",
+        *warnings,
+    ]
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) != 2:
+        return usage()
+
+    try:
+        outputs_dir = resolve_outputs_dir(argv[1])
+    except ValueError as exc:
+        print(f"ERROR {exc}")
+        return 1
+
+    missing_required = validate_required_outputs(outputs_dir)
+    if missing_required:
+        print(f"RESULT FAIL missing_required={missing_required}")
+        return 1
+
+    payloads: dict[str, Any] = {}
+    parse_failures = 0
+
+    for file_name in REQUIRED_OUTPUTS:
+        path = outputs_dir / file_name
+        rel = path.relative_to(ROOT).as_posix()
+        try:
+            payloads[file_name] = load_json(path)
+            print(f"JSON OK     {rel}")
+        except json.JSONDecodeError as exc:
+            parse_failures += 1
+            print(f"PARSE FAIL {rel}: {exc.msg} (line {exc.lineno}, column {exc.colno})")
+        except OSError as exc:
+            parse_failures += 1
+            print(f"PARSE FAIL {rel}: {exc}")
+
+    if parse_failures:
+        print(f"RESULT FAIL parse_failures={parse_failures}")
+        return 1
+
+    schema_failures = 0
+    try:
+        for message in validate_jsonschema_payloads(outputs_dir, payloads):
+            print(message)
+    except Exception as exc:
+        schema_failures += 1
+        print(f"SCHEMA FAIL {outputs_dir.relative_to(ROOT).as_posix()}: {exc}")
+
+    if schema_failures:
+        print(f"RESULT FAIL schema_failures={schema_failures}")
+        return 1
+
+    consistency_failures = 0
+    try:
+        for message in run_consistency_checks(payloads):
+            print(message)
+    except ValueError as exc:
+        consistency_failures += 1
+        print(f"CONSISTENCY FAIL {exc}")
+
+    if consistency_failures:
+        print(f"RESULT FAIL consistency_failures={consistency_failures}")
+        return 1
+
+    print("RESULT OK   planning_run_outputs_valid")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
 
 ```

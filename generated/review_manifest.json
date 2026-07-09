@@ -50,6 +50,12 @@
       "required": true
     },
     {
+      "path": "docs/PLANNING_RUN_WORKFLOW.md",
+      "category": "review-doc",
+      "purpose": "Manual planning-run workflow for turning a rough idea into saved planning artifacts and human-reviewed outputs.",
+      "required": true
+    },
+    {
       "path": "docs/roles.md",
       "category": "review-doc",
       "purpose": "Role descriptions for the planning kernel and static viewer work.",
@@ -212,6 +218,36 @@
       "required": false
     },
     {
+      "path": "planning_runs/README.md",
+      "category": "workflow",
+      "purpose": "Explains planning-run folders and what run artifacts should be committed.",
+      "required": true
+    },
+    {
+      "path": "planning_runs/coc-base-builder-v1/input-idea.md",
+      "category": "workflow-example",
+      "purpose": "Safe sample planning-run input idea for an offline strategy-game base layout planner.",
+      "required": true
+    },
+    {
+      "path": "planning_runs/coc-base-builder-v1/planning-run.md",
+      "category": "workflow-example",
+      "purpose": "Sample generated planning-run prompt for the safe coc-base-builder-v1 run.",
+      "required": true
+    },
+    {
+      "path": "planning_runs/coc-base-builder-v1/outputs/README.md",
+      "category": "workflow-example",
+      "purpose": "Explains that the five required JSON outputs are intentionally absent until a planning agent produces them.",
+      "required": true
+    },
+    {
+      "path": "planning_runs/coc-base-builder-v1/review-notes.md",
+      "category": "workflow-example",
+      "purpose": "Sample review-notes scaffold for the coc-base-builder-v1 planning run.",
+      "required": true
+    },
+    {
       "path": "web/README.md",
       "category": "viewer",
       "purpose": "Static viewer documentation and file:// versus local server usage notes.",
@@ -317,6 +353,18 @@
       "path": "tools/build_context_pack.py",
       "category": "tool",
       "purpose": "Builds the remote-review context pack from this manifest.",
+      "required": true
+    },
+    {
+      "path": "tools/init_planning_run.py",
+      "category": "tool",
+      "purpose": "Initializes a manual planning-run folder and refreshes the AI-ready planning prompt.",
+      "required": true
+    },
+    {
+      "path": "tools/validate_planning_run.py",
+      "category": "tool",
+      "purpose": "Validates saved planning-run output artifacts against existing contracts and cross-artifact consistency checks.",
       "required": true
     }
   ]
