@@ -59,6 +59,7 @@ The source-of-truth layers are:
    - `generated/repo_plan.json`
    - `generated/task_backlog.json`
    - `generated/task_batch_index.json`
+   - `generated/task_batches/*.json`
    - `generated/agent_prompts.json`
    - `generated/slots_db.json`
 5. Derived planning-run index
@@ -255,6 +256,12 @@ Planning run outputs can be validated separately with:
 python tools/validate_planning_run.py planning_runs\<run-slug>
 ```
 
+Task batch outputs can be validated separately with:
+
+```powershell
+python tools\validate_task_batches.py
+```
+
 The validator:
 
 - fails clearly when required generated and contract files are missing
@@ -264,6 +271,8 @@ The validator:
 - schema-validates the canonical generated artifacts when `jsonschema` is available
 - runs dependency-light consistency checks across generated planning artifacts
 - optionally parses `contracts/api_contract.openapi.yaml` when `PyYAML` is available
+
+The task-batch validator checks `generated/task_batch_index.json`, every generated batch under `generated/task_batches/`, task dependency references, blocking references, cycle safety, and topological batch order.
 
 For fresh-clone external review instructions, see `docs/EXTERNAL_REVIEW_PROMPT.md`.
 The static viewer reads contract files directly for the Verification page, but this is still read-only documentation and not an implemented backend or live API.
@@ -284,6 +293,7 @@ Run validation:
 
 ```powershell
 python tools\validate_seed.py
+python tools\validate_task_batches.py
 ```
 
 ```
@@ -326,8 +336,9 @@ python tools\validate_seed.py
 - JSON schemas for intake and core generated artifacts
 - a seed OpenAPI contract for future read-only project-state endpoints plus a future spec-compiler draft route; no backend is implemented in Phase 0
 - role-specific prompt pack
+- guided task-batch generation workflow for large plans
 - one worked example: `coc-base-builder`
-- a static read-only viewer for generated planning state and planning-run readiness
+- a static read-only viewer for generated planning state, task batches, and planning-run readiness
 
 ## 4. Source-of-Truth Layers
 
@@ -367,6 +378,7 @@ Current static viewer pages:
 - Overview
 - Repo Split
 - Backlog
+- Task Batches
 - Prompts
 - Slots
 - Planning Runs
@@ -417,6 +429,7 @@ The planning output should include:
 8. core-engine responsibilities
 9. verification tasks
 10. copy-paste prompts for AI roles
+11. guided task-batch files for large plans
 
 Backend services are planning/spec sections only in Phase 0 and do not imply current backend implementation.
 
@@ -426,6 +439,7 @@ Backend services are planning/spec sections only in Phase 0 and do not imply cur
 - verify intake records against `contracts/project_intake.schema.json` when present
 - verify examples against product rules
 - verify prompt packs against scope boundaries
+- verify task batches with schema, dependency, blocking, cycle, and topological-order checks
 - verify frontend plans are contract-driven
 - red-team unsafe interpretations, unbounded intake assumptions, and scope drift
 
@@ -702,8 +716,11 @@ This repository exposes a deliberate remote-review context gateway for AI system
 - `generated/project_spec.json`
 - `generated/repo_plan.json`
 - `generated/task_backlog.json`
+- `generated/task_batch_index.json`
+- `generated/task_batches/*.json`
 - `generated/agent_prompts.json`
 - `generated/slots_db.json`
+- `generated/planning_runs_index.json`
 
 ## What The Viewer Is Allowed To Do
 
@@ -828,10 +845,11 @@ It creates a strict path from rough idea to implementation-ready planning artifa
 - project specification
 - repository split
 - task backlog
+- task batches for large plans
 - role prompts
 - verification rules
 
-The initial version is deliberately narrow. It focuses on decomposition quality, contract discipline, and safe scope boundaries.
+The initial version is deliberately narrow. It focuses on decomposition quality, contract discipline, safe scope boundaries, and read-only inspection of generated planning state.
 
 ```
 
@@ -862,7 +880,7 @@ Generate a repo plan describing packages or repositories and their boundaries.
 
 ## 5. Generate Tasks
 
-Produce a microtask backlog with explicit owners, dependencies, and verification criteria.
+Produce a microtask backlog with explicit owners, dependencies, and verification criteria. For large plans, use guided task-batch generation so each response produces one copy-pastable file.
 
 ## 6. Generate Prompt Pack
 

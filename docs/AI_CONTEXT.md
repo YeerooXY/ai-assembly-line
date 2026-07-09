@@ -24,8 +24,11 @@ This repository exposes a deliberate remote-review context gateway for AI system
 - `generated/project_spec.json`
 - `generated/repo_plan.json`
 - `generated/task_backlog.json`
+- `generated/task_batch_index.json`
+- `generated/task_batches/*.json`
 - `generated/agent_prompts.json`
 - `generated/slots_db.json`
+- `generated/planning_runs_index.json`
 
 ## What The Viewer Is Allowed To Do
 

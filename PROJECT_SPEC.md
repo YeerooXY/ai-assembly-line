@@ -29,8 +29,9 @@
 - JSON schemas for intake and core generated artifacts
 - a seed OpenAPI contract for future read-only project-state endpoints plus a future spec-compiler draft route; no backend is implemented in Phase 0
 - role-specific prompt pack
+- guided task-batch generation workflow for large plans
 - one worked example: `coc-base-builder`
-- a static read-only viewer for generated planning state and planning-run readiness
+- a static read-only viewer for generated planning state, task batches, and planning-run readiness
 
 ## 4. Source-of-Truth Layers
 
@@ -70,6 +71,7 @@ Current static viewer pages:
 - Overview
 - Repo Split
 - Backlog
+- Task Batches
 - Prompts
 - Slots
 - Planning Runs
@@ -120,6 +122,7 @@ The planning output should include:
 8. core-engine responsibilities
 9. verification tasks
 10. copy-paste prompts for AI roles
+11. guided task-batch files for large plans
 
 Backend services are planning/spec sections only in Phase 0 and do not imply current backend implementation.
 
@@ -129,5 +132,6 @@ Backend services are planning/spec sections only in Phase 0 and do not imply cur
 - verify intake records against `contracts/project_intake.schema.json` when present
 - verify examples against product rules
 - verify prompt packs against scope boundaries
+- verify task batches with schema, dependency, blocking, cycle, and topological-order checks
 - verify frontend plans are contract-driven
 - red-team unsafe interpretations, unbounded intake assumptions, and scope drift
