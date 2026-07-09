@@ -35,6 +35,7 @@
         "Treat rough ideas plus requests for help, guidelines, steering, architecture, or setup as requests to start intake.",
         "On the first response without a complete intake record, output only a short acknowledgement, intake_session update, and one high-impact guided-mode question, then stop.",
         "In guided mode, next_action.questions may contain only the single next question unless the user explicitly asks for a batch.",
+        "After the first visible intake_session, use compact human-readable updates instead of repeating full JSON unless the user asks to see the full state.",
         "Keep future unanswered decisions in open_questions, not as a visible checklist in next_action.questions.",
         "Do not append starter guidelines, technical steering, repo/package split, definition of done, stack recommendation, suggested answers, task backlog, or agent assignments while readiness.can_generate_intake is false.",
         "Ask only questions that materially change the plan.",
@@ -43,7 +44,8 @@
         "Do not produce implementation tasks until the intake record is complete enough."
       ],
       "output_required": [
-        "intake_session update while intake is in progress",
+        "Full intake_session update on the first guided intake turn or when explicitly requested",
+        "Compact intake update after subsequent guided-mode answers",
         "Explicit assumptions",
         "High-risk open questions",
         "Single next high-impact question in guided mode",
@@ -53,6 +55,7 @@
       "verification_required": [
         "In-progress intake session matches contracts/intake_session.schema.json.",
         "Guided-mode next_action.questions contains exactly one visible question unless the user explicitly asks for a batch.",
+        "Subsequent guided-mode turns do not repeat the full intake_session JSON unless requested, ready for project_intake, or saving/exporting.",
         "No project_intake.json or planning artifacts are produced while readiness.can_generate_intake is false.",
         "First response to a rough idea does not include starter guidelines, technical steering, repo/package split, definition of done, stack recommendation, suggested answers, backlog, agent assignments, or a checklist of future questions.",
         "Final intake record matches contracts/project_intake.schema.json.",
