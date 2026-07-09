@@ -138,6 +138,7 @@ Rules:
 - Ask exactly one high-impact question per assistant turn unless the user explicitly asks for a batch.
 - The one question should be the next unanswered decision that most changes architecture, stack, MVP, safety, or parallelization.
 - Do not include a checklist of future questions in the same turn.
+- After the first visible `intake_session`, use compact updates instead of repeating the full JSON unless the user asks to see the state.
 - After the user answers, update `intake_session` and ask the next one-question step.
 - Only produce `project_intake.json` after the session is ready.
 - Suggest reasonable stack options only after platform, multiplayer mode, and project state are known.
@@ -243,6 +244,8 @@ The session should include:
 If `readiness.can_generate_intake` is `false`, the output is not allowed to continue into guidelines or planning artifacts.
 
 In guided mode, `next_action.questions` should contain only the single next question. Other unanswered decisions belong in `open_questions`, not in the visible next-question list.
+
+In guided mode, the full JSON object should be visible on the first intake turn, when the user asks for it, when the session becomes ready for `project_intake.json`, or when saving/exporting is requested. Otherwise, use a compact update that records the latest answer, current status, and single next question.
 
 ## Required intake output
 
