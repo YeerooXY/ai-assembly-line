@@ -77,34 +77,54 @@
         "PROJECT_SPEC.md",
         "PROJECT_SPEC_TEMPLATE.md",
         "PRODUCT_RULES.md",
-        "docs/",
-        "generated/"
+        "docs/PLANNING_RUN_WORKFLOW.md",
+        "docs/TASK_GENERATION_WORKFLOW.md",
+        "docs/TASK_CARD_FORMAT.md",
+        "generated/",
+        "contracts/",
+        "prompts/00-planning-agent.md"
       ],
       "forbidden_files": [
         "web/app/",
         "db/",
         "auth/",
-        "workers/"
+        "workers/",
+        "agents/runtime/"
       ],
       "input_context_required": [
+        "Accepted project_intake.json when available",
         "Current phase specification",
         "Product rules",
+        "Task generation workflow",
+        "Task card format",
         "Existing contracts",
-        "Project intake record when available"
+        "Repo plan or repo ownership assumptions"
       ],
       "task_boundaries": [
-        "Produce planning artifacts only.",
-        "Do not add frontend implementation, auth, databases, realtime sync, or agent automation.",
+        "Produce planning artifacts only; do not implement the product.",
+        "Do not generate implementation tasks from a rough idea alone; preserve missing high-risk intake answers as open questions or blocking tasks.",
+        "Generate project_spec.json, repo_plan.json, task_backlog.json, agent_prompts.json, and slots_db.json only from accepted intake and source-of-truth files.",
+        "Create shared contract/interface tasks before parallel client/backend/core implementation tasks.",
+        "Keep MVP tasks distinct from post-MVP tasks, blocked tasks, and research/spike tasks.",
+        "Do not add frontend implementation, auth, databases, realtime sync, or agent automation unless the accepted intake and repo plan require them.",
         "Keep outputs traceable to the source-of-truth spec and intake record."
       ],
       "output_required": [
         "Updated generated project state",
+        "Accepted-intake summary",
         "Traceable repo split",
-        "Bounded task backlog"
+        "Parallel-safe task backlog",
+        "Task dependencies by stable task ID",
+        "Acceptance criteria and verification steps for every task",
+        "Role/agent prompts derived from the backlog"
       ],
       "verification_required": [
         "Generated outputs remain within phase 0 scope.",
-        "JSON artifacts parse successfully."
+        "JSON artifacts parse successfully.",
+        "Every task has an owner lane, repo target or allowed area, dependencies, acceptance criteria, and verification steps.",
+        "Dependencies reference valid task IDs.",
+        "Shared contract/interface tasks precede implementation tasks for parallel work.",
+        "No task silently resolves an open high-risk intake question."
       ]
     },
     {
@@ -277,10 +297,11 @@
         "Project rules",
         "Generated artifacts",
         "Prompt pack",
-        "Intake workflow"
+        "Intake workflow",
+        "Task generation workflow"
       ],
       "task_boundaries": [
-        "Search for unsafe reinterpretation, schema drift, hidden state invention, and intake ambiguity.",
+        "Search for unsafe reinterpretation, schema drift, hidden state invention, intake ambiguity, and task-generation overreach.",
         "Keep review findings tied to current contracts and source-of-truth files."
       ],
       "output_required": [
@@ -289,7 +310,7 @@
         "Verification gaps"
       ],
       "verification_required": [
-        "Attack cases cover auth, database, realtime, automation, intake overreach, and invented frontend state drift.",
+        "Attack cases cover auth, database, realtime, automation, intake overreach, invented frontend state drift, and vague task backlogs.",
         "Each finding maps to a rule or contract boundary."
       ]
     }

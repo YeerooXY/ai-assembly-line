@@ -80,6 +80,18 @@
       "required": true
     },
     {
+      "path": "docs/TASK_GENERATION_WORKFLOW.md",
+      "category": "review-doc",
+      "purpose": "Workflow for turning an accepted intake record into parallel-safe task_backlog.json tasks with dependencies and verification.",
+      "required": true
+    },
+    {
+      "path": "docs/TASK_CARD_FORMAT.md",
+      "category": "review-doc",
+      "purpose": "Task-card format guidance for small, owned, bounded, dependency-aware, verifiable, parallel-safe tasks.",
+      "required": true
+    },
+    {
       "path": "docs/roles.md",
       "category": "review-doc",
       "purpose": "Role descriptions for the planning kernel and static viewer work.",
