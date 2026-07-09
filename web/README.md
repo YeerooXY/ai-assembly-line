@@ -17,6 +17,7 @@ The viewer pages are:
 - `web/backlog.html`: backlog grouped by `repo_target` from `generated/task_backlog.json`
 - `web/prompts.html`: prompt pack from `generated/agent_prompts.json`
 - `web/slots.html`: slot board from `generated/slots_db.json`
+- `web/planning-runs.html`: planning-run scaffold and output completeness from `generated/planning_runs_index.json`
 - `web/verification.html`: verification rules, proof requirements, and raw contract rendering from generated JSON artifacts plus `contracts/*.schema.json` and `contracts/api_contract.openapi.yaml`
 
 If the browser blocks `file://` fetches, open any page directly and use the page-level file picker to load the required `generated/*.json` files for that page.
@@ -38,4 +39,4 @@ The viewer does not add:
 - backend APIs
 - authentication
 - realtime sync
-- frontend-only task, repo, prompt, slot, or contract models
+- frontend-only task, repo, prompt, slot, planning-run, or contract models
