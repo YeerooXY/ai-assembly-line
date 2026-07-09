@@ -1660,6 +1660,368 @@ Reviewers should confirm:
 
 ```
 
+## `docs/TASK_GENERATION_WORKFLOW.md`
+
+- Category: `review-doc`
+- Purpose: Workflow for turning an accepted intake record into parallel-safe task_backlog.json tasks with dependencies and verification.
+- Required: `true`
+
+```markdown
+# Task Generation Workflow
+
+Task generation starts only after intake is complete enough for planning.
+
+The Planning Agent turns an accepted `project_intake.json` into planning artifacts, including a parallel-safe `task_backlog.json`.
+
+## Workflow position
+
+```text
+rough idea
+  -> intake_session.json
+  -> project_intake.json
+  -> planning run
+  -> project_spec.json
+  -> repo_plan.json
+  -> task_backlog.json
+  -> agent_prompts.json
+  -> slots_db.json
+```
+
+Do not generate implementation tasks before the intake record is ready. Open high-risk decisions must remain open questions or blocking tasks instead of being silently assumed.
+
+## Inputs
+
+Task generation should read:
+
+- accepted `project_intake.json`, when available
+- `PROJECT_SPEC.md` / `PROJECT_SPEC_TEMPLATE.md`
+- `PRODUCT_RULES.md`
+- `docs/PLANNING_RUN_WORKFLOW.md`
+- `docs/TASK_CARD_FORMAT.md`
+- existing contracts under `contracts/`
+- generated repo plan, if already drafted
+- any existing planning-run notes
+
+## Outputs
+
+A complete planning run should produce or update:
+
+- `project_spec.json`
+- `repo_plan.json`
+- `task_backlog.json`
+- `agent_prompts.json`
+- `slots_db.json`
+
+The task backlog must be traceable to the project spec and repo plan.
+
+## Generation phases
+
+### 1. Freeze the accepted intake
+
+Before generating tasks, summarize the accepted decisions:
+
+- goal
+- MVP boundary
+- platform target
+- stack / engine direction
+- project state: greenfield or existing repo
+- team/agent working style
+- safety boundaries
+- proof required for done
+- open questions
+
+If any high-risk answer is still missing, do not pretend it is solved. Either ask intake to continue or create an explicit blocking task.
+
+### 2. Define shared contracts first
+
+For parallel work, generate contract/spec tasks before implementation tasks.
+
+Examples:
+
+- game rules spec
+- API contract
+- WebSocket event contract
+- data model sketch
+- file ownership map
+- test scenario matrix
+
+This prevents client and backend workers from inventing incompatible assumptions.
+
+### 3. Split work into lanes
+
+Use lanes that let people or agents work in parallel with minimal file overlap.
+
+Common lanes:
+
+- `shared-contract`
+- `client-ui`
+- `backend-game-state`
+- `core-domain`
+- `tests-verification`
+- `docs-devex`
+
+For a two-worker project, a good default is:
+
+```text
+Worker A: client/UI tasks
+Worker B: backend/core-state tasks
+Shared first: contracts, interfaces, test scenarios
+```
+
+Do not split only by technology if the MVP needs vertical slices. Prefer a small number of contract-first tasks, followed by parallel implementation slices.
+
+### 4. Make dependencies explicit
+
+Every task should list its prerequisites by task ID.
+
+Good dependency graph:
+
+```text
+T-001 Define realtime event contract
+T-002 Implement backend room creation     depends on T-001
+T-003 Implement client room join screen   depends on T-001
+T-004 Verify join-room flow               depends on T-002, T-003
+```
+
+Bad dependency graph:
+
+```text
+T-001 Build backend
+T-002 Build frontend
+T-003 Test everything
+```
+
+### 5. Add acceptance criteria and verification
+
+Every task needs observable acceptance criteria and proof of done.
+
+Examples:
+
+- command output
+- passing tests
+- manual flow checklist
+- screenshot or recorded demo
+- contract reference
+- schema validation
+- no forbidden files touched
+
+A task without verification is not ready for assignment.
+
+### 6. Preserve scope boundaries
+
+The backlog must separate:
+
+- MVP tasks
+- post-MVP tasks
+- blocked tasks
+- research/spike tasks
+- explicit non-goals
+
+Do not let future scaling concerns explode the first backlog. Add future-proofing only when it prevents obvious near-term rework.
+
+## Parallel-safe task rules
+
+For each task, ask:
+
+1. Can one owner complete this without waiting for another unfinished implementation task?
+2. Are dependencies explicit?
+3. Are file/repo boundaries clear?
+4. Can the reviewer verify completion?
+5. Does it avoid silently deciding unresolved intake questions?
+
+If the answer is no, split or rewrite the task.
+
+## MVP-first rule
+
+The first backlog should make the smallest playable or useful version real.
+
+For games and realtime apps, prefer this order:
+
+1. shared rules/events contract
+2. minimal backend state loop
+3. minimal client UI loop
+4. one end-to-end playable flow
+5. verification and regression tests
+6. polish and future features
+
+Avoid starting with account systems, matchmaking, skins, analytics, scaling infrastructure, or deployment complexity unless the intake record explicitly requires them for MVP.
+
+## Blocking tasks
+
+If planning cannot proceed without a decision, create a blocking task instead of guessing.
+
+Example:
+
+```text
+T-BLOCK-001 Decide deployment target
+Reason: Hosting choice changes backend runtime, environment config, and verification steps.
+Required answer: local-only, LAN, cloud staging, or production hosting.
+```
+
+Blocking tasks should be few. If there are many, intake is not ready.
+
+## Done state
+
+A generated task backlog is ready when:
+
+- every task has a stable ID
+- every task has a lane/owner target
+- dependencies reference valid task IDs
+- MVP tasks are separated from post-MVP tasks
+- shared contract tasks come before parallel implementation work
+- every task has acceptance criteria
+- every task has verification steps
+- open questions are explicit
+- no task requires forbidden scope
+
+```
+
+## `docs/TASK_CARD_FORMAT.md`
+
+- Category: `review-doc`
+- Purpose: Task-card format guidance for small, owned, bounded, dependency-aware, verifiable, parallel-safe tasks.
+- Required: `true`
+
+```markdown
+# Task Card Format
+
+A task card is the smallest useful planning unit in `task_backlog.json`.
+
+It should be small enough for one person or agent to complete without owning the whole project, but large enough to produce a meaningful, reviewable change.
+
+## Purpose
+
+Task cards prevent vague planning output such as:
+
+```text
+Build the backend.
+Build the frontend.
+Add multiplayer.
+```
+
+Instead, every task should make ownership, boundaries, dependencies, and proof of completion explicit.
+
+## Required task qualities
+
+A good task is:
+
+- **small** — one clear change, not an epic
+- **owned** — assigned to one lane or role
+- **bounded** — lists allowed repo area or files when possible
+- **dependency-aware** — states what must exist first
+- **verifiable** — includes concrete proof of done
+- **parallel-safe** — avoids unnecessary file overlap with other tasks
+- **traceable** — maps back to the accepted intake/project spec
+
+## Recommended fields
+
+Use fields that match the current task contract when generating machine-readable output. The planning text should still cover these concepts even if the schema names differ.
+
+```json
+{
+  "id": "T-001",
+  "title": "Define shared realtime game event contract",
+  "lane": "shared-contract",
+  "repo_target": "shared/contracts",
+  "depends_on": [],
+  "allowed_areas": [
+    "docs/",
+    "shared/contracts/"
+  ],
+  "summary": "Define the minimal client/server events required for the first playable multiplayer game loop.",
+  "acceptance_criteria": [
+    "Room lifecycle events are listed.",
+    "Guess submission and result events are listed.",
+    "Timer/final-chance events are listed.",
+    "Each event includes sender, payload, and expected receiver behavior."
+  ],
+  "verification": [
+    "Contract document exists and is referenced by both client and backend tasks.",
+    "No implementation task invents events outside the contract without updating it."
+  ],
+  "handoff_notes": "Backend and client tasks should start from this contract before implementation."
+}
+```
+
+## Field guidance
+
+### `id`
+
+Use stable task IDs. Dependencies should reference IDs, not titles.
+
+### `title`
+
+Use an action-oriented title:
+
+```text
+Good: Define room lifecycle WebSocket events
+Bad: WebSocket stuff
+```
+
+### `lane`
+
+Use lanes that allow parallel work. Common lanes:
+
+- `shared-contract`
+- `client-ui`
+- `backend-game-state`
+- `tests-verification`
+- `docs-devex`
+
+### `repo_target` / `allowed_areas`
+
+Make file ownership clear enough to avoid two people editing the same files unnecessarily.
+
+### `depends_on`
+
+Dependencies should be minimal. Too many dependencies serialize the whole project; too few create merge chaos.
+
+### `acceptance_criteria`
+
+Acceptance criteria must be observable. Avoid vague criteria like `works well`.
+
+### `verification`
+
+Verification should tell a reviewer how to prove the task is done:
+
+- run a command
+- inspect a file
+- execute a manual flow
+- check a contract reference
+- run tests
+- verify no forbidden files changed
+
+## Task sizing
+
+Prefer tasks that fit in one focused implementation session.
+
+Split a task when:
+
+- it touches unrelated repo areas
+- it needs multiple people to coordinate
+- it mixes contract design and implementation
+- it mixes UI and backend behavior before a contract exists
+- it cannot be verified with a clear proof step
+
+Do not split a task when the pieces cannot be tested or reviewed independently.
+
+## Parallel-work rule
+
+For two or more workers, create shared contract tasks first, then split client/backend/core/test work around those contracts.
+
+Example split:
+
+```text
+T-001 shared-contract: Define game event contract
+T-002 backend-game-state: Implement room creation using T-001
+T-003 client-ui: Implement room join UI using T-001
+T-004 tests-verification: Add integration scenario for room join
+```
+
+This allows backend and client work to proceed in parallel without inventing incompatible APIs.
+
+```
+
 ## `docs/roles.md`
 
 - Category: `review-doc`
@@ -2494,34 +2856,54 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "PROJECT_SPEC.md",
         "PROJECT_SPEC_TEMPLATE.md",
         "PRODUCT_RULES.md",
-        "docs/",
-        "generated/"
+        "docs/PLANNING_RUN_WORKFLOW.md",
+        "docs/TASK_GENERATION_WORKFLOW.md",
+        "docs/TASK_CARD_FORMAT.md",
+        "generated/",
+        "contracts/",
+        "prompts/00-planning-agent.md"
       ],
       "forbidden_files": [
         "web/app/",
         "db/",
         "auth/",
-        "workers/"
+        "workers/",
+        "agents/runtime/"
       ],
       "input_context_required": [
+        "Accepted project_intake.json when available",
         "Current phase specification",
         "Product rules",
+        "Task generation workflow",
+        "Task card format",
         "Existing contracts",
-        "Project intake record when available"
+        "Repo plan or repo ownership assumptions"
       ],
       "task_boundaries": [
-        "Produce planning artifacts only.",
-        "Do not add frontend implementation, auth, databases, realtime sync, or agent automation.",
+        "Produce planning artifacts only; do not implement the product.",
+        "Do not generate implementation tasks from a rough idea alone; preserve missing high-risk intake answers as open questions or blocking tasks.",
+        "Generate project_spec.json, repo_plan.json, task_backlog.json, agent_prompts.json, and slots_db.json only from accepted intake and source-of-truth files.",
+        "Create shared contract/interface tasks before parallel client/backend/core implementation tasks.",
+        "Keep MVP tasks distinct from post-MVP tasks, blocked tasks, and research/spike tasks.",
+        "Do not add frontend implementation, auth, databases, realtime sync, or agent automation unless the accepted intake and repo plan require them.",
         "Keep outputs traceable to the source-of-truth spec and intake record."
       ],
       "output_required": [
         "Updated generated project state",
+        "Accepted-intake summary",
         "Traceable repo split",
-        "Bounded task backlog"
+        "Parallel-safe task backlog",
+        "Task dependencies by stable task ID",
+        "Acceptance criteria and verification steps for every task",
+        "Role/agent prompts derived from the backlog"
       ],
       "verification_required": [
         "Generated outputs remain within phase 0 scope.",
-        "JSON artifacts parse successfully."
+        "JSON artifacts parse successfully.",
+        "Every task has an owner lane, repo target or allowed area, dependencies, acceptance criteria, and verification steps.",
+        "Dependencies reference valid task IDs.",
+        "Shared contract/interface tasks precede implementation tasks for parallel work.",
+        "No task silently resolves an open high-risk intake question."
       ]
     },
     {
@@ -2694,10 +3076,11 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "Project rules",
         "Generated artifacts",
         "Prompt pack",
-        "Intake workflow"
+        "Intake workflow",
+        "Task generation workflow"
       ],
       "task_boundaries": [
-        "Search for unsafe reinterpretation, schema drift, hidden state invention, and intake ambiguity.",
+        "Search for unsafe reinterpretation, schema drift, hidden state invention, intake ambiguity, and task-generation overreach.",
         "Keep review findings tied to current contracts and source-of-truth files."
       ],
       "output_required": [
@@ -2706,7 +3089,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "Verification gaps"
       ],
       "verification_required": [
-        "Attack cases cover auth, database, realtime, automation, intake overreach, and invented frontend state drift.",
+        "Attack cases cover auth, database, realtime, automation, intake overreach, invented frontend state drift, and vague task backlogs.",
         "Each finding maps to a rule or contract boundary."
       ]
     }
@@ -3003,6 +3386,18 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "path": "docs/PLANNING_RUN_WORKFLOW.md",
       "category": "review-doc",
       "purpose": "Manual planning-run workflow for turning a rough idea or intake record into saved planning artifacts and human-reviewed outputs.",
+      "required": true
+    },
+    {
+      "path": "docs/TASK_GENERATION_WORKFLOW.md",
+      "category": "review-doc",
+      "purpose": "Workflow for turning an accepted intake record into parallel-safe task_backlog.json tasks with dependencies and verification.",
+      "required": true
+    },
+    {
+      "path": "docs/TASK_CARD_FORMAT.md",
+      "category": "review-doc",
+      "purpose": "Task-card format guidance for small, owned, bounded, dependency-aware, verifiable, parallel-safe tasks.",
       "required": true
     },
     {
@@ -4657,16 +5052,21 @@ When unsafe scope appears, state what was rejected and keep only the safe planni
 
 You are the Planning Agent for AI Assembly Line.
 
-Your job is to convert a rough software idea into a safe, structured, implementation-ready planning package. You are not implementing the product. You are producing the planning artifacts that other roles can inspect, validate, and use.
+Your job is to convert an accepted project intake into a safe, structured, implementation-ready planning package. You are not implementing the product. You are producing the planning artifacts that other roles can inspect, validate, and use.
+
+Do not produce implementation tasks from a rough idea alone. If `project_intake.json` is missing or high-risk intake decisions are still unresolved, preserve those gaps as open questions or blocking tasks instead of inventing answers.
 
 ## Inputs to read first
 
 Start from repository source-of-truth files when available:
 
+- `project_intake.json`, when available
 - `PROJECT_SPEC.md`
 - `PROJECT_SPEC_TEMPLATE.md`
 - `PRODUCT_RULES.md`
 - `docs/PLANNING_RUN_WORKFLOW.md`
+- `docs/TASK_GENERATION_WORKFLOW.md`
+- `docs/TASK_CARD_FORMAT.md`
 - `contracts/*.schema.json`
 - `contracts/api_contract.openapi.yaml`
 - existing examples under `examples/`
@@ -4680,7 +5080,9 @@ Produce a coherent planning package covering:
 
 - safe product interpretation
 - rejected unsafe interpretations
+- accepted intake summary
 - product summary
+- MVP boundary
 - scope boundaries and non-goals
 - target users and core use cases
 - repo split
@@ -4690,7 +5092,7 @@ Produce a coherent planning package covering:
 - backend/service responsibilities, if future-scoped
 - core-engine responsibilities
 - verification strategy
-- microtask backlog
+- parallel-safe task backlog
 - role-specific starter prompts
 - assumptions and open questions
 
@@ -4703,6 +5105,86 @@ For a manual planning run, the expected machine-readable outputs are:
 - `slots_db.json`
 
 Treat generated outputs as drafts until a human accepts them.
+
+## Planning sequence
+
+Follow this order:
+
+1. Freeze the accepted intake decisions.
+2. Create or update the project spec.
+3. Create or update the repo plan.
+4. Define shared contracts/interfaces before implementation tasks.
+5. Generate the parallel-safe task backlog.
+6. Generate role/agent prompts from the backlog and repo plan.
+7. Generate slots only from assignable tasks.
+
+Do not let task generation silently override the intake record.
+
+## Task generation rules
+
+When generating `task_backlog.json`, follow `docs/TASK_GENERATION_WORKFLOW.md` and `docs/TASK_CARD_FORMAT.md`.
+
+Every task should have:
+
+- a stable ID
+- an action-oriented title
+- one owner lane or role target
+- a repository target or allowed area
+- explicit dependencies by task ID
+- a concise summary
+- acceptance criteria
+- verification steps
+- handoff notes when another lane depends on it
+
+Prefer small, verifiable tasks over vague umbrella tasks.
+
+Bad tasks:
+
+```text
+Build backend.
+Build frontend.
+Add multiplayer.
+Test app.
+```
+
+Good tasks:
+
+```text
+T-001 Define realtime room event contract.
+T-002 Implement backend room creation using T-001.
+T-003 Implement client room join screen using T-001.
+T-004 Verify join-room end-to-end flow using T-002 and T-003.
+```
+
+## Parallel-safe backlog rules
+
+For two or more workers, create shared contract tasks before client/backend/core implementation tasks.
+
+Default lanes:
+
+- `shared-contract`
+- `client-ui`
+- `backend-game-state`
+- `core-domain`
+- `tests-verification`
+- `docs-devex`
+
+A good backlog should allow parallel work without requiring two owners to edit the same files unnecessarily.
+
+Make dependencies explicit enough for a validator or human reviewer to catch missing task IDs.
+
+## Blocking tasks
+
+If a high-risk decision is still missing, create a blocking task instead of guessing.
+
+A blocking task must include:
+
+- the missing decision
+- why it blocks planning
+- the exact answer needed
+- which downstream tasks are blocked
+
+If there are many blocking tasks, intake is probably not ready and should resume before planning.
 
 ## Safety reinterpretation
 
@@ -4726,11 +5208,14 @@ When rejecting a scope, explicitly say what was rejected and what safe alternati
 - Work from strict files and contracts, not inferred product structure.
 - Keep the plan implementation-ready but planning-only.
 - Separate current-phase work from future-phase work.
+- Keep MVP tasks distinct from post-MVP tasks.
 - Prefer small, verifiable tasks over vague umbrella tasks.
 - Give every task a clear repository target and verification proof.
+- Create shared contract/interface tasks before parallel implementation tasks.
 - Do not invent schemas that conflict with existing contracts.
-- Do not imply that a backend, database, auth system, realtime sync, or autonomous agent runtime already exists.
+- Do not imply that a backend, database, auth system, realtime sync, or autonomous agent runtime already exists unless the accepted intake and repo plan require it.
 - Make dependencies explicit enough for a validator to catch missing task IDs.
+- Preserve open questions instead of pretending they are solved.
 
 ## Output style
 
