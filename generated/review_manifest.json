@@ -4,13 +4,13 @@
     {
       "path": "README.md",
       "category": "root-doc",
-      "purpose": "Repository overview, source-of-truth rules, viewer constraints, validation guidance, and remote AI review links.",
+      "purpose": "Repository overview, source-of-truth rules, intake workflow, viewer constraints, validation guidance, and remote AI review links.",
       "required": true
     },
     {
       "path": "PROJECT_SPEC.md",
       "category": "root-doc",
-      "purpose": "Human-readable phase 0 product specification and current viewer scope.",
+      "purpose": "Human-readable phase 0 product specification covering guided intake, planning, and current viewer scope.",
       "required": true
     },
     {
@@ -56,9 +56,15 @@
       "required": true
     },
     {
+      "path": "docs/PROJECT_INTAKE_WORKFLOW.md",
+      "category": "review-doc",
+      "purpose": "Interactive intake workflow for turning a rough idea into a structured project_intake.json record before planning.",
+      "required": true
+    },
+    {
       "path": "docs/PLANNING_RUN_WORKFLOW.md",
       "category": "review-doc",
-      "purpose": "Manual planning-run workflow for turning a rough idea into saved planning artifacts and human-reviewed outputs.",
+      "purpose": "Manual planning-run workflow for turning a rough idea or intake record into saved planning artifacts and human-reviewed outputs.",
       "required": true
     },
     {
@@ -106,7 +112,7 @@
     {
       "path": "generated/agent_prompts.json",
       "category": "generated-state",
-      "purpose": "Canonical machine-readable prompt pack for the current seed.",
+      "purpose": "Canonical machine-readable prompt pack for the current seed, including the intake interviewer.",
       "required": true
     },
     {
@@ -125,6 +131,12 @@
       "path": "generated/review_manifest.json",
       "category": "generated-state",
       "purpose": "Remote review manifest listing the key files needed to inspect the repository without a full clone.",
+      "required": true
+    },
+    {
+      "path": "contracts/project_intake.schema.json",
+      "category": "contract",
+      "purpose": "Schema for guided project intake records produced before planning runs.",
       "required": true
     },
     {
@@ -161,6 +173,12 @@
       "path": "contracts/api_contract.openapi.yaml",
       "category": "contract",
       "purpose": "Future API and spec-compiler contract draft, not an implemented backend.",
+      "required": true
+    },
+    {
+      "path": "prompts/00-intake-interviewer.md",
+      "category": "prompt-source",
+      "purpose": "Prompt source file for the guided intake interviewer role.",
       "required": true
     },
     {
