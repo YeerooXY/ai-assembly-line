@@ -296,6 +296,12 @@
       "required": true
     },
     {
+      "path": "web/planning-runs.html",
+      "category": "viewer",
+      "purpose": "Planning-runs page entry point that renders the derived planning-run index read-only.",
+      "required": true
+    },
+    {
       "path": "web/verification.html",
       "category": "viewer",
       "purpose": "Verification page entry point that also renders raw contract files read-only.",
@@ -341,6 +347,12 @@
       "path": "web/page-slots.js",
       "category": "viewer",
       "purpose": "Slots page rendering logic.",
+      "required": true
+    },
+    {
+      "path": "web/page-planning-runs.js",
+      "category": "viewer",
+      "purpose": "Planning-runs page rendering logic for scaffold presence, output completeness, and run status.",
       "required": true
     },
     {
