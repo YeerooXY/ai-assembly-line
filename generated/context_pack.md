@@ -6,7 +6,7 @@ Treat the Git repository as the only source of truth and do not rely on chat his
 ## `README.md`
 
 - Category: `root-doc`
-- Purpose: Repository overview, source-of-truth rules, viewer constraints, validation guidance, and remote AI review links.
+- Purpose: Repository overview, source-of-truth rules, intake workflow, viewer constraints, validation guidance, and remote AI review links.
 - Required: `true`
 
 ```markdown
@@ -16,7 +16,8 @@ Treat the Git repository as the only source of truth and do not rely on chat his
 
 Its first job is not autonomous execution. Its first job is project decomposition:
 
-- rough idea -> structured project specification
+- rough idea -> guided project intake
+- guided project intake -> structured project specification
 - structured project specification -> repo split
 - repo split -> microtask backlog
 - microtask backlog -> role-specific prompt pack
@@ -28,7 +29,7 @@ Build the planning kernel and the first "spec compiler":
 
 `rough idea -> safe, structured project specification`
 
-This repository is intentionally limited to planning, contracts, prompts, and read-only presentation scaffolding.
+This repository is intentionally limited to intake, planning, contracts, prompts, and read-only presentation scaffolding.
 
 It does not include:
 
@@ -49,7 +50,8 @@ The source-of-truth layers are:
    - human-readable: `PROJECT_SPEC.md`
    - reusable template: `PROJECT_SPEC_TEMPLATE.md`
    - machine-readable: `generated/project_spec.json`
-2. Data schemas
+2. Intake and data schemas
+   - `contracts/project_intake.schema.json`
    - `contracts/*.schema.json`
 3. API contract
    - `contracts/api_contract.openapi.yaml`
@@ -67,6 +69,7 @@ Any frontend built from this repository must render the current product spec and
 
 It must not invent:
 
+- intake structure
 - task structure
 - repo structure
 - prompt structure
@@ -83,7 +86,7 @@ The future frontend is allowed to consume only source-of-truth material from:
 - `docs/*.md`
 - `prompts/*.md`
 
-Rule: the frontend must render generated state and must not invent task, repo, prompt, slot, or contract structure.
+Rule: the frontend must render generated state and must not invent intake, task, repo, prompt, slot, or contract structure.
 
 ## Read-Only Viewer
 
@@ -135,7 +138,7 @@ The viewer intentionally does not do the following yet:
 - authentication
 - realtime sync
 - mutable workflow state
-- frontend-owned task, repo, prompt, slot, planning-run, or contract models
+- frontend-owned intake, task, repo, prompt, slot, planning-run, or contract models
 
 ## Initial Public Surface
 
@@ -158,15 +161,17 @@ It should display:
 - `PROJECT_SPEC.md`: current repo-level phase-0 specification
 - `PROJECT_SPEC_TEMPLATE.md`: reusable template for future planning runs
 - `PRODUCT_RULES.md`: hard rules and safety boundaries
-- `docs/`: public overview, workflow, roles, task format, verification rules
+- `docs/`: public overview, workflow, intake workflow, roles, task format, verification rules
+- `docs/PROJECT_INTAKE_WORKFLOW.md`: interactive intake workflow for turning rough ideas into structured intake records
 - `docs/EXTERNAL_REVIEW_PROMPT.md`: fresh-clone external reviewer prompt
 - `docs/PLANNING_RUN_WORKFLOW.md`: manual planning-run workflow
 - `contracts/`: schemas and OpenAPI contract
+- `contracts/project_intake.schema.json`: schema for guided project intake records
 - `generated/`: canonical machine-readable planning artifacts for the current seed state
 - `generated/planning_runs_index.json`: derived index of manual planning-run folders and output completeness
 - `examples/coc-base-builder/`: example decomposition for a safe base layout planner
 - `planning_runs/`: manual planning-run folders and review artifacts
-- `prompts/`: copy-paste role prompts
+- `prompts/`: copy-paste role prompts, including the intake interviewer
 - `tools/validate_seed.py`: repository JSON validation utility
 - `tools/init_planning_run.py`: manual planning-run folder initializer
 - `tools/validate_planning_run.py`: planning-run output validator
@@ -185,12 +190,32 @@ For remote AI or web-only review environments, start with:
 
 These files provide broad review context for the current repository state. They are intended to reduce setup friction for web-only review environments, not to imply that one file permanently contains the entire repository.
 
+## Project Intake
+
+Project intake is the first real user-facing workflow.
+
+The Intake Interviewer asks focused questions about:
+
+- project goal
+- MVP boundary
+- target users
+- stack preference or stack recommendation
+- local tools, paths, SDKs, and configuration
+- existing repository state
+- humans/AI agents working in parallel
+- working style and proof expectations
+- safety boundaries and non-goals
+
+The intake output is a `project_intake.json` record conforming to `contracts/project_intake.schema.json`.
+
+See `docs/PROJECT_INTAKE_WORKFLOW.md` and `prompts/00-intake-interviewer.md`.
+
 ## Planning Runs
 
-The first real product workflow is a manual planning run:
+The first planning workflow after intake is a manual planning run:
 
 1. initialize a run folder with `python tools/init_planning_run.py <run-slug>`
-2. write the rough idea into `planning_runs/<run-slug>/input-idea.md`
+2. write the rough idea or intake summary into `planning_runs/<run-slug>/input-idea.md`
 3. refresh and copy the generated prompt from `planning_runs/<run-slug>/planning-run.md`
 4. paste it into a web AI or Codex-style tool
 5. save the returned JSON artifacts into `planning_runs/<run-slug>/outputs/`
@@ -236,9 +261,11 @@ The static viewer reads contract files directly for the Verification page, but t
 
 ## Current Use
 
-This repository is currently a Phase 0 planning kernel and static viewer.
+This repository is currently a Phase 0 intake and planning kernel with a static viewer.
 
 Start here:
+- `docs/PROJECT_INTAKE_WORKFLOW.md`
+- `prompts/00-intake-interviewer.md`
 - `PROJECT_SPEC.md`
 - `PRODUCT_RULES.md`
 - `generated/`
@@ -255,7 +282,7 @@ python tools\validate_seed.py
 ## `PROJECT_SPEC.md`
 
 - Category: `root-doc`
-- Purpose: Human-readable phase 0 product specification and current viewer scope.
+- Purpose: Human-readable phase 0 product specification covering guided intake, planning, and current viewer scope.
 - Required: `true`
 
 ```markdown
@@ -264,8 +291,8 @@ python tools\validate_seed.py
 ## 1. Product Summary
 
 - Project name: AI Assembly Line
-- Core goal: turn rough software ideas into structured, reviewable planning artifacts before implementation begins
-- Primary output: a spec compiler that converts idea notes into project specs, repo plans, task backlogs, role prompts, and verification guidance
+- Core goal: turn rough software ideas into structured, reviewable intake and planning artifacts before implementation begins
+- Primary output: an intake-guided spec compiler that converts idea notes into project intake records, project specs, repo plans, task backlogs, role prompts, and verification guidance
 - Intended users: founders, product leads, technical planners, engineering teams supervising AI-assisted software work
 - Non-goals for this phase:
   - multi-agent execution
@@ -278,17 +305,20 @@ python tools\validate_seed.py
 ## 2. Safety and Product Boundaries
 
 - The product is a planning system, not an automation runtime.
-- Human review is required before planning artifacts are treated as approved.
+- Human review is required before intake or planning artifacts are treated as approved.
 - Example projects involving games must be reinterpreted into safe planning tools when necessary.
 - The system must refuse scopes that imply client automation, account access, botting, evasion, or interference with third-party live services.
+- The intake process must preserve high-risk unknowns instead of pretending they are solved.
 
 ## 3. Phase 0 Deliverables
 
 - repo-level planning documents
-- JSON schemas for core generated artifacts
+- an interactive project intake workflow and intake prompt
+- JSON schemas for intake and core generated artifacts
 - a seed OpenAPI contract for future read-only project-state endpoints plus a future spec-compiler draft route; no backend is implemented in Phase 0
 - role-specific prompt pack
 - one worked example: `coc-base-builder`
+- a static read-only viewer for generated planning state and planning-run readiness
 
 ## 4. Source-of-Truth Layers
 
@@ -297,8 +327,15 @@ python tools\validate_seed.py
 - `PROJECT_SPEC.md`
 - current machine-readable product spec: `generated/project_spec.json`
 
+### Intake Workflow
+
+- `docs/PROJECT_INTAKE_WORKFLOW.md`
+- `prompts/00-intake-interviewer.md`
+- `contracts/project_intake.schema.json`
+
 ### Schemas
 
+- `project_intake.schema.json`
 - `project_spec.schema.json`
 - `agent_prompt.schema.json`
 - `slot.schema.json`
@@ -320,6 +357,7 @@ Current static viewer pages:
 - Backlog
 - Prompts
 - Slots
+- Planning Runs
 - Verification
 
 ## 6. Frontend Constraint
@@ -328,6 +366,7 @@ The frontend must render the current `PROJECT_SPEC.md` and contract-defined gene
 
 It must not invent its own:
 
+- intake model
 - task model
 - repo model
 - prompt model
@@ -337,11 +376,24 @@ It must not invent its own:
 
 ## 7. Core Functional Feature
 
-The first functional feature is the spec compiler:
+The first functional feature is the intake-guided spec compiler:
 
-`rough idea -> safe structured project specification`
+`rough idea -> guided intake -> safe structured project specification`
 
-The output should include:
+The intake output should include:
+
+1. project goal
+2. MVP boundary
+3. target users
+4. target platforms
+5. stack preference or stack recommendation
+6. existing tools, paths, and project state
+7. team/agent working style
+8. safety boundaries
+9. assumptions and open questions
+10. acceptance signals
+
+The planning output should include:
 
 1. product summary
 2. safety and scope boundaries
@@ -359,10 +411,11 @@ Backend services are planning/spec sections only in Phase 0 and do not imply cur
 ## 8. Verification Strategy
 
 - validate generated JSON against schemas
+- verify intake records against `contracts/project_intake.schema.json` when present
 - verify examples against product rules
 - verify prompt packs against scope boundaries
 - verify frontend plans are contract-driven
-- red-team unsafe interpretations and scope drift
+- red-team unsafe interpretations, unbounded intake assumptions, and scope drift
 
 ```
 
@@ -813,10 +866,216 @@ Accept, revise, or reject the planning outputs before any implementation phase b
 
 ```
 
+## `docs/PROJECT_INTAKE_WORKFLOW.md`
+
+- Category: `review-doc`
+- Purpose: Interactive intake workflow for turning a rough idea into a structured project_intake.json record before planning.
+- Required: `true`
+
+```markdown
+# Project Intake Workflow
+
+Project intake is the first user-facing step of AI Assembly Line.
+
+Its purpose is to turn a rough idea into a structured intake record before the Planning Agent creates project specs, repo splits, task backlogs, role prompts, and verification rules.
+
+The intake flow is intentionally interactive. It should ask only the questions that materially change the plan, suggest sensible defaults when possible, and stop asking once enough information exists to create a useful first planning run.
+
+## Position in the assembly line
+
+```text
+rough idea
+  -> guided intake interview
+  -> project_intake.json
+  -> planning run
+  -> project_spec.json
+  -> repo_plan.json
+  -> task_backlog.json
+  -> agent_prompts.json
+  -> slots_db.json
+  -> human review
+```
+
+The intake record is not an implementation plan. It is the structured input that keeps the implementation plan grounded.
+
+## Recommended target-project layout
+
+For real projects, the steering and generated planning artifacts should live inside the target project repository, not only in this template repository.
+
+Recommended layout:
+
+```text
+my-project/
+  src/
+  tests/
+  README.md
+  .ai-assembly/
+    steering/
+      PRODUCT_RULES.md
+      PROJECT_SPEC_TEMPLATE.md
+      prompts/
+      contracts/
+    intake/
+      project_intake.json
+    planning_runs/
+      <run-slug>/
+        input-idea.md
+        planning-run.md
+        outputs/
+        review-notes.md
+    generated/
+      project_spec.json
+      repo_plan.json
+      task_backlog.json
+      agent_prompts.json
+      slots_db.json
+      planning_runs_index.json
+```
+
+The `ai-assembly-line` repository is the upstream template and steering kit. The target project repository should contain the snapshot that agents and humans actually use.
+
+## Intake modes
+
+### Quick mode
+
+Use when the user wants a fast first draft.
+
+Rules:
+
+- Ask at most five high-impact questions.
+- Make low-risk assumptions explicitly.
+- Mark risky unknowns as open questions.
+- Produce a draft intake record quickly.
+
+### Guided mode
+
+Use as the default.
+
+Rules:
+
+- Ask questions in small sections.
+- Suggest reasonable stack options when the user has not chosen one.
+- Confirm the MVP before planning.
+- Confirm team/agent working style before task decomposition.
+- Produce a structured intake record after enough information is known.
+
+### Expert mode
+
+Use when the user already has strong constraints.
+
+Rules:
+
+- Let the user paste stack choices, tool paths, repo constraints, architecture notes, and team layout.
+- Ask only for missing high-risk decisions.
+- Produce the intake record with minimal back-and-forth.
+
+## Question sections
+
+The Intake Interviewer should cover these sections, but not necessarily all in one message.
+
+### 1. Goal
+
+- What are you trying to build?
+- Who is it for?
+- What problem does it solve or what experience should it create?
+
+### 2. MVP
+
+- What is the smallest useful version?
+- What can be postponed?
+- What would make the first version successful?
+
+### 3. Platform and stack
+
+- Is there a preferred stack?
+- Should the AI suggest a stack?
+- What platforms matter first: desktop, web, mobile, server, embedded, CLI?
+- Are there existing tools, local paths, SDKs, credentials, or hardware constraints?
+
+When suggesting a stack, provide options with tradeoffs and a recommendation. Do not force a stack silently.
+
+### 4. Existing project state
+
+- Is this greenfield or an existing repository?
+- Where is the project path?
+- Are there existing source files, tests, docs, or architecture decisions?
+
+### 5. Team and agent layout
+
+- Will one person work alone?
+- Will multiple humans work in parallel?
+- Will multiple AI agents work in parallel?
+- Should tasks be split by frontend/backend/core/test/docs or by feature slices?
+
+### 6. Working style
+
+- Does the user prefer very small tasks or larger milestones?
+- Should tasks be optimized for beginner contributors, expert contributors, AI agents, or mixed teams?
+- What proof is required for a task to count as done?
+
+### 7. Safety and boundaries
+
+- Are there external services, accounts, credentials, games, scraping, automation, or platform terms involved?
+- Which actions are explicitly out of scope?
+- What must never be automated?
+
+## Ask/assume/stop rule
+
+The intake should not ask questions forever.
+
+Ask when the answer changes architecture, stack, MVP, safety, or parallelization.
+
+Assume when the missing detail is low-risk and easy to revise later.
+
+Stop and ask when the missing detail is high-risk, such as:
+
+- real-time multiplayer versus turn-based multiplayer
+- browser-first versus desktop-first
+- existing repository versus greenfield
+- required engine/framework
+- external accounts, credentials, scraping, or automation
+- team size and parallel work expectations
+- hardware, SDK, or local tool constraints
+
+## Required intake output
+
+The intake interview should produce `project_intake.json` conforming to `contracts/project_intake.schema.json`.
+
+The record should include:
+
+- project goal
+- MVP
+- target users
+- platform targets
+- stack preference or stack recommendation
+- existing tools and paths
+- existing repository state
+- team/agent mode
+- working style
+- constraints
+- assumptions
+- open questions
+- safety boundaries
+- acceptance signals
+
+## Hand-off to Planning Agent
+
+After the intake record is complete enough, the Planning Agent should use it to create:
+
+- `project_spec.json`
+- `repo_plan.json`
+- `task_backlog.json`
+- `agent_prompts.json`
+- `slots_db.json`
+
+The Planning Agent must preserve all high-risk unknowns as open questions or verification tasks instead of pretending they are solved.
+
+```
+
 ## `docs/PLANNING_RUN_WORKFLOW.md`
 
 - Category: `review-doc`
-- Purpose: Manual planning-run workflow for turning a rough idea into saved planning artifacts and human-reviewed outputs.
+- Purpose: Manual planning-run workflow for turning a rough idea or intake record into saved planning artifacts and human-reviewed outputs.
 - Required: `true`
 
 ```markdown
@@ -1032,7 +1291,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
 {
   "project_name": "AI Assembly Line",
   "product_summary": {
-    "goal": "Turn rough software ideas into structured, reviewable planning artifacts before implementation begins.",
+    "goal": "Turn rough software ideas into structured, reviewable intake and planning artifacts before implementation begins.",
     "users": [
       "founders",
       "product leads",
@@ -1050,15 +1309,15 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
   },
   "safety_boundaries": [
     "The repository is planning-first and not an autonomous execution runtime.",
-    "Human review is required before generated planning artifacts are treated as approved.",
+    "Human review is required before generated intake or planning artifacts are treated as approved.",
     "Unsafe requests must be rejected or safely reinterpreted into planning-only outputs.",
-    "The initial frontend may render generated state but must not invent task, repo, prompt, slot, planning-run, or contract structure.",
+    "The initial frontend may render generated state but must not invent intake, task, repo, prompt, slot, planning-run, or contract structure.",
     "The phase 0 seed must remain free of authentication, databases, realtime sync, and agent automation."
   ],
   "repo_split": [
     {
       "name": "seed-docs-and-rules",
-      "purpose": "Store the human-readable phase 0 specification, product rules, workflow notes, and reusable planning template.",
+      "purpose": "Store the human-readable phase 0 specification, product rules, intake workflow notes, workflow notes, and reusable planning template.",
       "contains": [
         "PROJECT_SPEC.md",
         "PROJECT_SPEC_TEMPLATE.md",
@@ -1069,8 +1328,9 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     },
     {
       "name": "seed-contracts",
-      "purpose": "Define machine-readable contracts for project specs, repo plans, tasks, slots, prompts, and future read-only APIs.",
+      "purpose": "Define machine-readable contracts for intake records, project specs, repo plans, tasks, slots, prompts, and future read-only APIs.",
       "contains": [
+        "contracts/project_intake.schema.json",
         "contracts/*.schema.json",
         "contracts/api_contract.openapi.yaml"
       ],
@@ -1096,7 +1356,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     },
     {
       "name": "seed-prompts",
-      "purpose": "Store role-specific prompt source material aligned to the contracts and current project spec.",
+      "purpose": "Store role-specific prompt source material aligned to the contracts, intake workflow, and current project spec.",
       "contains": [
         "prompts/*.md"
       ],
@@ -1130,6 +1390,31 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
   ],
   "domain_model": [
     {
+      "name": "ProjectIntake",
+      "fields": [
+        "schema_version",
+        "project_slug",
+        "intake_mode",
+        "project_goal",
+        "target_users",
+        "mvp",
+        "target_platforms",
+        "stack",
+        "existing_project",
+        "tools",
+        "team_mode",
+        "working_style",
+        "constraints",
+        "safety_boundaries",
+        "assumptions",
+        "open_questions",
+        "acceptance_signals"
+      ],
+      "relations": [
+        "ProjectIntake captures the guided interview result that feeds the Planning Agent before generated planning artifacts are produced."
+      ]
+    },
+    {
       "name": "ProjectSpec",
       "fields": [
         "project_name",
@@ -1144,7 +1429,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "starter_prompts"
       ],
       "relations": [
-        "ProjectSpec drives RepoPlan, Task, AgentPrompt, AgentSlot, and read-only planning-run index artifacts."
+        "ProjectSpec is produced after intake and drives RepoPlan, Task, AgentPrompt, AgentSlot, and read-only planning-run index artifacts."
       ]
     },
     {
@@ -1272,6 +1557,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "generated/task_backlog.json",
         "generated/agent_prompts.json",
         "generated/slots_db.json",
+        "contracts/project_intake.schema.json",
         "contracts/project_spec.schema.json",
         "contracts/repo_plan.schema.json",
         "contracts/task.schema.json",
@@ -1308,22 +1594,25 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     }
   ],
   "core_engine_responsibilities": [
+    "Capture guided intake outputs as structured source-of-truth inputs for planning.",
     "Compile rough planning intent into explicit project structure.",
     "Maintain contract-first generated artifacts for the seed repository.",
     "Derive planning-run indexes from file-based manual planning runs.",
-    "Preserve traceability from product rules to repo plan, tasks, prompts, slots, and planning-run readiness.",
+    "Preserve traceability from product rules to intake, repo plan, tasks, prompts, slots, and planning-run readiness.",
     "Reject or reinterpret unsafe scope expansion into planning-only outputs.",
     "Support deterministic validation of machine-readable seed artifacts."
   ],
   "verification_tasks": [
     "Parse every JSON file in the repository and fail clearly on invalid syntax.",
     "Validate canonical generated project state against the contracts in contracts/.",
+    "Verify that project intake records conform to contracts/project_intake.schema.json when present.",
     "Verify that the generated artifacts stay aligned with the current phase 0 scope limits.",
     "Verify that future frontend work renders generated state and does not invent hidden models.",
     "Verify that the planning-runs page renders only generated/planning_runs_index.json and does not mutate planning-run folders.",
     "Red-team prompt drift toward automation, auth, persistence, or realtime scope."
   ],
   "starter_prompts": {
+    "intake_interviewer": "Guide the user from rough idea to structured project_intake.json by asking high-impact questions, suggesting stacks, and making safe assumptions.",
     "planning_agent": "Turn rough software ideas into a safe project spec, repo split, backlog, and prompt pack before implementation begins.",
     "contract_steward": "Maintain strict schemas and reject undocumented structure across project specs, repo plans, tasks, prompts, and slots.",
     "frontend_builder": "Build only read-only views that render generated state and contract-defined structure without inventing frontend-only models.",
@@ -1347,7 +1636,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
   "repos": [
     {
       "name": "seed-docs-and-rules",
-      "purpose": "Own the reusable planning spec template and human-readable product rules for phase 0.",
+      "purpose": "Own the reusable planning spec template, human-readable product rules, project intake workflow, and phase 0 docs.",
       "contains": [
         "PROJECT_SPEC.md",
         "PROJECT_SPEC_TEMPLATE.md",
@@ -1363,8 +1652,9 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     },
     {
       "name": "seed-contracts",
-      "purpose": "Own JSON schemas and the future read-only API contract.",
+      "purpose": "Own JSON schemas for intake and planning artifacts plus the future read-only API contract.",
       "contains": [
+        "contracts/project_intake.schema.json",
         "contracts/project_spec.schema.json",
         "contracts/repo_plan.schema.json",
         "contracts/task.schema.json",
@@ -1402,8 +1692,9 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     },
     {
       "name": "seed-prompts",
-      "purpose": "Own copy-paste role prompts constrained by the project spec and contracts.",
+      "purpose": "Own copy-paste role prompts constrained by the project spec, intake workflow, and contracts.",
       "contains": [
+        "prompts/00-intake-interviewer.md",
         "prompts/00-planning-agent.md",
         "prompts/01-contract-steward.md",
         "prompts/02-frontend-builder.md",
@@ -1613,13 +1904,56 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
 ## `generated/agent_prompts.json`
 
 - Category: `generated-state`
-- Purpose: Canonical machine-readable prompt pack for the current seed.
+- Purpose: Canonical machine-readable prompt pack for the current seed, including the intake interviewer.
 - Required: `true`
 
 ```json
 {
   "project_name": "AI Assembly Line",
   "prompts": [
+    {
+      "prompt_id": "intake-interviewer-phase0",
+      "role": "Intake Interviewer",
+      "target_repo": "seed-docs-and-rules",
+      "allowed_files": [
+        "README.md",
+        "PROJECT_SPEC_TEMPLATE.md",
+        "PRODUCT_RULES.md",
+        "docs/PROJECT_INTAKE_WORKFLOW.md",
+        "contracts/project_intake.schema.json",
+        "prompts/00-intake-interviewer.md"
+      ],
+      "forbidden_files": [
+        "web/app/",
+        "db/",
+        "auth/",
+        "workers/",
+        "agents/runtime/"
+      ],
+      "input_context_required": [
+        "User rough idea",
+        "Project intake workflow",
+        "Project intake schema",
+        "Product rules",
+        "Known tools, paths, stack preferences, or repo constraints"
+      ],
+      "task_boundaries": [
+        "Ask only questions that materially change the plan.",
+        "Suggest stack options with tradeoffs when the user has not chosen one.",
+        "Produce a project_intake.json draft before planning artifacts.",
+        "Do not produce implementation tasks until the intake record is complete enough."
+      ],
+      "output_required": [
+        "Structured project intake record",
+        "Explicit assumptions",
+        "High-risk open questions",
+        "Planning Agent hand-off summary"
+      ],
+      "verification_required": [
+        "Intake record matches contracts/project_intake.schema.json.",
+        "Unsafe or ambiguous scope is rejected, bounded, or preserved as open questions."
+      ]
+    },
     {
       "prompt_id": "planning-agent-phase0",
       "role": "Planning Agent",
@@ -1640,12 +1974,13 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "input_context_required": [
         "Current phase specification",
         "Product rules",
-        "Existing contracts"
+        "Existing contracts",
+        "Project intake record when available"
       ],
       "task_boundaries": [
         "Produce planning artifacts only.",
         "Do not add frontend implementation, auth, databases, realtime sync, or agent automation.",
-        "Keep outputs traceable to the source-of-truth spec."
+        "Keep outputs traceable to the source-of-truth spec and intake record."
       ],
       "output_required": [
         "Updated generated project state",
@@ -1677,7 +2012,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "Existing prompt files"
       ],
       "task_boundaries": [
-        "Define strict contracts for machine-readable planning artifacts.",
+        "Define strict contracts for machine-readable intake and planning artifacts.",
         "Reject undocumented fields unless explicitly approved in source-of-truth files."
       ],
       "output_required": [
@@ -1699,6 +2034,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "web/backlog.html",
         "web/prompts.html",
         "web/slots.html",
+        "web/planning-runs.html",
         "web/verification.html",
         "web/viewer-data.js",
         "web/viewer-layout.js",
@@ -1725,7 +2061,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       ],
       "task_boundaries": [
         "Render generated state directly.",
-        "Do not invent task, repo, prompt, slot, or contract structure.",
+        "Do not invent task, repo, prompt, slot, intake, or contract structure.",
         "Do not change generated JSON structure or contracts unless explicitly assigned.",
         "Do not add backend routes, authentication, databases, realtime sync, or mutable workflow state."
       ],
@@ -1790,15 +2126,16 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "input_context_required": [
         "Current project specification",
         "Product rules",
-        "Repo plan"
+        "Repo plan",
+        "Project intake workflow"
       ],
       "task_boundaries": [
-        "Stay within deterministic planning compilation and validation responsibilities.",
+        "Stay within deterministic intake, planning compilation, and validation responsibilities.",
         "Do not build autonomous execution paths."
       ],
       "output_required": [
         "Deterministic generated planning artifacts",
-        "Traceability notes across contracts and prompts"
+        "Traceability notes across intake, contracts, and prompts"
       ],
       "verification_required": [
         "Artifacts stay deterministic and schema-aligned.",
@@ -1824,10 +2161,11 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "input_context_required": [
         "Project rules",
         "Generated artifacts",
-        "Prompt pack"
+        "Prompt pack",
+        "Intake workflow"
       ],
       "task_boundaries": [
-        "Search for unsafe reinterpretation, schema drift, and hidden state invention.",
+        "Search for unsafe reinterpretation, schema drift, hidden state invention, and intake ambiguity.",
         "Keep review findings tied to current contracts and source-of-truth files."
       ],
       "output_required": [
@@ -1836,7 +2174,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "Verification gaps"
       ],
       "verification_required": [
-        "Attack cases cover auth, database, realtime, automation, and invented frontend state drift.",
+        "Attack cases cover auth, database, realtime, automation, intake overreach, and invented frontend state drift.",
         "Each finding maps to a rule or contract boundary."
       ]
     }
@@ -2060,13 +2398,13 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     {
       "path": "README.md",
       "category": "root-doc",
-      "purpose": "Repository overview, source-of-truth rules, viewer constraints, validation guidance, and remote AI review links.",
+      "purpose": "Repository overview, source-of-truth rules, intake workflow, viewer constraints, validation guidance, and remote AI review links.",
       "required": true
     },
     {
       "path": "PROJECT_SPEC.md",
       "category": "root-doc",
-      "purpose": "Human-readable phase 0 product specification and current viewer scope.",
+      "purpose": "Human-readable phase 0 product specification covering guided intake, planning, and current viewer scope.",
       "required": true
     },
     {
@@ -2112,9 +2450,15 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "required": true
     },
     {
+      "path": "docs/PROJECT_INTAKE_WORKFLOW.md",
+      "category": "review-doc",
+      "purpose": "Interactive intake workflow for turning a rough idea into a structured project_intake.json record before planning.",
+      "required": true
+    },
+    {
       "path": "docs/PLANNING_RUN_WORKFLOW.md",
       "category": "review-doc",
-      "purpose": "Manual planning-run workflow for turning a rough idea into saved planning artifacts and human-reviewed outputs.",
+      "purpose": "Manual planning-run workflow for turning a rough idea or intake record into saved planning artifacts and human-reviewed outputs.",
       "required": true
     },
     {
@@ -2162,7 +2506,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     {
       "path": "generated/agent_prompts.json",
       "category": "generated-state",
-      "purpose": "Canonical machine-readable prompt pack for the current seed.",
+      "purpose": "Canonical machine-readable prompt pack for the current seed, including the intake interviewer.",
       "required": true
     },
     {
@@ -2181,6 +2525,12 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "path": "generated/review_manifest.json",
       "category": "generated-state",
       "purpose": "Remote review manifest listing the key files needed to inspect the repository without a full clone.",
+      "required": true
+    },
+    {
+      "path": "contracts/project_intake.schema.json",
+      "category": "contract",
+      "purpose": "Schema for guided project intake records produced before planning runs.",
       "required": true
     },
     {
@@ -2217,6 +2567,12 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "path": "contracts/api_contract.openapi.yaml",
       "category": "contract",
       "purpose": "Future API and spec-compiler contract draft, not an implemented backend.",
+      "required": true
+    },
+    {
+      "path": "prompts/00-intake-interviewer.md",
+      "category": "prompt-source",
+      "purpose": "Prompt source file for the guided intake interviewer role.",
       "required": true
     },
     {
@@ -2464,6 +2820,270 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
 
 ```
 
+## `contracts/project_intake.schema.json`
+
+- Category: `contract`
+- Purpose: Schema for guided project intake records produced before planning runs.
+- Required: `true`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-assembly-line/project_intake.schema.json",
+  "title": "ProjectIntake",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_slug",
+    "intake_mode",
+    "project_goal",
+    "target_users",
+    "mvp",
+    "target_platforms",
+    "stack",
+    "existing_project",
+    "team_mode",
+    "working_style",
+    "constraints",
+    "safety_boundaries",
+    "assumptions",
+    "open_questions",
+    "acceptance_signals"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project_slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "intake_mode": {
+      "type": "string",
+      "enum": ["quick", "guided", "expert"]
+    },
+    "project_goal": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_users": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "mvp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "must_have", "postponed"],
+      "properties": {
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "must_have": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "postponed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "target_platforms": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "stack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preference", "recommendation", "options", "decision_status"],
+      "properties": {
+        "preference": {
+          "type": "string"
+        },
+        "recommendation": {
+          "type": "string"
+        },
+        "decision_status": {
+          "type": "string",
+          "enum": ["user_selected", "ai_recommended", "undecided"]
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "best_for", "risks"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "best_for": {
+                "type": "string",
+                "minLength": 1
+              },
+              "risks": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "existing_project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "path", "notes"],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["greenfield", "existing_repo", "unknown"]
+        },
+        "path": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "tools": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "path", "configuration", "notes"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string"
+          },
+          "configuration": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "team_mode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["humans", "ai_agents", "parallelization_goal"],
+      "properties": {
+        "humans": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ai_agents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parallelization_goal": {
+          "type": "string"
+        }
+      }
+    },
+    "working_style": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_size", "review_style", "proof_required"],
+      "properties": {
+        "task_size": {
+          "type": "string",
+          "enum": ["small", "medium", "large", "mixed"]
+        },
+        "review_style": {
+          "type": "string"
+        },
+        "proof_required": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "safety_boundaries": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "open_questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["question", "risk_if_unanswered"],
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1
+          },
+          "risk_if_unanswered": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "acceptance_signals": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}
+
+```
+
 ## `contracts/project_spec.schema.json`
 
 - Category: `contract`
@@ -2550,6 +3170,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "intake_interviewer",
         "planning_agent",
         "contract_steward",
         "frontend_builder",
@@ -2558,6 +3179,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "red_team_verifier"
       ],
       "properties": {
+        "intake_interviewer": { "type": "string" },
         "planning_agent": { "type": "string" },
         "contract_steward": { "type": "string" },
         "frontend_builder": { "type": "string" },
@@ -2971,6 +3593,149 @@ paths:
             application/json:
               schema:
                 $ref: "./project_spec.schema.json"
+
+```
+
+## `prompts/00-intake-interviewer.md`
+
+- Category: `prompt-source`
+- Purpose: Prompt source file for the guided intake interviewer role.
+- Required: `true`
+
+```markdown
+# Intake Interviewer Prompt
+
+You are the Intake Interviewer for AI Assembly Line.
+
+Your job is to guide a user from a rough project idea to a structured `project_intake.json` record before the Planning Agent creates the implementation plan.
+
+You are not implementing the product. You are not producing the full task backlog yet. You are asking the minimum useful set of questions, making safe assumptions where appropriate, and preparing a clean hand-off to the Planning Agent.
+
+## Inputs to read first
+
+When available, read:
+
+- `docs/PROJECT_INTAKE_WORKFLOW.md`
+- `contracts/project_intake.schema.json`
+- `PROJECT_SPEC_TEMPLATE.md`
+- `PRODUCT_RULES.md`
+- the user's rough idea
+- any local tool paths, stack preferences, existing repo notes, or configuration details supplied by the user
+
+## Core behavior
+
+Use the ask/assume/stop rule:
+
+- Ask when an answer changes architecture, stack, MVP, safety, or parallelization.
+- Assume when the missing detail is low-risk and easy to revise later.
+- Stop and ask when a missing answer is high-risk.
+
+Do not ask questions forever. The goal is to get enough information to create a useful first planning run.
+
+## Intake modes
+
+If the user does not specify a mode, default to guided mode.
+
+### Quick mode
+
+Ask at most five questions. Make assumptions explicit. Produce a draft intake record quickly.
+
+### Guided mode
+
+Ask questions section by section. Suggest options. Confirm the MVP and stack direction before producing the intake record.
+
+### Expert mode
+
+Accept pasted constraints, paths, stack choices, architecture notes, and team layout. Ask only for missing high-risk decisions.
+
+## High-risk questions
+
+Stop and ask instead of assuming when unclear:
+
+- Is this greenfield or an existing repository?
+- What platform matters first?
+- Is multiplayer real-time, turn-based, local, or online?
+- Is there a required framework, engine, SDK, or hardware target?
+- Are external accounts, credentials, scraping, platform APIs, games, bots, or automation involved?
+- How many humans or AI agents should work in parallel?
+- What proof is required for a task to count as done?
+
+## Stack suggestion behavior
+
+If the user has not chosen a stack, suggest two or three options with tradeoffs.
+
+For each option, include:
+
+- best fit
+- risks
+- why it may or may not fit the user's working style
+
+Then give a recommendation, but do not silently force it.
+
+Example shape:
+
+```text
+Option A: Godot 4
+Best for: fast 2D game iteration and desktop-first prototypes.
+Risks: networking architecture still needs deliberate design.
+
+Option B: TypeScript + Phaser + Colyseus
+Best for: browser-first multiplayer.
+Risks: more web/backend setup before game feel is visible.
+
+Recommendation: Godot 4 if desktop-first matters most; Phaser + Colyseus if browser-first matters most.
+```
+
+## Required output
+
+When enough information exists, produce a `project_intake.json` draft matching `contracts/project_intake.schema.json`.
+
+The record must include:
+
+- `schema_version`
+- `project_slug`
+- `intake_mode`
+- `project_goal`
+- `target_users`
+- `mvp`
+- `target_platforms`
+- `stack`
+- `existing_project`
+- `tools`
+- `team_mode`
+- `working_style`
+- `constraints`
+- `safety_boundaries`
+- `assumptions`
+- `open_questions`
+- `acceptance_signals`
+
+## Hand-off summary
+
+After the JSON draft, provide a short hand-off summary for the Planning Agent:
+
+- accepted goal
+- MVP boundary
+- selected or recommended stack
+- target repository/workspace state
+- team/agent parallelization intent
+- high-risk open questions
+- verification emphasis
+
+## Safety boundaries
+
+Reject or remove requests involving:
+
+- botting
+- unauthorized client control
+- account automation
+- credential collection beyond explicit safe local configuration notes
+- emulator control for cheating or platform abuse
+- live service interference
+- scraping private APIs
+- bypassing rate limits, access controls, or terms-of-service boundaries
+
+When unsafe scope appears, state what was rejected and keep only the safe planning alternative.
 
 ```
 
@@ -5944,6 +6709,7 @@ def validate_project_spec(value: Any, label: str) -> None:
 
     prompts = value["starter_prompts"]
     required_prompts = {
+        "intake_interviewer",
         "planning_agent",
         "contract_steward",
         "frontend_builder",

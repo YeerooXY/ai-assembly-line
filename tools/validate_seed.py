@@ -169,6 +169,7 @@ def validate_project_spec(value: Any, label: str) -> None:
 
     prompts = value["starter_prompts"]
     required_prompts = {
+        "intake_interviewer",
         "planning_agent",
         "contract_steward",
         "frontend_builder",

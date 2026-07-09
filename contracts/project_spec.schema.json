@@ -77,6 +77,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "intake_interviewer",
         "planning_agent",
         "contract_steward",
         "frontend_builder",
@@ -85,6 +86,7 @@
         "red_team_verifier"
       ],
       "properties": {
+        "intake_interviewer": { "type": "string" },
         "planning_agent": { "type": "string" },
         "contract_steward": { "type": "string" },
         "frontend_builder": { "type": "string" },
