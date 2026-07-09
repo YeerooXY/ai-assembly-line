@@ -241,6 +241,14 @@
       "notes": "Static backlog page that renders task cards directly from the generated backlog grouped by repo target."
     },
     {
+      "name": "Task Batches",
+      "renders_from": [
+        "generated/task_batch_index.json",
+        "generated/task_batches/"
+      ],
+      "notes": "Static task-batches page that renders batch index status, generated batch file readiness, task nodes, and dependency graph checks."
+    },
+    {
       "name": "Prompt Pack",
       "renders_from": [
         "generated/agent_prompts.json"

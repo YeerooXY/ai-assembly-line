@@ -96,6 +96,7 @@ The viewer pages are:
 - `web/index.html`
 - `web/repos.html`
 - `web/backlog.html`
+- `web/task-batches.html`
 - `web/prompts.html`
 - `web/slots.html`
 - `web/planning-runs.html`
@@ -106,6 +107,8 @@ The generated sources remain:
 - `generated/project_spec.json`
 - `generated/repo_plan.json`
 - `generated/task_backlog.json`
+- `generated/task_batch_index.json`
+- `generated/task_batches/*.json`
 - `generated/agent_prompts.json`
 - `generated/slots_db.json`
 - `generated/planning_runs_index.json`
@@ -115,6 +118,7 @@ The viewer displays:
 - project overview
 - repository split and repo ownership
 - task backlog grouped by repo target
+- task batch files, copy-paste workflow readiness, task nodes, and dependency graph checks
 - agent prompts
 - slot board
 - planning-run scaffold and output completeness
@@ -142,6 +146,7 @@ It should display:
 - task backlog
 - contract files
 - prompt pack
+- task batch index and generated batch files
 - planning-run index
 - verification rules
 

@@ -368,6 +368,12 @@
       "required": true
     },
     {
+      "path": "web/task-batches.html",
+      "category": "viewer",
+      "purpose": "Task batches page entry point for batch index status, batch file readiness, task nodes, and dependency graph checks.",
+      "required": true
+    },
+    {
       "path": "web/prompts.html",
       "category": "viewer",
       "purpose": "Prompts page entry point.",
@@ -419,6 +425,12 @@
       "path": "web/page-backlog.js",
       "category": "viewer",
       "purpose": "Backlog page rendering logic.",
+      "required": true
+    },
+    {
+      "path": "web/page-task-batches.js",
+      "category": "viewer",
+      "purpose": "Task batches page rendering logic for batch index status, batch file readiness, task nodes, and dependency graph checks.",
       "required": true
     },
     {

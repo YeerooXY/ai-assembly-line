@@ -15,6 +15,7 @@ The viewer pages are:
 - `web/index.html`: overview from `generated/project_spec.json`
 - `web/repos.html`: repository split and ownership from `generated/repo_plan.json`
 - `web/backlog.html`: backlog grouped by `repo_target` from `generated/task_backlog.json`
+- `web/task-batches.html`: task batch index, batch file readiness, task nodes, and dependency graph checks from `generated/task_batch_index.json` plus `generated/task_batches/*.json`
 - `web/prompts.html`: prompt pack from `generated/agent_prompts.json`
 - `web/slots.html`: slot board from `generated/slots_db.json`
 - `web/planning-runs.html`: planning-run scaffold and output completeness from `generated/planning_runs_index.json`
