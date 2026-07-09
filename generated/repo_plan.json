@@ -25,6 +25,8 @@
         "contracts/project_spec.schema.json",
         "contracts/repo_plan.schema.json",
         "contracts/task.schema.json",
+        "contracts/task_batch_index.schema.json",
+        "contracts/task_batch.schema.json",
         "contracts/slot.schema.json",
         "contracts/agent_prompt.schema.json",
         "contracts/collaboration_state.schema.json",
@@ -45,6 +47,8 @@
         "generated/project_spec.json",
         "generated/repo_plan.json",
         "generated/task_backlog.json",
+        "generated/task_batch_index.json",
+        "generated/task_batches/",
         "generated/agent_prompts.json",
         "generated/slots_db.json",
         "generated/planning_runs_index.json"

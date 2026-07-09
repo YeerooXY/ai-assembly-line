@@ -140,6 +140,12 @@
       "required": true
     },
     {
+      "path": "generated/task_batch_index.json",
+      "category": "generated-state",
+      "purpose": "Canonical index for copy-paste task generation batches, including batch order and expected task IDs.",
+      "required": true
+    },
+    {
       "path": "generated/agent_prompts.json",
       "category": "generated-state",
       "purpose": "Canonical machine-readable prompt pack for the current seed, including the intake interviewer.",
@@ -191,6 +197,18 @@
       "path": "contracts/task.schema.json",
       "category": "contract",
       "purpose": "Schema for each generated task backlog entry.",
+      "required": true
+    },
+    {
+      "path": "contracts/task_batch_index.schema.json",
+      "category": "contract",
+      "purpose": "Schema for the task batch index used by large copy-paste task-generation workflows.",
+      "required": true
+    },
+    {
+      "path": "contracts/task_batch.schema.json",
+      "category": "contract",
+      "purpose": "Schema for one generated task batch file under generated/task_batches/.",
       "required": true
     },
     {
@@ -455,6 +473,12 @@
       "path": "tools/validate_planning_run.py",
       "category": "tool",
       "purpose": "Validates saved planning-run output artifacts against existing contracts and cross-artifact consistency checks.",
+      "required": true
+    },
+    {
+      "path": "tools/validate_task_batches.py",
+      "category": "tool",
+      "purpose": "Validates task batch files, task dependency graph references, and topological batch order.",
       "required": true
     },
     {

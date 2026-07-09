@@ -46,6 +46,8 @@ A complete planning run should produce or update:
 
 The task backlog must be traceable to the project spec and repo plan.
 
+For large plans, generate task output in batches rather than one large `task_backlog.json` response. Start with `generated/task_batch_index.json`, then generate one `generated/task_batches/<batch_id>.json` file at a time by owner role, repo target, or lane.
+
 ## Generation phases
 
 ### 1. Freeze the accepted intake
@@ -205,3 +207,5 @@ A generated task backlog is ready when:
 - every task has verification steps
 - open questions are explicit
 - no task requires forbidden scope
+
+For batched generation, the backlog is ready only after every accepted batch validates individually, task IDs/dependencies form an acyclic graph, and batch order is topological.

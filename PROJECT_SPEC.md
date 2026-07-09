@@ -52,6 +52,8 @@
 - `agent_prompt.schema.json`
 - `slot.schema.json`
 - `task.schema.json`
+- `task_batch_index.schema.json`
+- `task_batch.schema.json`
 - `collaboration_state.schema.json`
 - `repo_plan.schema.json`
 

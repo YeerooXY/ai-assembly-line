@@ -58,6 +58,7 @@ The source-of-truth layers are:
 4. Canonical generated planning state
    - `generated/repo_plan.json`
    - `generated/task_backlog.json`
+   - `generated/task_batch_index.json`
    - `generated/agent_prompts.json`
    - `generated/slots_db.json`
 5. Derived planning-run index
@@ -169,6 +170,7 @@ It should display:
 - `contracts/`: schemas and OpenAPI contract
 - `contracts/project_intake.schema.json`: schema for guided project intake records
 - `contracts/collaboration_state.schema.json`: draft schema for future human and web-AI coordination state
+- `contracts/task_batch_index.schema.json` and `contracts/task_batch.schema.json`: schemas for copy-paste task generation batches
 - `generated/`: canonical machine-readable planning artifacts for the current seed state
 - `generated/planning_runs_index.json`: derived index of manual planning-run folders and output completeness
 - `examples/coc-base-builder/`: example decomposition for a safe base layout planner
@@ -342,6 +344,8 @@ python tools\validate_seed.py
 - `agent_prompt.schema.json`
 - `slot.schema.json`
 - `task.schema.json`
+- `task_batch_index.schema.json`
+- `task_batch.schema.json`
 - `collaboration_state.schema.json`
 - `repo_plan.schema.json`
 
@@ -1668,6 +1672,8 @@ A complete planning run should produce or update:
 
 The task backlog must be traceable to the project spec and repo plan.
 
+For large plans, generate task output in batches rather than one large `task_backlog.json` response. Start with `generated/task_batch_index.json`, then generate one `generated/task_batches/<batch_id>.json` file at a time by owner role, repo target, or lane.
+
 ## Generation phases
 
 ### 1. Freeze the accepted intake
@@ -1827,6 +1833,8 @@ A generated task backlog is ready when:
 - every task has verification steps
 - open questions are explicit
 - no task requires forbidden scope
+
+For batched generation, the backlog is ready only after every accepted batch validates individually, task IDs/dependencies form an acyclic graph, and batch order is topological.
 
 ```
 
@@ -2033,6 +2041,31 @@ Create shared contracts before consumers.
 Do not create implementation tasks that require undefined APIs, event contracts, schemas, package boundaries, or file ownership rules.
 
 A task should normally belong to one `repo_target`. If it touches multiple repos, mark it as integration or QA work and make the cross-repo proof explicit.
+
+## Large Plan Batch Workflow
+
+For large generated plans, do not ask a web AI to return the whole backlog in one response.
+
+Use a two-step batch workflow:
+
+1. Generate a compact `task_batch_index` grouped by `owner_role`, `repo_target`, or `lane`.
+2. Generate one selected batch at a time as a `contracts/task_batch.schema.json` object.
+
+This keeps outputs copy-pastable and reduces the chance of truncation.
+
+Each task batch must conform to `contracts/task_batch.schema.json`.
+
+Each task inside the batch must still conform to `contracts/task.schema.json`.
+
+The future frontend should support:
+
+- copy prompt for batch index
+- paste returned batch index
+- choose one batch
+- copy prompt for that selected batch
+- paste returned task JSON
+- validate task graph dependencies and topological batch order
+- merge accepted batches into `generated/task_backlog.json`
 
 ## Review Checklist
 
@@ -2436,6 +2469,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "generated/project_spec.json",
         "generated/repo_plan.json",
         "generated/task_backlog.json",
+        "generated/task_batch_index.json",
         "generated/agent_prompts.json",
         "generated/slots_db.json",
         "generated/planning_runs_index.json"
@@ -2646,12 +2680,15 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "renders_from": [
         "generated/project_spec.json",
         "generated/task_backlog.json",
+        "generated/task_batch_index.json",
         "generated/agent_prompts.json",
         "generated/slots_db.json",
         "contracts/project_intake.schema.json",
         "contracts/project_spec.schema.json",
         "contracts/repo_plan.schema.json",
         "contracts/task.schema.json",
+        "contracts/task_batch_index.schema.json",
+        "contracts/task_batch.schema.json",
         "contracts/slot.schema.json",
         "contracts/agent_prompt.schema.json",
         "contracts/collaboration_state.schema.json",
@@ -2750,6 +2787,8 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "contracts/project_spec.schema.json",
         "contracts/repo_plan.schema.json",
         "contracts/task.schema.json",
+        "contracts/task_batch_index.schema.json",
+        "contracts/task_batch.schema.json",
         "contracts/slot.schema.json",
         "contracts/agent_prompt.schema.json",
         "contracts/collaboration_state.schema.json",
@@ -2770,6 +2809,8 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "generated/project_spec.json",
         "generated/repo_plan.json",
         "generated/task_backlog.json",
+        "generated/task_batch_index.json",
+        "generated/task_batches/",
         "generated/agent_prompts.json",
         "generated/slots_db.json",
         "generated/planning_runs_index.json"
@@ -2992,6 +3033,22 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     ]
   }
 ]
+
+```
+
+## `generated/task_batch_index.json`
+
+- Category: `generated-state`
+- Purpose: Canonical index for copy-paste task generation batches, including batch order and expected task IDs.
+- Required: `true`
+
+```json
+{
+  "schema_version": "0.1.0",
+  "source_plan_path": "generated_plan.md",
+  "batching_strategy": "owner_role",
+  "batches": []
+}
 
 ```
 
@@ -3313,7 +3370,8 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "Repository split or ownership targets from the plan"
       ],
       "task_boundaries": [
-        "Convert an accepted generated plan into schema-valid task_backlog.json only.",
+        "Convert an accepted generated plan into schema-valid task batches.",
+        "For large plans, produce a compact task_batch_index first and then one selected task batch at a time.",
         "Do not implement project code.",
         "Do not invent architecture, repositories, features, or scope beyond the accepted plan.",
         "Preserve high-risk open questions as blocking tasks or explicit context instead of silently deciding them.",
@@ -3321,17 +3379,20 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "Keep tasks small, verifiable, parallel-safe, and traceable to the accepted plan."
       ],
       "output_required": [
-        "Valid JSON array of task objects",
-        "Task records conforming to contracts/task.schema.json",
+        "Exactly one fenced json code block per response",
+        "Compact task_batch_index when no target batch is selected",
+        "Valid task batch object for one selected batch",
+        "Task records conforming to contracts/task.schema.json in each batch",
         "Dependencies by stable task ID",
         "Repo targets from the accepted plan",
         "Acceptance criteria and verification for every task",
         "Proof requirements, edge cases, non-goals, and estimated size when useful"
       ],
       "verification_required": [
-        "Output parses as JSON.",
-        "Top-level output is an array.",
-        "Every task conforms to contracts/task.schema.json.",
+        "Output contains exactly one json code block and no prose outside it.",
+        "Batch index output contains no full task objects.",
+        "Task batch output parses as a JSON object with a tasks array.",
+        "Every task in each batch conforms to contracts/task.schema.json.",
         "Every dependency refers to a generated task ID.",
         "Every task has concrete acceptance criteria and verification.",
         "No task expands beyond the accepted MVP or contradicts explicit non-goals."
@@ -3730,6 +3791,12 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "required": true
     },
     {
+      "path": "generated/task_batch_index.json",
+      "category": "generated-state",
+      "purpose": "Canonical index for copy-paste task generation batches, including batch order and expected task IDs.",
+      "required": true
+    },
+    {
       "path": "generated/agent_prompts.json",
       "category": "generated-state",
       "purpose": "Canonical machine-readable prompt pack for the current seed, including the intake interviewer.",
@@ -3781,6 +3848,18 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "path": "contracts/task.schema.json",
       "category": "contract",
       "purpose": "Schema for each generated task backlog entry.",
+      "required": true
+    },
+    {
+      "path": "contracts/task_batch_index.schema.json",
+      "category": "contract",
+      "purpose": "Schema for the task batch index used by large copy-paste task-generation workflows.",
+      "required": true
+    },
+    {
+      "path": "contracts/task_batch.schema.json",
+      "category": "contract",
+      "purpose": "Schema for one generated task batch file under generated/task_batches/.",
       "required": true
     },
     {
@@ -4045,6 +4124,12 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "path": "tools/validate_planning_run.py",
       "category": "tool",
       "purpose": "Validates saved planning-run output artifacts against existing contracts and cross-artifact consistency checks.",
+      "required": true
+    },
+    {
+      "path": "tools/validate_task_batches.py",
+      "category": "tool",
+      "purpose": "Validates task batch files, task dependency graph references, and topological batch order.",
       "required": true
     },
     {
@@ -4803,6 +4888,159 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     },
     "handoff_notes": {
       "type": "string"
+    }
+  }
+}
+
+```
+
+## `contracts/task_batch_index.schema.json`
+
+- Category: `contract`
+- Purpose: Schema for the task batch index used by large copy-paste task-generation workflows.
+- Required: `true`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-assembly-line.local/contracts/task_batch_index.schema.json",
+  "title": "TaskBatchIndex",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "source_plan_path",
+    "batching_strategy",
+    "batches"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_plan_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "batching_strategy": {
+      "type": "string",
+      "enum": ["owner_role", "repo_target", "lane", "milestone", "mixed"]
+    },
+    "batches": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/batch" }
+    }
+  },
+  "$defs": {
+    "batch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "batch_id",
+        "owner_role",
+        "repo_targets",
+        "lanes",
+        "milestones",
+        "expected_task_count",
+        "expected_task_ids",
+        "depends_on_batches",
+        "output_path",
+        "status"
+      ],
+      "properties": {
+        "batch_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9\\-]*$"
+        },
+        "owner_role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repo_targets": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "lanes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "milestones": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "expected_task_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expected_task_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9\\-]*$"
+          }
+        },
+        "depends_on_batches": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9\\-]*$"
+          }
+        },
+        "output_path": {
+          "type": "string",
+          "pattern": "^generated/task_batches/[a-z0-9][a-z0-9\\-]*\\.json$"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["planned", "generated", "validated", "accepted", "rejected"]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+
+```
+
+## `contracts/task_batch.schema.json`
+
+- Category: `contract`
+- Purpose: Schema for one generated task batch file under generated/task_batches/.
+- Required: `true`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-assembly-line.local/contracts/task_batch.schema.json",
+  "title": "TaskBatch",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "batch_id",
+    "source_plan_path",
+    "tasks"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "batch_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9\\-]*$"
+    },
+    "source_plan_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "$ref": "./task.schema.json"
+      }
     }
   }
 }
@@ -6195,11 +6433,24 @@ Return a verdict first, then findings. Keep fixes minimal. Do not redesign the r
 
 You are the Task Splitter for an AI Assembly Line planning run.
 
-Your job is to convert an accepted generated plan into a schema-valid `task_backlog.json` array that can be pasted back into the AI Assembly Line frontend and validated against `contracts/task.schema.json`.
+Your job is to convert an accepted generated plan into schema-valid task batch files that can be pasted back into the AI Assembly Line frontend and validated.
 
 You are not implementing the project. You are decomposing the plan into small, verifiable, parallel-safe task records.
 
-## Source-of-truth rules
+## Why Batches Matter
+
+Do not generate the entire `task_backlog.json` in one response for large plans.
+
+Large one-shot JSON outputs are hard to copy, easy to truncate, and likely to fail in web AI chats.
+
+Instead, use this two-step workflow:
+
+1. Create a compact `task_batch_index` grouped by agent role, repo target, or lane.
+2. Generate exactly one selected task batch file at a time.
+
+Each response must be small enough to copy from a single code block.
+
+## Source-of-Truth Rules
 
 Follow these repository guides:
 
@@ -6207,6 +6458,8 @@ Follow these repository guides:
 - `docs/TASK_GENERATION_WORKFLOW.md`
 - `docs/TASK_CARD_FORMAT.md`
 - `docs/task-format.md`
+- `contracts/task_batch_index.schema.json`
+- `contracts/task_batch.schema.json`
 - `contracts/task.schema.json`
 
 Use the pasted generated plan as the accepted project source of truth.
@@ -6215,29 +6468,98 @@ Do not invent architecture, repositories, features, or scope that are not in the
 
 If the plan contains high-risk open questions, preserve them as blocking tasks or explicit task context instead of silently deciding them.
 
-## Output format
+## Requested Mode
 
-Return only valid JSON.
+Set exactly one mode before using this prompt:
 
-The top-level value must be an array of task objects.
+```text
+MODE: batch-index
+TARGET_BATCH_ID:
+```
 
-Every task must include the required fields from `contracts/task.schema.json`:
+or:
+
+```text
+MODE: task-batch
+TARGET_BATCH_ID: <one batch_id from the task_batch_index>
+```
+
+If `MODE` is missing, use `batch-index`.
+
+If `MODE` is `task-batch` but `TARGET_BATCH_ID` is missing, return a batch index instead.
+
+## Output UX Rule
+
+Return exactly one fenced `json` code block and no prose outside it.
+
+The code block is intentional: web AI interfaces usually provide a copy button for code blocks. The future frontend should strip the fence automatically when pasting.
+
+## Batch Index Output
+
+When `MODE: batch-index`, return a compact JSON object with this shape:
 
 ```json
-[
-  {
-    "id": "TASK-001",
-    "title": "Short action-oriented title",
-    "summary": "One-sentence task summary.",
-    "owner_role": "Role responsible for the task",
-    "repo_target": "repo-or-ownership-target-from-the-plan",
-    "depends_on": [],
-    "inputs": [],
-    "outputs": [],
-    "acceptance_criteria": [],
-    "verification": []
-  }
-]
+{
+  "schema_version": "0.1.0",
+  "source": "accepted generated plan",
+  "batching_strategy": "owner_role",
+  "batches": [
+    {
+      "batch_id": "planning-coordinator",
+      "owner_role": "Planning Coordinator Agent",
+      "repo_targets": ["planning-repo"],
+      "lanes": ["planning-source-of-truth"],
+      "milestones": ["Milestone 0"],
+      "expected_task_count": 6,
+      "expected_task_ids": ["PLANNING-001"],
+      "depends_on_batches": [],
+      "output_path": "generated/task_batches/planning-coordinator.json",
+      "status": "planned",
+      "notes": "Short explanation of what this batch owns."
+    }
+  ]
+}
+```
+
+Batching rules:
+
+- Prefer one batch per `owner_role` when roles are clear.
+- Split an oversized role into multiple batches by `repo_target`, `lane`, or milestone.
+- Keep each batch small enough for one follow-up response.
+- Include expected task IDs so later batches can reference dependencies consistently.
+- Use stable lowercase `batch_id` values.
+- Do not include full task objects in the batch index.
+
+## Task Batch Output
+
+When `MODE: task-batch`, return only the task objects for `TARGET_BATCH_ID`.
+
+The top-level JSON value must be one task batch object matching `contracts/task_batch.schema.json`.
+
+The batch object must contain `schema_version`, `batch_id`, `source_plan_path`, and `tasks`.
+
+Each task inside `tasks` must include the required fields from `contracts/task.schema.json`:
+
+```json
+{
+  "schema_version": "0.1.0",
+  "batch_id": "planning-coordinator",
+  "source_plan_path": "generated_plan.md",
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "Short action-oriented title",
+      "summary": "One-sentence task summary.",
+      "owner_role": "Role responsible for the task",
+      "repo_target": "repo-or-ownership-target-from-the-plan",
+      "depends_on": [],
+      "inputs": [],
+      "outputs": [],
+      "acceptance_criteria": [],
+      "verification": []
+    }
+  ]
+}
 ```
 
 Use these optional fields when useful:
@@ -6259,7 +6581,7 @@ Use these optional fields when useful:
 - `handoff_notes`
 - `notes`
 
-## Decomposition rules
+## Decomposition Rules
 
 - Keep tasks small enough for one focused execution session.
 - Use `estimated_size: "S"` or `estimated_size: "M"` for executable tasks.
@@ -6281,9 +6603,16 @@ Use these optional fields when useful:
 - Include `non_goals` to prevent scope creep.
 - Do not create broad tasks like `build the backend`, `create the frontend`, or `implement multiplayer`.
 
-## Suggested ordering
+## Cross-Batch Dependency Rules
 
-Order tasks roughly like this when the plan supports it:
+- A task may depend on task IDs from another batch.
+- Preserve dependency IDs from the batch index when possible.
+- If a dependency task belongs to another batch, keep it in `depends_on`; do not duplicate the task.
+- If a target batch cannot be generated safely without another batch, return the smallest valid set of blocking/open-question tasks for that batch.
+
+## Suggested Ordering
+
+Order batches roughly like this when the plan supports it:
 
 1. Planning/source-of-truth setup
 2. Shared contracts, protocols, schemas, API boundaries, data models
@@ -6296,18 +6625,17 @@ Order tasks roughly like this when the plan supports it:
 9. QA, verification, regression coverage
 10. Post-MVP tasks, if the plan explicitly asks for them
 
-## Final instruction
+## Final Instruction
 
-Read the generated plan below and return a schema-valid `task_backlog.json` array.
+Read the generated plan below.
 
-Do not include markdown fences.
+If `MODE: batch-index`, return only the task batch index.
 
-Do not include explanation before or after the JSON.
+If `MODE: task-batch`, return only the task array for `TARGET_BATCH_ID`.
 
 ## Generated Plan
 
 Paste the accepted generated plan below this line:
-
 
 ```
 
@@ -7239,6 +7567,8 @@ export const CONTRACT_FILES = {
   projectSpecSchema: "../contracts/project_spec.schema.json",
   repoPlanSchema: "../contracts/repo_plan.schema.json",
   taskSchema: "../contracts/task.schema.json",
+  taskBatchIndexSchema: "../contracts/task_batch_index.schema.json",
+  taskBatchSchema: "../contracts/task_batch.schema.json",
   slotSchema: "../contracts/slot.schema.json",
   agentPromptSchema: "../contracts/agent_prompt.schema.json",
   collaborationStateSchema: "../contracts/collaboration_state.schema.json",
@@ -8068,6 +8398,8 @@ const CONTRACT_ENTRIES = [
   { id: "projectSpecSchema", path: "contracts/project_spec.schema.json", kind: "json" },
   { id: "repoPlanSchema", path: "contracts/repo_plan.schema.json", kind: "json" },
   { id: "taskSchema", path: "contracts/task.schema.json", kind: "json" },
+  { id: "taskBatchIndexSchema", path: "contracts/task_batch_index.schema.json", kind: "json" },
+  { id: "taskBatchSchema", path: "contracts/task_batch.schema.json", kind: "json" },
   { id: "slotSchema", path: "contracts/slot.schema.json", kind: "json" },
   { id: "agentPromptSchema", path: "contracts/agent_prompt.schema.json", kind: "json" },
   { id: "collaborationStateSchema", path: "contracts/collaboration_state.schema.json", kind: "json" },
@@ -8648,12 +8980,15 @@ REQUIRED_FILES = [
     ROOT / "generated" / "project_spec.json",
     ROOT / "generated" / "repo_plan.json",
     ROOT / "generated" / "task_backlog.json",
+    ROOT / "generated" / "task_batch_index.json",
     ROOT / "generated" / "agent_prompts.json",
     ROOT / "generated" / "slots_db.json",
     ROOT / "generated" / "review_manifest.json",
     ROOT / "contracts" / "project_spec.schema.json",
     ROOT / "contracts" / "repo_plan.schema.json",
     ROOT / "contracts" / "task.schema.json",
+    ROOT / "contracts" / "task_batch_index.schema.json",
+    ROOT / "contracts" / "task_batch.schema.json",
     ROOT / "contracts" / "slot.schema.json",
     ROOT / "contracts" / "agent_prompt.schema.json",
     ROOT / "contracts" / "collaboration_state.schema.json",
@@ -8925,6 +9260,79 @@ def validate_task(value: Any, label: str) -> None:
         expect_non_empty_string(value["handoff_notes"], f"{label}.handoff_notes")
 
 
+def validate_task_batch_index(value: Any, label: str) -> None:
+    expect_object_keys(value, label, {"schema_version", "source_plan_path", "batching_strategy", "batches"})
+    expect_non_empty_string(value["schema_version"], f"{label}.schema_version")
+    expect_non_empty_string(value["source_plan_path"], f"{label}.source_plan_path")
+    expect(
+        value["batching_strategy"] in {"owner_role", "repo_target", "lane", "milestone", "mixed"},
+        f"{label}.batching_strategy must be an allowed strategy",
+    )
+    expect_type(value["batches"], list, f"{label}.batches")
+
+    batch_ids: set[str] = set()
+    task_ids: set[str] = set()
+    for index, batch in enumerate(value["batches"]):
+        batch_label = f"{label}.batches[{index}]"
+        expect_object_keys(
+            batch,
+            batch_label,
+            {
+                "batch_id",
+                "owner_role",
+                "repo_targets",
+                "lanes",
+                "milestones",
+                "expected_task_count",
+                "expected_task_ids",
+                "depends_on_batches",
+                "output_path",
+                "status",
+            },
+            {"notes"},
+        )
+        expect_non_empty_string(batch["batch_id"], f"{batch_label}.batch_id")
+        expect(
+            re.fullmatch(r"[a-z0-9][a-z0-9\-]*", batch["batch_id"]) is not None,
+            f"{batch_label}.batch_id must match ^[a-z0-9][a-z0-9\\-]*$",
+        )
+        expect(batch["batch_id"] not in batch_ids, f"{batch_label}.batch_id must be unique")
+        batch_ids.add(batch["batch_id"])
+        expect_non_empty_string(batch["owner_role"], f"{batch_label}.owner_role")
+        expect_string_array(batch["repo_targets"], f"{batch_label}.repo_targets")
+        expect_string_array(batch["lanes"], f"{batch_label}.lanes")
+        expect_string_array(batch["milestones"], f"{batch_label}.milestones")
+        expect_type(batch["expected_task_count"], int, f"{batch_label}.expected_task_count")
+        expect(batch["expected_task_count"] >= 0, f"{batch_label}.expected_task_count must be >= 0")
+        expect_string_array(batch["expected_task_ids"], f"{batch_label}.expected_task_ids")
+        expect(
+            len(batch["expected_task_ids"]) == batch["expected_task_count"],
+            f"{batch_label}.expected_task_ids length must match expected_task_count",
+        )
+        for task_id in batch["expected_task_ids"]:
+            expect(task_id not in task_ids, f"{batch_label}.expected_task_ids contains duplicate task id: {task_id}")
+            task_ids.add(task_id)
+        expect_string_array(batch["depends_on_batches"], f"{batch_label}.depends_on_batches")
+        expect_non_empty_string(batch["output_path"], f"{batch_label}.output_path")
+        expect(
+            batch["output_path"] == f"generated/task_batches/{batch['batch_id']}.json",
+            f"{batch_label}.output_path must match batch_id",
+        )
+        expect(
+            batch["status"] in {"planned", "generated", "validated", "accepted", "rejected"},
+            f"{batch_label}.status must be an allowed status",
+        )
+        if "notes" in batch:
+            expect_non_empty_string(batch["notes"], f"{batch_label}.notes")
+
+    for index, batch in enumerate(value["batches"]):
+        for dependency in batch["depends_on_batches"]:
+            expect(
+                dependency in batch_ids,
+                f"{label}.batches[{index}].depends_on_batches refers to unknown batch: {dependency}",
+            )
+
+
 def validate_slot(value: Any, label: str) -> None:
     expect_object_keys(
         value,
@@ -9018,6 +9426,9 @@ def validate_without_jsonschema(path: Path, payload: Any) -> list[str]:
     if rel == "generated/agent_prompts.json":
         validate_agent_prompt_set(payload, rel)
         return [f"SCHEMA OK   {rel} -> contracts/agent_prompt.schema.json (builtin)"]
+    if rel == "generated/task_batch_index.json":
+        validate_task_batch_index(payload, rel)
+        return [f"SCHEMA OK   {rel} -> contracts/task_batch_index.schema.json (builtin)"]
     if rel == "examples/coc-base-builder/generated-repo-plan.json":
         validate_repo_plan(payload, rel)
         return [f"SCHEMA OK   {rel} -> contracts/repo_plan.schema.json (builtin)"]
@@ -9053,6 +9464,7 @@ def validate_with_schema(
     }
     element_map = {
         "generated/task_backlog.json": "contracts/task.schema.json",
+        "generated/task_batch_index.json": "contracts/task_batch_index.schema.json",
         "generated/slots_db.json": "contracts/slot.schema.json",
         "examples/coc-base-builder/generated-task-backlog.json": "contracts/task.schema.json",
     }
@@ -9073,6 +9485,11 @@ def validate_with_schema(
                 f"SCHEMA OK   {rel}[{index}] -> {element_map[rel]}"
             )
         return messages
+
+    if rel.startswith("generated/task_batches/") and rel.endswith(".json"):
+        schema = schemas["contracts/task_batch.schema.json"]
+        jsonschema_module.validate(instance=payload, schema=schema)
+        return [f"SCHEMA OK   {rel} -> contracts/task_batch.schema.json"]
 
     return []
 
@@ -9903,6 +10320,269 @@ if __name__ == "__main__":
 
 ```
 
+## `tools/validate_task_batches.py`
+
+- Category: `tool`
+- Purpose: Validates task batch files, task dependency graph references, and topological batch order.
+- Required: `true`
+
+```python
+from __future__ import annotations
+
+import json
+import sys
+from collections import defaultdict, deque
+from pathlib import Path
+from typing import Any
+
+import validate_seed
+
+
+ROOT = Path(__file__).resolve().parents[1]
+INDEX_PATH = ROOT / "generated" / "task_batch_index.json"
+BATCHES_DIR = ROOT / "generated" / "task_batches"
+
+
+def load_json(path: Path) -> Any:
+    with path.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def rel(path: Path) -> str:
+    return path.relative_to(ROOT).as_posix()
+
+
+def validate_batch_index(index: Any) -> list[str]:
+    validate_seed.expect_object_keys(
+        index,
+        "generated/task_batch_index.json",
+        {"schema_version", "source_plan_path", "batching_strategy", "batches"},
+    )
+    validate_seed.expect_non_empty_string(index["schema_version"], "task_batch_index.schema_version")
+    validate_seed.expect_non_empty_string(index["source_plan_path"], "task_batch_index.source_plan_path")
+    validate_seed.expect(
+        index["batching_strategy"] in {"owner_role", "repo_target", "lane", "milestone", "mixed"},
+        "task_batch_index.batching_strategy must be an allowed strategy",
+    )
+    validate_seed.expect_type(index["batches"], list, "task_batch_index.batches")
+
+    batch_ids: set[str] = set()
+    task_ids: set[str] = set()
+    messages = ["SCHEMA OK   generated/task_batch_index.json -> contracts/task_batch_index.schema.json (builtin)"]
+
+    for batch_index, batch in enumerate(index["batches"]):
+        label = f"task_batch_index.batches[{batch_index}]"
+        validate_seed.expect_object_keys(
+            batch,
+            label,
+            {
+                "batch_id",
+                "owner_role",
+                "repo_targets",
+                "lanes",
+                "milestones",
+                "expected_task_count",
+                "expected_task_ids",
+                "depends_on_batches",
+                "output_path",
+                "status",
+            },
+            {"notes"},
+        )
+        validate_seed.expect_non_empty_string(batch["batch_id"], f"{label}.batch_id")
+        validate_seed.expect(
+            batch["batch_id"] not in batch_ids,
+            f"{label}.batch_id must be unique: {batch['batch_id']}",
+        )
+        batch_ids.add(batch["batch_id"])
+        validate_seed.expect_non_empty_string(batch["owner_role"], f"{label}.owner_role")
+        validate_seed.expect_string_array(batch["repo_targets"], f"{label}.repo_targets")
+        validate_seed.expect_string_array(batch["lanes"], f"{label}.lanes")
+        validate_seed.expect_string_array(batch["milestones"], f"{label}.milestones")
+        validate_seed.expect_type(batch["expected_task_count"], int, f"{label}.expected_task_count")
+        validate_seed.expect(batch["expected_task_count"] >= 0, f"{label}.expected_task_count must be >= 0")
+        validate_seed.expect_string_array(batch["expected_task_ids"], f"{label}.expected_task_ids")
+        validate_seed.expect(
+            len(batch["expected_task_ids"]) == batch["expected_task_count"],
+            f"{label}.expected_task_ids length must match expected_task_count",
+        )
+        for task_id in batch["expected_task_ids"]:
+            validate_seed.expect(task_id not in task_ids, f"task id appears in multiple batches: {task_id}")
+            task_ids.add(task_id)
+        validate_seed.expect_string_array(batch["depends_on_batches"], f"{label}.depends_on_batches")
+        validate_seed.expect_non_empty_string(batch["output_path"], f"{label}.output_path")
+        validate_seed.expect(
+            batch["output_path"] == f"generated/task_batches/{batch['batch_id']}.json",
+            f"{label}.output_path must be generated/task_batches/{batch['batch_id']}.json",
+        )
+        validate_seed.expect(
+            batch["status"] in {"planned", "generated", "validated", "accepted", "rejected"},
+            f"{label}.status must be an allowed status",
+        )
+        if "notes" in batch:
+            validate_seed.expect_non_empty_string(batch["notes"], f"{label}.notes")
+
+    for batch_index, batch in enumerate(index["batches"]):
+        for dependency in batch["depends_on_batches"]:
+            validate_seed.expect(
+                dependency in batch_ids,
+                f"task_batch_index.batches[{batch_index}].depends_on_batches refers to unknown batch: {dependency}",
+            )
+
+    return messages
+
+
+def validate_task_batch(path: Path, payload: Any, expected_batch: dict[str, Any]) -> list[str]:
+    label = rel(path)
+    validate_seed.expect_object_keys(payload, label, {"schema_version", "batch_id", "source_plan_path", "tasks"})
+    validate_seed.expect_non_empty_string(payload["schema_version"], f"{label}.schema_version")
+    validate_seed.expect(
+        payload["batch_id"] == expected_batch["batch_id"],
+        f"{label}.batch_id must match task_batch_index: {expected_batch['batch_id']}",
+    )
+    validate_seed.expect_non_empty_string(payload["source_plan_path"], f"{label}.source_plan_path")
+    validate_seed.expect_type(payload["tasks"], list, f"{label}.tasks")
+    validate_seed.expect(
+        len(payload["tasks"]) == expected_batch["expected_task_count"],
+        f"{label}.tasks length must match expected_task_count",
+    )
+
+    expected_task_ids = set(expected_batch["expected_task_ids"])
+    actual_task_ids = set()
+    messages = [f"SCHEMA OK   {label} -> contracts/task_batch.schema.json (builtin)"]
+
+    for task_index, task in enumerate(payload["tasks"]):
+        task_label = f"{label}.tasks[{task_index}]"
+        validate_seed.validate_task(task, task_label)
+        validate_seed.expect(
+            task["id"] in expected_task_ids,
+            f"{task_label}.id is not listed in task_batch_index expected_task_ids: {task['id']}",
+        )
+        validate_seed.expect(task["id"] not in actual_task_ids, f"duplicate task id in {label}: {task['id']}")
+        actual_task_ids.add(task["id"])
+        messages.append(f"SCHEMA OK   {task_label} -> contracts/task.schema.json (builtin)")
+
+    missing = expected_task_ids - actual_task_ids
+    validate_seed.expect(not missing, f"{label} is missing expected task id(s): {sorted(missing)}")
+    return messages
+
+
+def topological_order(tasks: dict[str, dict[str, Any]]) -> list[str]:
+    indegree = {task_id: 0 for task_id in tasks}
+    outgoing: dict[str, list[str]] = defaultdict(list)
+
+    for task_id, task in tasks.items():
+        for dependency in task["depends_on"]:
+            validate_seed.expect(
+                dependency in tasks,
+                f"task {task_id} depends_on unknown task id: {dependency}",
+            )
+            outgoing[dependency].append(task_id)
+            indegree[task_id] += 1
+
+        for blocked in task.get("blocks", []):
+            validate_seed.expect(
+                blocked in tasks,
+                f"task {task_id} blocks unknown task id: {blocked}",
+            )
+
+    queue = deque(sorted(task_id for task_id, degree in indegree.items() if degree == 0))
+    ordered: list[str] = []
+
+    while queue:
+        task_id = queue.popleft()
+        ordered.append(task_id)
+        for dependent in sorted(outgoing[task_id]):
+            indegree[dependent] -= 1
+            if indegree[dependent] == 0:
+                queue.append(dependent)
+
+    validate_seed.expect(
+        len(ordered) == len(tasks),
+        "task dependency graph contains a cycle",
+    )
+    return ordered
+
+
+def validate_batch_order(index: dict[str, Any], task_to_batch: dict[str, str], tasks: dict[str, dict[str, Any]]) -> list[str]:
+    batch_order = {batch["batch_id"]: index for index, batch in enumerate(index["batches"])}
+
+    for task_id, task in tasks.items():
+        task_batch = task_to_batch[task_id]
+        for dependency in task["depends_on"]:
+            dependency_batch = task_to_batch[dependency]
+            validate_seed.expect(
+                batch_order[dependency_batch] <= batch_order[task_batch],
+                f"batch order violation: task {task_id} depends on later batch task {dependency}",
+            )
+
+    return ["GRAPH OK    batch order respects task dependencies"]
+
+
+def main() -> int:
+    if not INDEX_PATH.is_file():
+        print(f"MISSING FAIL {rel(INDEX_PATH)}")
+        return 1
+
+    try:
+        index = load_json(INDEX_PATH)
+    except Exception as exc:
+        print(f"PARSE FAIL {rel(INDEX_PATH)}: {exc}")
+        return 1
+
+    failures = 0
+    all_tasks: dict[str, dict[str, Any]] = {}
+    task_to_batch: dict[str, str] = {}
+
+    try:
+        for message in validate_batch_index(index):
+            print(message)
+
+        expected_batches = {batch["batch_id"]: batch for batch in index["batches"]}
+        for batch in index["batches"]:
+            path = ROOT / batch["output_path"]
+            if batch["status"] == "planned" and not path.exists():
+                print(f"BATCH SKIP  {batch['batch_id']} status=planned output_missing_ok")
+                continue
+
+            validate_seed.expect(path.is_file(), f"missing task batch file: {batch['output_path']}")
+            payload = load_json(path)
+            for message in validate_task_batch(path, payload, batch):
+                print(message)
+
+            for task in payload["tasks"]:
+                validate_seed.expect(task["id"] not in all_tasks, f"duplicate task id across batches: {task['id']}")
+                all_tasks[task["id"]] = task
+                task_to_batch[task["id"]] = batch["batch_id"]
+
+        for path in sorted(BATCHES_DIR.glob("*.json")):
+            batch_id = path.stem
+            validate_seed.expect(batch_id in expected_batches, f"unexpected task batch file not in index: {rel(path)}")
+
+        if all_tasks:
+            ordered = topological_order(all_tasks)
+            print(f"GRAPH OK    tasks_topologically_sorted={len(ordered)}")
+            for message in validate_batch_order(index, task_to_batch, all_tasks):
+                print(message)
+        else:
+            print("GRAPH OK    no generated task batches yet")
+
+    except Exception as exc:
+        failures += 1
+        print(f"RESULT FAIL {exc}")
+
+    if failures:
+        return 1
+
+    print(f"RESULT OK   batches={len(index['batches'])} tasks={len(all_tasks)}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+
+```
+
 ## `tools/build_planning_runs_index.py`
 
 - Category: `tool`
@@ -10098,8 +10778,10 @@ if ($Before -ne $After) {
 
 Invoke-NativeChecked "Build planning runs index" { python tools\build_planning_runs_index.py }
 Invoke-NativeChecked "Validate seed" { python tools\validate_seed.py }
+Invoke-NativeChecked "Validate task batches" { python tools\validate_task_batches.py }
 Invoke-NativeChecked "Rebuild context pack" { python tools\build_context_pack.py }
 Invoke-NativeChecked "Validate seed after context rebuild" { python tools\validate_seed.py }
+Invoke-NativeChecked "Validate task batches after context rebuild" { python tools\validate_task_batches.py }
 
 Invoke-NativeChecked "JavaScript syntax checks" {
     Get-ChildItem web -Filter *.js | Sort-Object Name | ForEach-Object {

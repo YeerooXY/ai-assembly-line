@@ -309,7 +309,8 @@
         "Repository split or ownership targets from the plan"
       ],
       "task_boundaries": [
-        "Convert an accepted generated plan into schema-valid task_backlog.json only.",
+        "Convert an accepted generated plan into schema-valid task batches.",
+        "For large plans, produce a compact task_batch_index first and then one selected task batch at a time.",
         "Do not implement project code.",
         "Do not invent architecture, repositories, features, or scope beyond the accepted plan.",
         "Preserve high-risk open questions as blocking tasks or explicit context instead of silently deciding them.",
@@ -317,17 +318,20 @@
         "Keep tasks small, verifiable, parallel-safe, and traceable to the accepted plan."
       ],
       "output_required": [
-        "Valid JSON array of task objects",
-        "Task records conforming to contracts/task.schema.json",
+        "Exactly one fenced json code block per response",
+        "Compact task_batch_index when no target batch is selected",
+        "Valid task batch object for one selected batch",
+        "Task records conforming to contracts/task.schema.json in each batch",
         "Dependencies by stable task ID",
         "Repo targets from the accepted plan",
         "Acceptance criteria and verification for every task",
         "Proof requirements, edge cases, non-goals, and estimated size when useful"
       ],
       "verification_required": [
-        "Output parses as JSON.",
-        "Top-level output is an array.",
-        "Every task conforms to contracts/task.schema.json.",
+        "Output contains exactly one json code block and no prose outside it.",
+        "Batch index output contains no full task objects.",
+        "Task batch output parses as a JSON object with a tasks array.",
+        "Every task in each batch conforms to contracts/task.schema.json.",
         "Every dependency refers to a generated task ID.",
         "Every task has concrete acceptance criteria and verification.",
         "No task expands beyond the accepted MVP or contradicts explicit non-goals."

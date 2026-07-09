@@ -195,6 +195,31 @@ Do not create implementation tasks that require undefined APIs, event contracts,
 
 A task should normally belong to one `repo_target`. If it touches multiple repos, mark it as integration or QA work and make the cross-repo proof explicit.
 
+## Large Plan Batch Workflow
+
+For large generated plans, do not ask a web AI to return the whole backlog in one response.
+
+Use a two-step batch workflow:
+
+1. Generate a compact `task_batch_index` grouped by `owner_role`, `repo_target`, or `lane`.
+2. Generate one selected batch at a time as a `contracts/task_batch.schema.json` object.
+
+This keeps outputs copy-pastable and reduces the chance of truncation.
+
+Each task batch must conform to `contracts/task_batch.schema.json`.
+
+Each task inside the batch must still conform to `contracts/task.schema.json`.
+
+The future frontend should support:
+
+- copy prompt for batch index
+- paste returned batch index
+- choose one batch
+- copy prompt for that selected batch
+- paste returned task JSON
+- validate task graph dependencies and topological batch order
+- merge accepted batches into `generated/task_backlog.json`
+
 ## Review Checklist
 
 Before marking a task `ready`, check:

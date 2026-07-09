@@ -11,6 +11,8 @@ export const CONTRACT_FILES = {
   projectSpecSchema: "../contracts/project_spec.schema.json",
   repoPlanSchema: "../contracts/repo_plan.schema.json",
   taskSchema: "../contracts/task.schema.json",
+  taskBatchIndexSchema: "../contracts/task_batch_index.schema.json",
+  taskBatchSchema: "../contracts/task_batch.schema.json",
   slotSchema: "../contracts/slot.schema.json",
   agentPromptSchema: "../contracts/agent_prompt.schema.json",
   collaborationStateSchema: "../contracts/collaboration_state.schema.json",

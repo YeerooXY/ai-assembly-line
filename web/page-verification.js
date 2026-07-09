@@ -5,6 +5,8 @@ const CONTRACT_ENTRIES = [
   { id: "projectSpecSchema", path: "contracts/project_spec.schema.json", kind: "json" },
   { id: "repoPlanSchema", path: "contracts/repo_plan.schema.json", kind: "json" },
   { id: "taskSchema", path: "contracts/task.schema.json", kind: "json" },
+  { id: "taskBatchIndexSchema", path: "contracts/task_batch_index.schema.json", kind: "json" },
+  { id: "taskBatchSchema", path: "contracts/task_batch.schema.json", kind: "json" },
   { id: "slotSchema", path: "contracts/slot.schema.json", kind: "json" },
   { id: "agentPromptSchema", path: "contracts/agent_prompt.schema.json", kind: "json" },
   { id: "collaborationStateSchema", path: "contracts/collaboration_state.schema.json", kind: "json" },
