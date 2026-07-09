@@ -2,20 +2,20 @@
 
 `project_intake.json` is the final structured intake record.
 
-`intake_session.json` is the interactive state used while the Intake Interviewer is still asking questions.
+`intake_session.json` is the internal interactive state used while the Intake Interviewer is still asking questions.
 
-The frontend should render `intake_session.json` while intake is in progress, then render or save `project_intake.json` once the session is ready.
+A frontend can render `intake_session.json` directly. In normal chat, the assistant should show compact human-readable intake status instead of dumping raw JSON.
 
 ## Why this exists
 
 A rough project idea should not immediately turn into a full guideline document, project spec, backlog, or implementation plan.
 
-The first response should be an intake session update:
+The intended chat flow is:
 
 ```text
 rough idea
-  -> intake_session update
-  -> focused question
+  -> compact intake status
+  -> one focused question or decision card
   -> project_intake.json
   -> planning artifacts
 ```
@@ -24,7 +24,7 @@ This prevents the AI from jumping the gun and generating a fake-complete plan be
 
 ## Source of truth
 
-The schema is:
+The internal session schema is:
 
 ```text
 contracts/intake_session.schema.json
@@ -56,10 +56,12 @@ When a user provides only a rough idea, the Intake Interviewer must not output:
 Instead, it must output:
 
 1. a short acknowledgement
-2. an `intake_session` state block
-3. the next high-impact question
+2. a compact human-readable intake status summary
+3. the next high-impact question, preferably as a decision card when the choice affects MVP difficulty or later scaling/refactor pain
 
 Then it must stop. If `readiness.can_generate_intake` is `false`, the response must not continue with guidelines, recommendations, architecture, repo layout, task rules, suggested answers, or a checklist of future questions.
+
+Do not print raw `intake_session` JSON by default. Keep it internally and show JSON only when the user asks for it, the session becomes ready for `project_intake.json`, state review is needed, or saving/exporting/persisting is requested.
 
 ## Guidelines wording trap
 
@@ -67,124 +69,72 @@ A user may ask for `guidelines`, `steering help`, `starter rules`, or help `sett
 
 That wording still means: start intake.
 
-It does not permit the Intake Interviewer to produce:
+It does not permit the Intake Interviewer to produce starter steering rules, temporary guidelines, stack recommendations, repo split, definition of done, suggested answers, or a checklist of future intake questions.
 
-- starter steering rules
-- temporary guidelines
-- stack recommendations
-- a repo/package split
-- a target `.ai-assembly/` project layout
-- a definition of done
-- suggested answers to its own questions
-- a checklist of future intake questions
-
-The correct response is to say that guidelines can be produced after the high-risk intake questions are answered, then provide only the `intake_session` update and the single next question in guided mode.
-
-## Session states
-
-Allowed `status` values:
-
-- `not_started`
-- `in_progress`
-- `ready_for_intake_record`
-- `intake_record_drafted`
-- `blocked`
-
-Allowed `next_action.type` values:
-
-- `ask_questions`
-- `suggest_stack`
-- `draft_project_intake`
-- `handoff_to_planning`
-- `blocked`
+The correct response is to say that guidelines can be produced after the high-risk intake questions are answered, then provide only the compact intake status and the single next question in guided mode.
 
 ## Minimal first response shape
 
-For a rough idea like `I want to build a multiplayer Tron game`, the first response should look like this:
+For a rough idea like `I want to build a tiny shared grocery list app for two people`, the first response should look like this:
 
-```json
-{
-  "schema_version": "0.1.0",
-  "project_slug": "multiplayer-tron",
-  "mode": "guided",
-  "status": "in_progress",
-  "current_section": "goal-and-mvp",
-  "sections": [
-    {
-      "id": "goal-and-mvp",
-      "label": "Goal and MVP",
-      "status": "in_progress",
-      "questions": [
-        {
-          "id": "goal-001",
-          "question": "What kind of multiplayer should the first playable version support: local same-keyboard, LAN, private online rooms, or public matchmaking?",
-          "answer": "",
-          "risk_level": "high",
-          "affects": ["mvp", "networking", "stack"]
-        }
-      ]
-    }
-  ],
-  "stack_options": [],
-  "assumptions": [
-    "The project is a standalone original game, not automation of an existing game or service."
-  ],
-  "open_questions": [
-    {
-      "question": "What kind of multiplayer should the MVP support?",
-      "risk_if_unanswered": "The architecture and stack cannot be chosen safely."
-    },
-    {
-      "question": "Which platform matters first?",
-      "risk_if_unanswered": "The target platform changes stack, deployment, input handling, and networking choices."
-    },
-    {
-      "question": "Is this a greenfield project or an existing repository?",
-      "risk_if_unanswered": "The workspace layout and file-boundary plan cannot be chosen safely."
-    },
-    {
-      "question": "How many humans or AI agents should work in parallel?",
-      "risk_if_unanswered": "The task split and prompt boundaries cannot be shaped correctly."
-    }
-  ],
-  "readiness": {
-    "can_generate_intake": false,
-    "missing_high_risk_answers": [
-      "MVP multiplayer mode",
-      "target platform",
-      "stack preference or permission to recommend one",
-      "greenfield versus existing repo",
-      "parallel humans/AI agents"
-    ]
-  },
-  "next_action": {
-    "type": "ask_questions",
-    "questions": [
-      "What kind of multiplayer should the first playable version support: local same-keyboard, LAN, private online rooms, or public matchmaking?"
-    ]
-  }
-}
+```text
+Yes — this starts intake, because guidelines should come after the high-risk project choices are known.
+
+Intake status: started
+Project: shared-grocery-list
+Known: tiny shared grocery list app for two people
+Still needed: MVP boundary
+
+Decision: What is the smallest useful MVP for the two of you?
+
+A) One-device local list
+What it means: One list on one device, no sharing between devices.
+Pros: fastest to build and easiest to test.
+Cons: not truly shared.
+MVP risk: low.
+Scaling/refactor risk: high — adding real sharing later may require rethinking storage and state.
+Best when: You only want to validate the list UI first.
+
+B) Manual share/export list
+What it means: One person can copy/export the list and send it to the other.
+Pros: simple, with some sharing behavior.
+Cons: clunky and not live.
+MVP risk: low-medium.
+Scaling/refactor risk: medium.
+Best when: Sharing matters, but live collaboration is not required yet.
+
+C) Real shared list with sync
+What it means: Both people can edit the same list from separate devices.
+Pros: matches the actual product idea.
+Cons: needs backend/sync/conflict decisions.
+MVP risk: medium-high.
+Scaling/refactor risk: low-medium — avoids fake-sharing rework later.
+Best when: The core value is truly shared usage.
+
+Agent recommendation: C — if “shared” is the point of the product; A only if you want the fastest throwaway prototype.
+
+Question: Choose A, B, C, recommended, or custom.
 ```
 
-This is not a required exact output. It is the intended shape: visible session state plus the single next question.
+This is not a required exact output. It is the intended shape: compact state plus one useful decision.
 
 In guided mode, `next_action.questions` should contain only the single next question. Other unanswered decisions belong in `open_questions`, not in the visible next-question list.
 
-The first response should not include any sections after this shape except the same focused question in user-readable form.
+## Compact guided updates
 
-## Compact follow-up updates
-
-After the first visible `intake_session` in guided mode, do not print the full JSON on every turn.
+Normal guided turns should not print the full JSON.
 
 Use a compact update like:
 
 ```text
-Recorded: multiplayer mode = real-time shared rooms.
-Status: MVP section complete; platform/stack still open.
-Next question: Which platform matters first: browser, desktop, mobile, or something else?
+Recorded: MVP sharing mode = real shared list with sync.
+Status: MVP boundary is clear; platform/stack is still open.
+
+Decision: Which platform should the MVP target first?
+...
 ```
 
-Show the full `intake_session` again only when:
+Show the full `intake_session` only when:
 
 - the user asks to see the JSON or full session state,
 - the session becomes ready for `project_intake.json`,
@@ -192,49 +142,6 @@ Show the full `intake_session` again only when:
 - the state has become ambiguous and needs explicit review.
 
 The compact update still represents an updated `intake_session`; it just does not dump the entire object into the chat.
-
-## Decision-card follow-up updates
-
-A compact guided update may include one decision card when the next question is hard.
-
-Use this when the choice affects MVP difficulty or later scaling/refactor pain.
-
-```text
-Recorded: team mode = 2 people working in parallel.
-Status: Ready for stack choice.
-
-Decision: Which stack direction do you want for the MVP?
-
-A) Flutter client + backend service
-What it means: Build the UI in Flutter and a separate backend for rooms, game state, and realtime events.
-Pros: Best fit for desktop-first now and mobile later.
-Cons: Backend still needs separate WebSocket/game-state work.
-MVP risk: medium — more setup than a pure web prototype.
-Scaling/refactor risk: low-medium — mobile later is much less painful.
-Best when: Mobile later is real, not just a vague maybe.
-
-B) React + Tauri desktop client + backend
-What it means: Build a web-style UI wrapped as a lightweight desktop app, with a separate backend.
-Pros: Fast desktop MVP; familiar web tooling.
-Cons: Mobile later probably needs a separate client or rewrite.
-MVP risk: low-medium — good speed if the team knows web tooling.
-Scaling/refactor risk: medium — mobile later can become a second project.
-Best when: Desktop MVP speed matters more than mobile reuse.
-
-C) React web app + Electron wrapper + backend
-What it means: Build a browser-style app and package it with Electron for desktop.
-Pros: Fastest if the team knows web tooling.
-Cons: Heavier desktop app; mobile later is not clean.
-MVP risk: low — quickest path to something playable.
-Scaling/refactor risk: high — can become painful if mobile and polish matter later.
-Best when: The goal is to prove gameplay fast.
-
-Agent recommendation: A — because the stated goal is desktop first, but mobile later matters.
-
-Question: Choose A, B, C, recommended, or custom.
-```
-
-This still counts as one guided question. If the user answers `recommended`, record the recommended option as the selected answer. Unchosen options are rationale, not project decisions.
 
 ## Frontend rendering guidance
 
