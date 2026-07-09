@@ -73,9 +73,19 @@
     {
       "prompt_id": "frontend-builder-phase0",
       "role": "Frontend Builder",
-      "target_repo": "seed-web-placeholder",
+      "target_repo": "seed-static-viewer",
       "allowed_files": [
-        "web/static-docs-or-dashboard-placeholder/",
+        "web/index.html",
+        "web/repos.html",
+        "web/backlog.html",
+        "web/prompts.html",
+        "web/slots.html",
+        "web/verification.html",
+        "web/viewer-data.js",
+        "web/viewer-layout.js",
+        "web/page-*.js",
+        "web/viewer.css",
+        "web/README.md",
         "README.md",
         "generated/",
         "contracts/"
@@ -84,7 +94,9 @@
         "web/app/",
         "generated/custom-ui-state.json",
         "database/",
-        "auth/"
+        "auth/",
+        "backend/",
+        "realtime/"
       ],
       "input_context_required": [
         "Generated project spec",
@@ -95,7 +107,8 @@
       "task_boundaries": [
         "Render generated state directly.",
         "Do not invent task, repo, prompt, slot, or contract structure.",
-        "Do not add mutable dashboards or realtime synchronization."
+        "Do not change generated JSON structure or contracts unless explicitly assigned.",
+        "Do not add backend routes, authentication, databases, realtime sync, or mutable workflow state."
       ],
       "output_required": [
         "Read-only rendering plan",

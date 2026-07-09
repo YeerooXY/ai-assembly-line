@@ -141,6 +141,7 @@ It should display:
 - `PROJECT_SPEC_TEMPLATE.md`: reusable template for future planning runs
 - `PRODUCT_RULES.md`: hard rules and safety boundaries
 - `docs/`: public overview, workflow, roles, task format, verification rules
+- `docs/EXTERNAL_REVIEW_PROMPT.md`: fresh-clone external reviewer prompt
 - `contracts/`: schemas and OpenAPI contract
 - `generated/`: canonical machine-readable planning artifacts for the current seed state
 - `examples/coc-base-builder/`: example decomposition for a safe base layout planner
@@ -162,6 +163,8 @@ The validator:
 - reports each valid JSON file
 - reports parse failures clearly
 - schema-validates the canonical generated artifacts when `jsonschema` is available
+
+For fresh-clone external review instructions, see `docs/EXTERNAL_REVIEW_PROMPT.md`.
 
 ## Current Use
 

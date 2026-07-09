@@ -3,7 +3,8 @@ info:
   title: AI Assembly Line API Contract
   version: 0.1.0
   description: >
-    Seed API contract for read-only project-state access and future spec compilation.
+    Seed API contract draft for future read-only project-state access and future spec compilation.
+    This file documents planned interfaces only and does not imply an implemented backend in the current Phase 0 repository.
 servers:
   - url: http://localhost:3000
 paths:
@@ -58,6 +59,9 @@ paths:
   /compile-spec:
     post:
       summary: Compile a rough idea into a structured project spec draft
+      description: >
+        Future spec compiler draft route only. This path is not implemented by the current Phase 0 repository
+        and remains a contract-first planning artifact.
       operationId: compileSpec
       requestBody:
         required: true

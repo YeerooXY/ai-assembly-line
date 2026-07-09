@@ -74,10 +74,20 @@
       ]
     },
     {
-      "name": "seed-web-placeholder",
-      "purpose": "Reserve a future read-only frontend surface that consumes generated state without inventing new models.",
+      "name": "seed-static-viewer",
+      "purpose": "Own the static multi-page read-only viewer that consumes generated state directly without inventing new models.",
       "contains": [
-        "web/static-docs-or-dashboard-placeholder/"
+        "web/index.html",
+        "web/repos.html",
+        "web/backlog.html",
+        "web/prompts.html",
+        "web/slots.html",
+        "web/verification.html",
+        "web/viewer-data.js",
+        "web/viewer-layout.js",
+        "web/page-*.js",
+        "web/viewer.css",
+        "web/README.md"
       ],
       "depends_on": [
         "seed-generated-state",
@@ -172,44 +182,45 @@
         "PROJECT_SPEC.md",
         "generated/project_spec.json"
       ],
-      "notes": "Read-only summary of product goal, scope, and rules."
+      "notes": "Read-only landing page summary of product goal, scope, and rules."
     },
     {
       "name": "Repo Split",
       "renders_from": [
         "generated/repo_plan.json"
       ],
-      "notes": "Display contract-defined ownership boundaries only."
+      "notes": "Static repo ownership page that displays contract-defined ownership boundaries only."
     },
     {
       "name": "Task Backlog",
       "renders_from": [
         "generated/task_backlog.json"
       ],
-      "notes": "Render task cards directly from the generated backlog."
+      "notes": "Static backlog page that renders task cards directly from the generated backlog grouped by repo target."
     },
     {
       "name": "Prompt Pack",
       "renders_from": [
-        "generated/agent_prompts.json",
-        "prompts/"
+        "generated/agent_prompts.json"
       ],
-      "notes": "Show role prompts and contract-defined constraints."
+      "notes": "Static prompts page that shows generated role prompts and contract-defined constraints."
     },
     {
       "name": "Contracts and Verification",
       "renders_from": [
-        "contracts/",
+        "generated/project_spec.json",
+        "generated/task_backlog.json",
+        "generated/agent_prompts.json",
         "generated/slots_db.json",
-        "docs/verification-rules.md"
+        "contracts/"
       ],
-      "notes": "Expose schemas, slot requirements, and verification rules without mutable workflow state."
+      "notes": "Static verification page that exposes generated verification requirements and source-of-truth constraints without mutable workflow state."
     }
   ],
   "backend_services": [
     {
       "name": "read-only project state api draft",
-      "responsibility": "Describe a future read-only API surface that serves generated planning artifacts without adding auth or persistence.",
+      "responsibility": "Describe a future read-only API surface and future spec compiler draft contract without adding auth or persistence in phase 0.",
       "inputs": [
         "generated/*.json",
         "contracts/api_contract.openapi.yaml"

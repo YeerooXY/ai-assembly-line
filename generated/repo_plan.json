@@ -77,10 +77,20 @@
       ]
     },
     {
-      "name": "seed-web-placeholder",
-      "purpose": "Reserve the future read-only frontend mount point for rendering generated state.",
+      "name": "seed-static-viewer",
+      "purpose": "Own the static multi-page read-only viewer that renders generated planning state directly from source-of-truth JSON files.",
       "contains": [
-        "web/static-docs-or-dashboard-placeholder/README.md"
+        "web/index.html",
+        "web/repos.html",
+        "web/backlog.html",
+        "web/prompts.html",
+        "web/slots.html",
+        "web/verification.html",
+        "web/viewer-data.js",
+        "web/viewer-layout.js",
+        "web/page-*.js",
+        "web/viewer.css",
+        "web/README.md"
       ],
       "depends_on": [
         "seed-generated-state",
@@ -89,7 +99,8 @@
       "excludes": [
         "invented task or prompt structure",
         "authentication",
-        "realtime sync"
+        "realtime sync",
+        "mutable workflow state"
       ]
     }
   ]
