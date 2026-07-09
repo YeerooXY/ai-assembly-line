@@ -2,6 +2,49 @@
   "project_name": "AI Assembly Line",
   "prompts": [
     {
+      "prompt_id": "intake-interviewer-phase0",
+      "role": "Intake Interviewer",
+      "target_repo": "seed-docs-and-rules",
+      "allowed_files": [
+        "README.md",
+        "PROJECT_SPEC_TEMPLATE.md",
+        "PRODUCT_RULES.md",
+        "docs/PROJECT_INTAKE_WORKFLOW.md",
+        "contracts/project_intake.schema.json",
+        "prompts/00-intake-interviewer.md"
+      ],
+      "forbidden_files": [
+        "web/app/",
+        "db/",
+        "auth/",
+        "workers/",
+        "agents/runtime/"
+      ],
+      "input_context_required": [
+        "User rough idea",
+        "Project intake workflow",
+        "Project intake schema",
+        "Product rules",
+        "Known tools, paths, stack preferences, or repo constraints"
+      ],
+      "task_boundaries": [
+        "Ask only questions that materially change the plan.",
+        "Suggest stack options with tradeoffs when the user has not chosen one.",
+        "Produce a project_intake.json draft before planning artifacts.",
+        "Do not produce implementation tasks until the intake record is complete enough."
+      ],
+      "output_required": [
+        "Structured project intake record",
+        "Explicit assumptions",
+        "High-risk open questions",
+        "Planning Agent hand-off summary"
+      ],
+      "verification_required": [
+        "Intake record matches contracts/project_intake.schema.json.",
+        "Unsafe or ambiguous scope is rejected, bounded, or preserved as open questions."
+      ]
+    },
+    {
       "prompt_id": "planning-agent-phase0",
       "role": "Planning Agent",
       "target_repo": "seed-generated-state",
@@ -21,12 +64,13 @@
       "input_context_required": [
         "Current phase specification",
         "Product rules",
-        "Existing contracts"
+        "Existing contracts",
+        "Project intake record when available"
       ],
       "task_boundaries": [
         "Produce planning artifacts only.",
         "Do not add frontend implementation, auth, databases, realtime sync, or agent automation.",
-        "Keep outputs traceable to the source-of-truth spec."
+        "Keep outputs traceable to the source-of-truth spec and intake record."
       ],
       "output_required": [
         "Updated generated project state",
@@ -58,7 +102,7 @@
         "Existing prompt files"
       ],
       "task_boundaries": [
-        "Define strict contracts for machine-readable planning artifacts.",
+        "Define strict contracts for machine-readable intake and planning artifacts.",
         "Reject undocumented fields unless explicitly approved in source-of-truth files."
       ],
       "output_required": [
@@ -80,6 +124,7 @@
         "web/backlog.html",
         "web/prompts.html",
         "web/slots.html",
+        "web/planning-runs.html",
         "web/verification.html",
         "web/viewer-data.js",
         "web/viewer-layout.js",
@@ -106,7 +151,7 @@
       ],
       "task_boundaries": [
         "Render generated state directly.",
-        "Do not invent task, repo, prompt, slot, or contract structure.",
+        "Do not invent task, repo, prompt, slot, intake, or contract structure.",
         "Do not change generated JSON structure or contracts unless explicitly assigned.",
         "Do not add backend routes, authentication, databases, realtime sync, or mutable workflow state."
       ],
@@ -171,15 +216,16 @@
       "input_context_required": [
         "Current project specification",
         "Product rules",
-        "Repo plan"
+        "Repo plan",
+        "Project intake workflow"
       ],
       "task_boundaries": [
-        "Stay within deterministic planning compilation and validation responsibilities.",
+        "Stay within deterministic intake, planning compilation, and validation responsibilities.",
         "Do not build autonomous execution paths."
       ],
       "output_required": [
         "Deterministic generated planning artifacts",
-        "Traceability notes across contracts and prompts"
+        "Traceability notes across intake, contracts, and prompts"
       ],
       "verification_required": [
         "Artifacts stay deterministic and schema-aligned.",
@@ -205,10 +251,11 @@
       "input_context_required": [
         "Project rules",
         "Generated artifacts",
-        "Prompt pack"
+        "Prompt pack",
+        "Intake workflow"
       ],
       "task_boundaries": [
-        "Search for unsafe reinterpretation, schema drift, and hidden state invention.",
+        "Search for unsafe reinterpretation, schema drift, hidden state invention, and intake ambiguity.",
         "Keep review findings tied to current contracts and source-of-truth files."
       ],
       "output_required": [
@@ -217,7 +264,7 @@
         "Verification gaps"
       ],
       "verification_required": [
-        "Attack cases cover auth, database, realtime, automation, and invented frontend state drift.",
+        "Attack cases cover auth, database, realtime, automation, intake overreach, and invented frontend state drift.",
         "Each finding maps to a rule or contract boundary."
       ]
     }
