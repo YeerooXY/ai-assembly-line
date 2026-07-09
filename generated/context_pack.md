@@ -244,7 +244,7 @@ python tools\validate_seed.py
 
 - repo-level planning documents
 - JSON schemas for core generated artifacts
-- a seed OpenAPI contract for a future read-only/project-state API
+- a seed OpenAPI contract for future read-only project-state endpoints plus a future spec-compiler draft route; no backend is implemented in Phase 0
 - role-specific prompt pack
 - one worked example: `coc-base-builder`
 
@@ -258,6 +258,7 @@ python tools\validate_seed.py
 ### Schemas
 
 - `project_spec.schema.json`
+- `agent_prompt.schema.json`
 - `slot.schema.json`
 - `task.schema.json`
 - `repo_plan.schema.json`
@@ -310,6 +311,8 @@ The output should include:
 8. core-engine responsibilities
 9. verification tasks
 10. copy-paste prompts for AI roles
+
+Backend services are planning/spec sections only in Phase 0 and do not imply current backend implementation.
 
 ## 8. Verification Strategy
 
@@ -484,12 +487,13 @@ Generated planning artifacts are drafts until a human accepts them.
 
 ## Frontend Source-of-Truth Rule
 
-The frontend must render project state from spec and generated contract files.
+The frontend must render project state from spec and generated state files and contract files.
 
 It must not invent:
 
 - tasks
 - repos
+- prompts
 - slots
 - contracts
 - verification structures

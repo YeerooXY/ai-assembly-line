@@ -14,12 +14,13 @@ Generated planning artifacts are drafts until a human accepts them.
 
 ## Frontend Source-of-Truth Rule
 
-The frontend must render project state from spec and generated contract files.
+The frontend must render project state from spec and generated state files and contract files.
 
 It must not invent:
 
 - tasks
 - repos
+- prompts
 - slots
 - contracts
 - verification structures
