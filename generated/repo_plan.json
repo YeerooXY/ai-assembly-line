@@ -38,13 +38,14 @@
     },
     {
       "name": "seed-generated-state",
-      "purpose": "Own the canonical machine-readable planning artifacts consumed by future read-only interfaces.",
+      "purpose": "Own the canonical machine-readable planning artifacts and derived planning-run index consumed by read-only interfaces.",
       "contains": [
         "generated/project_spec.json",
         "generated/repo_plan.json",
         "generated/task_backlog.json",
         "generated/agent_prompts.json",
-        "generated/slots_db.json"
+        "generated/slots_db.json",
+        "generated/planning_runs_index.json"
       ],
       "depends_on": [
         "seed-docs-and-rules",
@@ -85,6 +86,7 @@
         "web/backlog.html",
         "web/prompts.html",
         "web/slots.html",
+        "web/planning-runs.html",
         "web/verification.html",
         "web/viewer-data.js",
         "web/viewer-layout.js",
