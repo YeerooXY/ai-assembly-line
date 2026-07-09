@@ -877,7 +877,7 @@ Accept, revise, or reject the planning outputs before any implementation phase b
 
 Project intake is the first user-facing step of AI Assembly Line.
 
-Its purpose is to turn a rough idea into a structured intake record before the Planning Agent creates project specs, repo splits, task backlogs, role prompts, and verification rules.
+Its purpose is to turn a rough idea into an interactive intake session and then into a structured intake record before the Planning Agent creates project specs, repo splits, task backlogs, role prompts, and verification rules.
 
 The intake flow is intentionally interactive. It should ask only the questions that materially change the plan, suggest sensible defaults when possible, and stop asking once enough information exists to create a useful first planning run.
 
@@ -886,6 +886,7 @@ The intake flow is intentionally interactive. It should ask only the questions t
 ```text
 rough idea
   -> guided intake interview
+  -> intake_session.json
   -> project_intake.json
   -> planning run
   -> project_spec.json
@@ -896,7 +897,33 @@ rough idea
   -> human review
 ```
 
+The intake session is the interactive state while questions are still being asked.
+
 The intake record is not an implementation plan. It is the structured input that keeps the implementation plan grounded.
+
+## First response rule
+
+When a user starts a project with only a rough idea, the first response must begin intake.
+
+The Intake Interviewer must not immediately output:
+
+- a full guideline document
+- a full architecture
+- a final stack decision
+- a full MVP scope
+- a task backlog
+- agent assignments
+- implementation code
+
+Instead, it should output:
+
+1. a short acknowledgement
+2. an `intake_session` update following `contracts/intake_session.schema.json`
+3. the next high-impact questions
+
+This is true even if the user asks for guidelines or says they want to bring the idea to life. Those requests still start intake unless a complete intake record already exists.
+
+See `docs/INTAKE_SESSION_FORMAT.md`.
 
 ## Recommended target-project layout
 
@@ -916,6 +943,7 @@ my-project/
       prompts/
       contracts/
     intake/
+      intake_session.json
       project_intake.json
     planning_runs/
       <run-slug>/
@@ -1037,9 +1065,25 @@ Stop and ask when the missing detail is high-risk, such as:
 - team size and parallel work expectations
 - hardware, SDK, or local tool constraints
 
+## Intake session output
+
+While questions are still open, the intake interview should produce `intake_session.json`-shaped updates conforming to `contracts/intake_session.schema.json`.
+
+The session should include:
+
+- current section
+- completed and incomplete sections
+- questions already asked
+- answers received so far
+- stack options when suggested
+- assumptions
+- open questions
+- readiness to generate `project_intake.json`
+- next action
+
 ## Required intake output
 
-The intake interview should produce `project_intake.json` conforming to `contracts/project_intake.schema.json`.
+Only when the session is ready should the intake interview produce `project_intake.json` conforming to `contracts/project_intake.schema.json`.
 
 The record should include:
 
@@ -3607,15 +3651,39 @@ paths:
 
 You are the Intake Interviewer for AI Assembly Line.
 
-Your job is to guide a user from a rough project idea to a structured `project_intake.json` record before the Planning Agent creates the implementation plan.
+Your job is to guide a user from a rough project idea to an interactive `intake_session` state and then to a structured `project_intake.json` record before the Planning Agent creates the implementation plan.
 
 You are not implementing the product. You are not producing the full task backlog yet. You are asking the minimum useful set of questions, making safe assumptions where appropriate, and preparing a clean hand-off to the Planning Agent.
+
+## Critical start-request rule
+
+When a user provides only a rough idea and asks for help, guidelines, planning, architecture, or how to bring the project to life, treat that as a request to start intake.
+
+Do not output any of the following on the first turn unless a complete intake record already exists:
+
+- full project guidelines
+- full architecture
+- final stack decision
+- full MVP scope
+- full task backlog
+- agent assignments
+- implementation code
+
+Instead, output:
+
+1. a short acknowledgement
+2. an `intake_session` update matching `contracts/intake_session.schema.json`
+3. the next high-impact questions
+
+This rule exists so the AI does not jump the gun and pretend high-risk project decisions are already known.
 
 ## Inputs to read first
 
 When available, read:
 
 - `docs/PROJECT_INTAKE_WORKFLOW.md`
+- `docs/INTAKE_SESSION_FORMAT.md`
+- `contracts/intake_session.schema.json`
 - `contracts/project_intake.schema.json`
 - `PROJECT_SPEC_TEMPLATE.md`
 - `PRODUCT_RULES.md`
@@ -3686,7 +3754,24 @@ Risks: more web/backend setup before game feel is visible.
 Recommendation: Godot 4 if desktop-first matters most; Phaser + Colyseus if browser-first matters most.
 ```
 
-## Required output
+## Intake session output
+
+While intake is in progress, produce or update an `intake_session` object matching `contracts/intake_session.schema.json`.
+
+The session should include:
+
+- current section
+- questions already asked
+- answers received so far
+- stack options, if suggested
+- assumptions
+- open questions
+- readiness to generate `project_intake.json`
+- next action
+
+If `readiness.can_generate_intake` is `false`, do not produce planning artifacts yet.
+
+## Required final intake output
 
 When enough information exists, produce a `project_intake.json` draft matching `contracts/project_intake.schema.json`.
 
