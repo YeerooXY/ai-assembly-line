@@ -71,6 +71,55 @@ The future frontend is allowed to consume only source-of-truth material from:
 
 Rule: the frontend must render generated state and must not invent task, repo, prompt, slot, or contract structure.
 
+## Read-Only Viewer
+
+The first frontend lives in `web/` as a static multi-page read-only viewer.
+
+Open it in one of two ways:
+
+```powershell
+python -m http.server 8000
+```
+
+Then visit `http://localhost:8000/web/`.
+
+Or open any page in `web/` directly and use the page's file loader to select the required generated JSON files for that page.
+
+The viewer pages are:
+
+- `web/index.html`
+- `web/repos.html`
+- `web/backlog.html`
+- `web/prompts.html`
+- `web/slots.html`
+- `web/verification.html`
+
+The generated sources remain:
+
+- `generated/project_spec.json`
+- `generated/repo_plan.json`
+- `generated/task_backlog.json`
+- `generated/agent_prompts.json`
+- `generated/slots_db.json`
+
+The viewer displays:
+
+- project overview
+- repository split and repo ownership
+- task backlog grouped by repo target
+- agent prompts
+- slot board
+- verification rules, source-of-truth notes, and proof requirements
+
+The viewer intentionally does not do the following yet:
+
+- editing
+- backend APIs
+- authentication
+- realtime sync
+- mutable workflow state
+- frontend-owned task, repo, prompt, slot, or contract models
+
 ## Initial Public Surface
 
 The first public-facing web output should be read-only and contract-driven.
@@ -97,7 +146,7 @@ It should display:
 - `examples/coc-base-builder/`: example decomposition for a safe base layout planner
 - `prompts/`: copy-paste role prompts
 - `tools/validate_seed.py`: repository JSON validation utility
-- `web/static-docs-or-dashboard-placeholder/`: placeholder for the first read-only UI
+- `web/`: static multi-page read-only viewer over generated state
 
 ## Validation
 
