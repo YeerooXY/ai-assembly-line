@@ -46,6 +46,8 @@ The source-of-truth layers are:
    - `generated/task_backlog.json`
    - `generated/agent_prompts.json`
    - `generated/slots_db.json`
+5. Derived planning-run index
+   - `generated/planning_runs_index.json`
 
 ## Frontend Rule
 
@@ -101,6 +103,7 @@ The generated sources remain:
 - `generated/task_backlog.json`
 - `generated/agent_prompts.json`
 - `generated/slots_db.json`
+- `generated/planning_runs_index.json`
 
 The viewer displays:
 
@@ -145,12 +148,15 @@ It should display:
 - `docs/PLANNING_RUN_WORKFLOW.md`: manual planning-run workflow
 - `contracts/`: schemas and OpenAPI contract
 - `generated/`: canonical machine-readable planning artifacts for the current seed state
+- `generated/planning_runs_index.json`: derived index of manual planning-run folders and output completeness
 - `examples/coc-base-builder/`: example decomposition for a safe base layout planner
 - `planning_runs/`: manual planning-run folders and review artifacts
 - `prompts/`: copy-paste role prompts
 - `tools/validate_seed.py`: repository JSON validation utility
 - `tools/init_planning_run.py`: manual planning-run folder initializer
 - `tools/validate_planning_run.py`: planning-run output validator
+- `tools/build_planning_runs_index.py`: derives `generated/planning_runs_index.json` from `planning_runs/`
+- `tools/sync_and_check.ps1`: local helper for pulling GitHub-side changes and running validation checks
 - `web/`: static multi-page read-only viewer over generated state
 
 ## Remote AI Review
@@ -177,6 +183,14 @@ The first real product workflow is a manual planning run:
 7. review and accept or reject the plan
 
 See `docs/PLANNING_RUN_WORKFLOW.md` and `planning_runs/README.md`.
+
+Planning runs can also be indexed for read-only review:
+
+```powershell
+python tools/build_planning_runs_index.py
+```
+
+This writes `generated/planning_runs_index.json`, which records each run's scaffold status and which required output files are present. The local sync helper runs this automatically before validation.
 
 ## Validation
 
@@ -219,3 +233,4 @@ Run validation:
 
 ```powershell
 python tools\validate_seed.py
+```
