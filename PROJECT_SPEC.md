@@ -3,8 +3,8 @@
 ## 1. Product Summary
 
 - Project name: AI Assembly Line
-- Core goal: turn rough software ideas into structured, reviewable planning artifacts before implementation begins
-- Primary output: a spec compiler that converts idea notes into project specs, repo plans, task backlogs, role prompts, and verification guidance
+- Core goal: turn rough software ideas into structured, reviewable intake and planning artifacts before implementation begins
+- Primary output: an intake-guided spec compiler that converts idea notes into project intake records, project specs, repo plans, task backlogs, role prompts, and verification guidance
 - Intended users: founders, product leads, technical planners, engineering teams supervising AI-assisted software work
 - Non-goals for this phase:
   - multi-agent execution
@@ -17,17 +17,20 @@
 ## 2. Safety and Product Boundaries
 
 - The product is a planning system, not an automation runtime.
-- Human review is required before planning artifacts are treated as approved.
+- Human review is required before intake or planning artifacts are treated as approved.
 - Example projects involving games must be reinterpreted into safe planning tools when necessary.
 - The system must refuse scopes that imply client automation, account access, botting, evasion, or interference with third-party live services.
+- The intake process must preserve high-risk unknowns instead of pretending they are solved.
 
 ## 3. Phase 0 Deliverables
 
 - repo-level planning documents
-- JSON schemas for core generated artifacts
+- an interactive project intake workflow and intake prompt
+- JSON schemas for intake and core generated artifacts
 - a seed OpenAPI contract for future read-only project-state endpoints plus a future spec-compiler draft route; no backend is implemented in Phase 0
 - role-specific prompt pack
 - one worked example: `coc-base-builder`
+- a static read-only viewer for generated planning state and planning-run readiness
 
 ## 4. Source-of-Truth Layers
 
@@ -36,8 +39,15 @@
 - `PROJECT_SPEC.md`
 - current machine-readable product spec: `generated/project_spec.json`
 
+### Intake Workflow
+
+- `docs/PROJECT_INTAKE_WORKFLOW.md`
+- `prompts/00-intake-interviewer.md`
+- `contracts/project_intake.schema.json`
+
 ### Schemas
 
+- `project_intake.schema.json`
 - `project_spec.schema.json`
 - `agent_prompt.schema.json`
 - `slot.schema.json`
@@ -59,6 +69,7 @@ Current static viewer pages:
 - Backlog
 - Prompts
 - Slots
+- Planning Runs
 - Verification
 
 ## 6. Frontend Constraint
@@ -67,6 +78,7 @@ The frontend must render the current `PROJECT_SPEC.md` and contract-defined gene
 
 It must not invent its own:
 
+- intake model
 - task model
 - repo model
 - prompt model
@@ -76,11 +88,24 @@ It must not invent its own:
 
 ## 7. Core Functional Feature
 
-The first functional feature is the spec compiler:
+The first functional feature is the intake-guided spec compiler:
 
-`rough idea -> safe structured project specification`
+`rough idea -> guided intake -> safe structured project specification`
 
-The output should include:
+The intake output should include:
+
+1. project goal
+2. MVP boundary
+3. target users
+4. target platforms
+5. stack preference or stack recommendation
+6. existing tools, paths, and project state
+7. team/agent working style
+8. safety boundaries
+9. assumptions and open questions
+10. acceptance signals
+
+The planning output should include:
 
 1. product summary
 2. safety and scope boundaries
@@ -98,7 +123,8 @@ Backend services are planning/spec sections only in Phase 0 and do not imply cur
 ## 8. Verification Strategy
 
 - validate generated JSON against schemas
+- verify intake records against `contracts/project_intake.schema.json` when present
 - verify examples against product rules
 - verify prompt packs against scope boundaries
 - verify frontend plans are contract-driven
-- red-team unsafe interpretations and scope drift
+- red-team unsafe interpretations, unbounded intake assumptions, and scope drift
