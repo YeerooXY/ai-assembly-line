@@ -172,6 +172,27 @@ In guided mode, `next_action.questions` should contain only the single next ques
 
 The first response should not include any sections after this shape except the same focused question in user-readable form.
 
+## Compact follow-up updates
+
+After the first visible `intake_session` in guided mode, do not print the full JSON on every turn.
+
+Use a compact update like:
+
+```text
+Recorded: multiplayer mode = real-time shared rooms.
+Status: MVP section complete; platform/stack still open.
+Next question: Which platform matters first: browser, desktop, mobile, or something else?
+```
+
+Show the full `intake_session` again only when:
+
+- the user asks to see the JSON or full session state,
+- the session becomes ready for `project_intake.json`,
+- a save/export/persist step is requested, or
+- the state has become ambiguous and needs explicit review.
+
+The compact update still represents an updated `intake_session`; it just does not dump the entire object into the chat.
+
 ## Frontend rendering guidance
 
 A frontend intake page should render:
