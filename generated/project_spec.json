@@ -21,7 +21,7 @@
     "The repository is planning-first and not an autonomous execution runtime.",
     "Human review is required before generated planning artifacts are treated as approved.",
     "Unsafe requests must be rejected or safely reinterpreted into planning-only outputs.",
-    "The initial frontend may render generated state but must not invent task, repo, prompt, slot, or contract structure.",
+    "The initial frontend may render generated state but must not invent task, repo, prompt, slot, planning-run, or contract structure.",
     "The phase 0 seed must remain free of authentication, databases, realtime sync, and agent automation."
   ],
   "repo_split": [
@@ -49,13 +49,14 @@
     },
     {
       "name": "seed-generated-state",
-      "purpose": "Provide canonical generated artifacts for the current seed repository state.",
+      "purpose": "Provide canonical generated artifacts and derived planning-run indexes for the current seed repository state.",
       "contains": [
         "generated/project_spec.json",
         "generated/repo_plan.json",
         "generated/task_backlog.json",
         "generated/agent_prompts.json",
-        "generated/slots_db.json"
+        "generated/slots_db.json",
+        "generated/planning_runs_index.json"
       ],
       "depends_on": [
         "seed-docs-and-rules",
@@ -82,6 +83,7 @@
         "web/backlog.html",
         "web/prompts.html",
         "web/slots.html",
+        "web/planning-runs.html",
         "web/verification.html",
         "web/viewer-data.js",
         "web/viewer-layout.js",
@@ -111,7 +113,7 @@
         "starter_prompts"
       ],
       "relations": [
-        "ProjectSpec drives RepoPlan, Task, AgentPrompt, and AgentSlot artifacts."
+        "ProjectSpec drives RepoPlan, Task, AgentPrompt, AgentSlot, and read-only planning-run index artifacts."
       ]
     },
     {
@@ -173,6 +175,19 @@
       "relations": [
         "AgentSlot is the operational slot view of role-scoped work against source-of-truth artifacts."
       ]
+    },
+    {
+      "name": "PlanningRunIndex",
+      "fields": [
+        "schema_version",
+        "generated_by",
+        "planning_runs_path",
+        "required_outputs",
+        "runs"
+      ],
+      "relations": [
+        "PlanningRunIndex is a derived read-only index of planning run folders, scaffold files, output presence, missing outputs, and run status."
+      ]
     }
   ],
   "frontend_screens": [
@@ -211,6 +226,13 @@
         "generated/slots_db.json"
       ],
       "notes": "Static slots page that renders the generated slot board without mutable workflow state."
+    },
+    {
+      "name": "Planning Runs",
+      "renders_from": [
+        "generated/planning_runs_index.json"
+      ],
+      "notes": "Static planning-runs page that renders the derived planning-run index without editing or inventing planning-run state."
     },
     {
       "name": "Contracts and Verification",
@@ -257,7 +279,8 @@
   "core_engine_responsibilities": [
     "Compile rough planning intent into explicit project structure.",
     "Maintain contract-first generated artifacts for the seed repository.",
-    "Preserve traceability from product rules to repo plan, tasks, prompts, and slots.",
+    "Derive planning-run indexes from file-based manual planning runs.",
+    "Preserve traceability from product rules to repo plan, tasks, prompts, slots, and planning-run readiness.",
     "Reject or reinterpret unsafe scope expansion into planning-only outputs.",
     "Support deterministic validation of machine-readable seed artifacts."
   ],
@@ -266,6 +289,7 @@
     "Validate canonical generated project state against the contracts in contracts/.",
     "Verify that the generated artifacts stay aligned with the current phase 0 scope limits.",
     "Verify that future frontend work renders generated state and does not invent hidden models.",
+    "Verify that the planning-runs page renders only generated/planning_runs_index.json and does not mutate planning-run folders.",
     "Red-team prompt drift toward automation, auth, persistence, or realtime scope."
   ],
   "starter_prompts": {
