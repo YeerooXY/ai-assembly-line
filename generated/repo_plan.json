@@ -92,6 +92,7 @@
         "web/index.html",
         "web/repos.html",
         "web/backlog.html",
+        "web/task-batches.html",
         "web/prompts.html",
         "web/slots.html",
         "web/planning-runs.html",

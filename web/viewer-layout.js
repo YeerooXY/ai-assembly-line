@@ -4,6 +4,7 @@ const NAV_ITEMS = [
   { id: "overview", label: "Overview", href: "index.html" },
   { id: "repos", label: "Repos", href: "repos.html" },
   { id: "backlog", label: "Backlog", href: "backlog.html" },
+  { id: "task-batches", label: "Task Batches", href: "task-batches.html" },
   { id: "prompts", label: "Prompts", href: "prompts.html" },
   { id: "slots", label: "Slots", href: "slots.html" },
   { id: "planning-runs", label: "Planning Runs", href: "planning-runs.html" },

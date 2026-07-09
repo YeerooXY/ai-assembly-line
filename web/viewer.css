@@ -300,6 +300,104 @@ h4 {
   background: #fffcf5;
 }
 
+.dependency-graph {
+  margin: 14px 0;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.graph-columns {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(260px, 1fr);
+  gap: 14px;
+  min-width: min-content;
+}
+
+.graph-column {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px;
+  background: linear-gradient(180deg, rgba(217, 235, 228, 0.62), rgba(255, 253, 248, 0.9));
+}
+
+.graph-column-heading,
+.graph-node-title,
+.graph-edge {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.graph-column-heading h4 {
+  margin: 0;
+}
+
+.graph-node-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.graph-node {
+  border: 1px solid rgba(31, 92, 74, 0.18);
+  border-left: 5px solid var(--accent);
+  border-radius: 14px;
+  padding: 12px;
+  background: var(--paper);
+}
+
+.graph-node.status-blocked,
+.graph-node.status-rejected {
+  border-left-color: var(--warn);
+}
+
+.graph-node.status-done,
+.graph-node.status-complete {
+  border-left-color: #2f755f;
+}
+
+.graph-node p {
+  margin: 8px 0;
+  line-height: 1.45;
+}
+
+.graph-node-meta,
+.graph-node-links {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.graph-node-links {
+  grid-template-columns: max-content 1fr;
+  margin-top: 10px;
+}
+
+.inline-id-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.graph-edge-list {
+  display: grid;
+  gap: 8px;
+  max-height: 360px;
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.graph-edge {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fffcf5;
+}
+
 @media (max-width: 820px) {
   .hero {
     flex-direction: column;
