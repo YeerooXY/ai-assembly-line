@@ -869,7 +869,7 @@ Accept, revise, or reject the planning outputs before any implementation phase b
 ## `docs/PROJECT_INTAKE_WORKFLOW.md`
 
 - Category: `review-doc`
-- Purpose: Interactive intake workflow for turning a rough idea into a structured project_intake.json record before planning.
+- Purpose: Interactive intake workflow for turning a rough idea into an intake_session.json state and then a structured project_intake.json record before planning.
 - Required: `true`
 
 ```markdown
@@ -908,6 +908,12 @@ When a user starts a project with only a rough idea, the first response must beg
 The Intake Interviewer must not immediately output:
 
 - a full guideline document
+- temporary or starter project guidelines
+- technical steering rules
+- target repository layout
+- repo/package split
+- definition of done
+- suggested answers or default answers for the user to accept
 - a full architecture
 - a final stack decision
 - a full MVP scope
@@ -919,11 +925,32 @@ Instead, it should output:
 
 1. a short acknowledgement
 2. an `intake_session` update following `contracts/intake_session.schema.json`
-3. the next high-impact questions
+3. the next high-impact question
 
 This is true even if the user asks for guidelines or says they want to bring the idea to life. Those requests still start intake unless a complete intake record already exists.
 
-See `docs/INTAKE_SESSION_FORMAT.md`.
+If `readiness.can_generate_intake` is `false`, the first response must stop after the single next question in guided mode. It must not continue with project guidelines, technical steering, repository layout, default answers, stack choices, definition-of-done rules, or a checklist of future questions.
+
+See `docs/INTAKE_SESSION_FORMAT.md` and `docs/INTAKE_DECISION_CARDS.md`.
+
+## Guidelines wording trap
+
+A user may say something like:
+
+```text
+Here is the ai-assembly-line repo that helps with planning. I want to build a multiplayer Tron game. Can you help me set guidelines for the project based on the repo's steering help?
+```
+
+That is still a request to start intake, not a request to produce guidelines.
+
+The correct first response is:
+
+1. short acknowledgement
+2. `intake_session` state
+3. one high-impact question
+4. stop
+
+The incorrect response is anything that continues with starter steering rules, a recommended stack, repo/package split, project layout, definition of done, suggested answers, planning-run guidelines, or a batch checklist of future questions.
 
 ## Recommended target-project layout
 
@@ -962,6 +989,8 @@ my-project/
 
 The `ai-assembly-line` repository is the upstream template and steering kit. The target project repository should contain the snapshot that agents and humans actually use.
 
+Do not output this layout in the first response to a rough idea when `readiness.can_generate_intake` is `false`. This layout is guidance for later workspace initialization, not a substitute for intake.
+
 ## Intake modes
 
 ### Quick mode
@@ -970,8 +999,8 @@ Use when the user wants a fast first draft.
 
 Rules:
 
-- Ask at most five high-impact questions.
-- Make low-risk assumptions explicitly.
+- Ask at most five questions.
+- Make low-risk assumptions explicit.
 - Mark risky unknowns as open questions.
 - Produce a draft intake record quickly.
 
@@ -981,11 +1010,18 @@ Use as the default.
 
 Rules:
 
-- Ask questions in small sections.
-- Suggest reasonable stack options when the user has not chosen one.
+- Ask exactly one high-impact question per assistant turn unless the user explicitly asks for a batch.
+- The one question should be the next unanswered decision that most changes architecture, stack, MVP, safety, or parallelization.
+- Do not include a checklist of future questions in the same turn.
+- After the first visible `intake_session`, use compact updates instead of repeating the full JSON unless the user asks to see the state.
+- For hard choices, present the one question as an A/B/C decision card with pros, cons, MVP risk, later scaling/refactor risk, and one explicit agent recommendation.
+- The user may answer `A`, `B`, `C`, `recommended`, or a custom answer.
+- Do not silently apply the recommendation; record it only if the user chooses it.
+- After the user answers, update `intake_session` and ask the next one-question step.
+- Only produce `project_intake.json` after the session is ready.
+- Suggest reasonable stack options only after platform, multiplayer mode, and project state are known.
 - Confirm the MVP before planning.
 - Confirm team/agent working style before task decomposition.
-- Produce a structured intake record after enough information is known.
 
 ### Expert mode
 
@@ -996,6 +1032,39 @@ Rules:
 - Let the user paste stack choices, tool paths, repo constraints, architecture notes, and team layout.
 - Ask only for missing high-risk decisions.
 - Produce the intake record with minimal back-and-forth.
+
+## Decision-card guided questions
+
+Guided mode still asks one question per turn. A decision card is a richer way to ask that one question when the choice is difficult.
+
+Use a decision card when the answer may create MVP difficulty or later scaling/refactor pain, especially for:
+
+- MVP scope
+- platform target
+- stack or engine
+- realtime versus asynchronous behavior
+- backend architecture
+- accounts/auth/persistence
+- deployment model
+- team/agent split
+- proof required for done
+
+A decision card should include:
+
+- the single decision being made
+- two or three options labeled A/B/C
+- what each option means
+- pros
+- cons
+- MVP risk
+- later scaling/refactor risk
+- when each option is best
+- one `Agent recommendation`, with rationale
+- a final question: `Choose A, B, C, recommended, or custom.`
+
+This still counts as one guided question. Future decisions stay in `open_questions`, not in the visible decision card.
+
+If the user answers `recommended`, record the recommended option as the selected answer and preserve the rationale. If the user answers with a custom option, record it and keep any new uncertainty as an open question.
 
 ## Question sections
 
@@ -1021,6 +1090,10 @@ The Intake Interviewer should cover these sections, but not necessarily all in o
 - Are there existing tools, local paths, SDKs, credentials, or hardware constraints?
 
 When suggesting a stack, provide options with tradeoffs and a recommendation. Do not force a stack silently.
+
+Do not suggest concrete stack options on the first response to a rough idea when high-risk answers such as platform, multiplayer mode, existing project state, and team/agent layout are still unknown.
+
+When enough context exists, prefer a decision card for stack/platform choices so the user can compare MVP speed against later scaling/refactor pain.
 
 ### 4. Existing project state
 
@@ -1081,6 +1154,14 @@ The session should include:
 - readiness to generate `project_intake.json`
 - next action
 
+If `readiness.can_generate_intake` is `false`, the output is not allowed to continue into guidelines or planning artifacts.
+
+In guided mode, `next_action.questions` should contain only the single next question. Other unanswered decisions belong in `open_questions`, not in the visible next-question list.
+
+In guided mode, the full JSON object should be visible on the first intake turn, when the user asks for it, when the session becomes ready for `project_intake.json`, or when saving/exporting is requested. Otherwise, use a compact update that records the latest answer, current status, and single next question.
+
+Decision-card options are human-facing guidance. Record only the user's selected answer as the intake answer; do not treat unchosen options as project decisions.
+
 ## Required intake output
 
 Only when the session is ready should the intake interview produce `project_intake.json` conforming to `contracts/project_intake.schema.json`.
@@ -1113,6 +1194,388 @@ After the intake record is complete enough, the Planning Agent should use it to 
 - `slots_db.json`
 
 The Planning Agent must preserve all high-risk unknowns as open questions or verification tasks instead of pretending they are solved.
+
+```
+
+## `docs/INTAKE_SESSION_FORMAT.md`
+
+- Category: `review-doc`
+- Purpose: Interactive intake-session response format and first-turn hard-stop rules for rough project requests.
+- Required: `true`
+
+```markdown
+# Intake Session Format
+
+`project_intake.json` is the final structured intake record.
+
+`intake_session.json` is the interactive state used while the Intake Interviewer is still asking questions.
+
+The frontend should render `intake_session.json` while intake is in progress, then render or save `project_intake.json` once the session is ready.
+
+## Why this exists
+
+A rough project idea should not immediately turn into a full guideline document, project spec, backlog, or implementation plan.
+
+The first response should be an intake session update:
+
+```text
+rough idea
+  -> intake_session update
+  -> focused question
+  -> project_intake.json
+  -> planning artifacts
+```
+
+This prevents the AI from jumping the gun and generating a fake-complete plan before high-risk decisions are answered.
+
+## Source of truth
+
+The schema is:
+
+```text
+contracts/intake_session.schema.json
+```
+
+The session eventually produces:
+
+```text
+contracts/project_intake.schema.json
+```
+
+## Required behavior for a new project request
+
+When a user provides only a rough idea, the Intake Interviewer must not output:
+
+- a full guideline document
+- temporary or starter project guidelines
+- technical steering rules
+- target repository layout
+- repo/package split
+- definition of done
+- suggested answers or default answers for the user to accept
+- a full project specification
+- a full task backlog
+- agent work assignments
+- implementation code
+- architecture as if all decisions are final
+
+Instead, it must output:
+
+1. a short acknowledgement
+2. an `intake_session` state block
+3. the next high-impact question
+
+Then it must stop. If `readiness.can_generate_intake` is `false`, the response must not continue with guidelines, recommendations, architecture, repo layout, task rules, suggested answers, or a checklist of future questions.
+
+## Guidelines wording trap
+
+A user may ask for `guidelines`, `steering help`, `starter rules`, or help `setting up` a project while providing only a rough idea.
+
+That wording still means: start intake.
+
+It does not permit the Intake Interviewer to produce:
+
+- starter steering rules
+- temporary guidelines
+- stack recommendations
+- a repo/package split
+- a target `.ai-assembly/` project layout
+- a definition of done
+- suggested answers to its own questions
+- a checklist of future intake questions
+
+The correct response is to say that guidelines can be produced after the high-risk intake questions are answered, then provide only the `intake_session` update and the single next question in guided mode.
+
+## Session states
+
+Allowed `status` values:
+
+- `not_started`
+- `in_progress`
+- `ready_for_intake_record`
+- `intake_record_drafted`
+- `blocked`
+
+Allowed `next_action.type` values:
+
+- `ask_questions`
+- `suggest_stack`
+- `draft_project_intake`
+- `handoff_to_planning`
+- `blocked`
+
+## Minimal first response shape
+
+For a rough idea like `I want to build a multiplayer Tron game`, the first response should look like this:
+
+```json
+{
+  "schema_version": "0.1.0",
+  "project_slug": "multiplayer-tron",
+  "mode": "guided",
+  "status": "in_progress",
+  "current_section": "goal-and-mvp",
+  "sections": [
+    {
+      "id": "goal-and-mvp",
+      "label": "Goal and MVP",
+      "status": "in_progress",
+      "questions": [
+        {
+          "id": "goal-001",
+          "question": "What kind of multiplayer should the first playable version support: local same-keyboard, LAN, private online rooms, or public matchmaking?",
+          "answer": "",
+          "risk_level": "high",
+          "affects": ["mvp", "networking", "stack"]
+        }
+      ]
+    }
+  ],
+  "stack_options": [],
+  "assumptions": [
+    "The project is a standalone original game, not automation of an existing game or service."
+  ],
+  "open_questions": [
+    {
+      "question": "What kind of multiplayer should the MVP support?",
+      "risk_if_unanswered": "The architecture and stack cannot be chosen safely."
+    },
+    {
+      "question": "Which platform matters first?",
+      "risk_if_unanswered": "The target platform changes stack, deployment, input handling, and networking choices."
+    },
+    {
+      "question": "Is this a greenfield project or an existing repository?",
+      "risk_if_unanswered": "The workspace layout and file-boundary plan cannot be chosen safely."
+    },
+    {
+      "question": "How many humans or AI agents should work in parallel?",
+      "risk_if_unanswered": "The task split and prompt boundaries cannot be shaped correctly."
+    }
+  ],
+  "readiness": {
+    "can_generate_intake": false,
+    "missing_high_risk_answers": [
+      "MVP multiplayer mode",
+      "target platform",
+      "stack preference or permission to recommend one",
+      "greenfield versus existing repo",
+      "parallel humans/AI agents"
+    ]
+  },
+  "next_action": {
+    "type": "ask_questions",
+    "questions": [
+      "What kind of multiplayer should the first playable version support: local same-keyboard, LAN, private online rooms, or public matchmaking?"
+    ]
+  }
+}
+```
+
+This is not a required exact output. It is the intended shape: visible session state plus the single next question.
+
+In guided mode, `next_action.questions` should contain only the single next question. Other unanswered decisions belong in `open_questions`, not in the visible next-question list.
+
+The first response should not include any sections after this shape except the same focused question in user-readable form.
+
+## Compact follow-up updates
+
+After the first visible `intake_session` in guided mode, do not print the full JSON on every turn.
+
+Use a compact update like:
+
+```text
+Recorded: multiplayer mode = real-time shared rooms.
+Status: MVP section complete; platform/stack still open.
+Next question: Which platform matters first: browser, desktop, mobile, or something else?
+```
+
+Show the full `intake_session` again only when:
+
+- the user asks to see the JSON or full session state,
+- the session becomes ready for `project_intake.json`,
+- a save/export/persist step is requested, or
+- the state has become ambiguous and needs explicit review.
+
+The compact update still represents an updated `intake_session`; it just does not dump the entire object into the chat.
+
+## Decision-card follow-up updates
+
+A compact guided update may include one decision card when the next question is hard.
+
+Use this when the choice affects MVP difficulty or later scaling/refactor pain.
+
+```text
+Recorded: team mode = 2 people working in parallel.
+Status: Ready for stack choice.
+
+Decision: Which stack direction do you want for the MVP?
+
+A) Flutter client + backend service
+What it means: Build the UI in Flutter and a separate backend for rooms, game state, and realtime events.
+Pros: Best fit for desktop-first now and mobile later.
+Cons: Backend still needs separate WebSocket/game-state work.
+MVP risk: medium — more setup than a pure web prototype.
+Scaling/refactor risk: low-medium — mobile later is much less painful.
+Best when: Mobile later is real, not just a vague maybe.
+
+B) React + Tauri desktop client + backend
+What it means: Build a web-style UI wrapped as a lightweight desktop app, with a separate backend.
+Pros: Fast desktop MVP; familiar web tooling.
+Cons: Mobile later probably needs a separate client or rewrite.
+MVP risk: low-medium — good speed if the team knows web tooling.
+Scaling/refactor risk: medium — mobile later can become a second project.
+Best when: Desktop MVP speed matters more than mobile reuse.
+
+C) React web app + Electron wrapper + backend
+What it means: Build a browser-style app and package it with Electron for desktop.
+Pros: Fastest if the team knows web tooling.
+Cons: Heavier desktop app; mobile later is not clean.
+MVP risk: low — quickest path to something playable.
+Scaling/refactor risk: high — can become painful if mobile and polish matter later.
+Best when: The goal is to prove gameplay fast.
+
+Agent recommendation: A — because the stated goal is desktop first, but mobile later matters.
+
+Question: Choose A, B, C, recommended, or custom.
+```
+
+This still counts as one guided question. If the user answers `recommended`, record the recommended option as the selected answer. Unchosen options are rationale, not project decisions.
+
+## Frontend rendering guidance
+
+A frontend intake page should render:
+
+- current status
+- current section
+- completed sections
+- unanswered high-risk questions
+- suggested stack options
+- assumptions
+- readiness to generate `project_intake.json`
+- next action
+
+The frontend must not invent intake fields outside `contracts/intake_session.schema.json`.
+
+## Transition to project_intake.json
+
+Only when `readiness.can_generate_intake` is `true` should the Intake Interviewer draft `project_intake.json`.
+
+If `can_generate_intake` is `false`, the next output should ask the next single question in guided mode or suggest stack options only when `next_action.type` is `suggest_stack`.
+
+```
+
+## `docs/INTAKE_DECISION_CARDS.md`
+
+- Category: `review-doc`
+- Purpose: Decision-card guidance for one-question guided intake choices with A/B/C options, tradeoffs, MVP risk, scaling risk, and explicit recommendations.
+- Required: `true`
+
+```markdown
+# Intake Decision Cards
+
+Guided intake asks one question per assistant turn.
+
+A question may still be rich enough to help the user make a good decision. For difficult architecture, MVP, stack, scaling, or team-split choices, present the one question as a decision card.
+
+## Purpose
+
+Decision cards prevent two bad outcomes:
+
+1. The assistant asks a vague question and leaves the user to guess the consequences.
+2. The assistant silently chooses a stack, MVP, or architecture and calls it a recommendation.
+
+A decision card keeps the user in control while making the tradeoffs visible.
+
+## Required shape
+
+Use this shape when a choice is hard or has long-term consequences:
+
+```text
+Decision: <one decision the user must make>
+
+A) <option name>
+What it means: <plain-language explanation>
+Pros: <short list or sentence>
+Cons: <short list or sentence>
+MVP risk: <low | medium | high> — <why>
+Scaling/refactor risk: <low | medium | high> — <why>
+Best when: <when this option fits>
+
+B) <option name>
+...
+
+C) <option name>
+...
+
+Agent recommendation: <A/B/C> — <reason>
+
+Question: Choose A, B, C, recommended, or custom.
+```
+
+This still counts as one guided intake question.
+
+## Rules
+
+- Provide at most three main options unless the user asks for more.
+- Include an `Agent recommendation`, but never silently apply it.
+- The user may answer `A`, `B`, `C`, `recommended`, or a custom answer.
+- If the user answers `recommended`, record the recommended option as the selected answer and keep the rationale.
+- If the user gives a custom answer, record it and update open questions if the custom answer introduces risk.
+- Keep future decisions in `open_questions`; do not turn the card into a checklist of multiple questions.
+- Do not use decision cards for trivial low-risk choices.
+
+## When to use decision cards
+
+Use decision cards for choices that materially affect:
+
+- MVP scope
+- platform target
+- stack or engine
+- backend architecture
+- realtime versus asynchronous behavior
+- persistence/auth/accounts
+- deployment model
+- team/agent split
+- proof required for done
+- choices that may create later scaling or refactor pain
+
+## Example
+
+```text
+Recorded: team mode = 2 people working in parallel.
+Status: Ready for stack choice.
+
+Decision: Which stack direction do you want for the MVP?
+
+A) Flutter client + backend service
+What it means: Build the UI in Flutter and a separate backend for rooms, game state, and realtime events.
+Pros: Best fit for desktop-first now and mobile later; one client codebase can travel far.
+Cons: Backend still needs separate WebSocket/game-state work; Flutter desktop packaging has some setup cost.
+MVP risk: medium — more initial setup than a pure web prototype.
+Scaling/refactor risk: low-medium — mobile later is much less painful.
+Best when: Mobile later is real, not just a vague maybe.
+
+B) React + Tauri desktop client + backend
+What it means: Build a web-style UI wrapped as a lightweight desktop app, with a separate backend.
+Pros: Fast desktop MVP; clean client/backend split; familiar web tooling.
+Cons: Mobile later probably needs a separate client or rewrite.
+MVP risk: low-medium — good speed if the team knows web tooling.
+Scaling/refactor risk: medium — mobile later can become a second project.
+Best when: Desktop MVP speed matters more than mobile reuse.
+
+C) React web app + Electron wrapper + backend
+What it means: Build a browser-style app and package it with Electron for desktop.
+Pros: Fastest if the team knows web tooling; huge ecosystem.
+Cons: Heavier desktop app; mobile later is not clean; easier to accumulate frontend/backend coupling.
+MVP risk: low — quickest path to something playable.
+Scaling/refactor risk: high — can become painful if mobile and polish matter later.
+Best when: The goal is to prove gameplay fast.
+
+Agent recommendation: A — because the stated goal is desktop first, but mobile later matters.
+
+Question: Choose A, B, C, recommended, or custom.
+```
 
 ```
 
@@ -1964,6 +2427,9 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "PROJECT_SPEC_TEMPLATE.md",
         "PRODUCT_RULES.md",
         "docs/PROJECT_INTAKE_WORKFLOW.md",
+        "docs/INTAKE_SESSION_FORMAT.md",
+        "docs/INTAKE_DECISION_CARDS.md",
+        "contracts/intake_session.schema.json",
         "contracts/project_intake.schema.json",
         "prompts/00-intake-interviewer.md"
       ],
@@ -1977,24 +2443,46 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "input_context_required": [
         "User rough idea",
         "Project intake workflow",
+        "Intake session format",
+        "Intake decision card guidance",
+        "Intake session schema",
         "Project intake schema",
         "Product rules",
         "Known tools, paths, stack preferences, or repo constraints"
       ],
       "task_boundaries": [
+        "Treat rough ideas plus requests for help, guidelines, steering, architecture, or setup as requests to start intake.",
+        "On the first response without a complete intake record, output only a short acknowledgement, intake_session update, and one high-impact guided-mode question, then stop.",
+        "In guided mode, next_action.questions may contain only the single next question unless the user explicitly asks for a batch.",
+        "For hard guided-mode choices, ask the single question as an A/B/C decision card with pros, cons, MVP risk, scaling/refactor risk, and one explicit agent recommendation.",
+        "Allow the user to answer A, B, C, recommended, or custom; do not silently apply the recommendation.",
+        "After the first visible intake_session, use compact human-readable updates instead of repeating full JSON unless the user asks to see the full state.",
+        "Keep future unanswered decisions in open_questions, not as a visible checklist in next_action.questions.",
+        "Do not append starter guidelines, technical steering, repo/package split, definition of done, stack recommendation, suggested answers, task backlog, or agent assignments while readiness.can_generate_intake is false.",
         "Ask only questions that materially change the plan.",
-        "Suggest stack options with tradeoffs when the user has not chosen one.",
-        "Produce a project_intake.json draft before planning artifacts.",
+        "Suggest stack options with tradeoffs only after intake has started and platform/MVP constraints make the suggestion safe.",
+        "Produce a project_intake.json draft only after the intake session is ready.",
         "Do not produce implementation tasks until the intake record is complete enough."
       ],
       "output_required": [
-        "Structured project intake record",
+        "Full intake_session update on the first guided intake turn or when explicitly requested",
+        "Compact intake update after subsequent guided-mode answers",
+        "Decision card for hard guided-mode choices when useful",
         "Explicit assumptions",
         "High-risk open questions",
-        "Planning Agent hand-off summary"
+        "Single next high-impact question in guided mode",
+        "Structured project_intake.json only when readiness.can_generate_intake is true",
+        "Planning Agent hand-off summary only after project_intake.json is drafted"
       ],
       "verification_required": [
-        "Intake record matches contracts/project_intake.schema.json.",
+        "In-progress intake session matches contracts/intake_session.schema.json.",
+        "Guided-mode next_action.questions contains exactly one visible question unless the user explicitly asks for a batch.",
+        "Hard guided-mode choices include clear options with tradeoffs and an explicit recommendation when a decision card would help.",
+        "Recommendation is not treated as accepted unless the user chooses it or answers recommended.",
+        "Subsequent guided-mode turns do not repeat the full intake_session JSON unless requested, ready for project_intake, or saving/exporting.",
+        "No project_intake.json or planning artifacts are produced while readiness.can_generate_intake is false.",
+        "First response to a rough idea does not include starter guidelines, technical steering, repo/package split, definition of done, stack recommendation, suggested answers, backlog, agent assignments, or a checklist of future questions.",
+        "Final intake record matches contracts/project_intake.schema.json.",
         "Unsafe or ambiguous scope is rejected, bounded, or preserved as open questions."
       ]
     },
@@ -2496,7 +2984,19 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     {
       "path": "docs/PROJECT_INTAKE_WORKFLOW.md",
       "category": "review-doc",
-      "purpose": "Interactive intake workflow for turning a rough idea into a structured project_intake.json record before planning.",
+      "purpose": "Interactive intake workflow for turning a rough idea into an intake_session.json state and then a structured project_intake.json record before planning.",
+      "required": true
+    },
+    {
+      "path": "docs/INTAKE_SESSION_FORMAT.md",
+      "category": "review-doc",
+      "purpose": "Interactive intake-session response format and first-turn hard-stop rules for rough project requests.",
+      "required": true
+    },
+    {
+      "path": "docs/INTAKE_DECISION_CARDS.md",
+      "category": "review-doc",
+      "purpose": "Decision-card guidance for one-question guided intake choices with A/B/C options, tradeoffs, MVP risk, scaling risk, and explicit recommendations.",
       "required": true
     },
     {
@@ -2569,6 +3069,12 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "path": "generated/review_manifest.json",
       "category": "generated-state",
       "purpose": "Remote review manifest listing the key files needed to inspect the repository without a full clone.",
+      "required": true
+    },
+    {
+      "path": "contracts/intake_session.schema.json",
+      "category": "contract",
+      "purpose": "Schema for interactive intake_session.json state produced before project_intake.json exists.",
       "required": true
     },
     {
@@ -2860,6 +3366,201 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "required": false
     }
   ]
+}
+
+```
+
+## `contracts/intake_session.schema.json`
+
+- Category: `contract`
+- Purpose: Schema for interactive intake_session.json state produced before project_intake.json exists.
+- Required: `true`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/ai-assembly-line/intake_session.schema.json",
+  "title": "IntakeSession",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_slug",
+    "mode",
+    "status",
+    "current_section",
+    "sections",
+    "stack_options",
+    "assumptions",
+    "open_questions",
+    "readiness",
+    "next_action"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project_slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["quick", "guided", "expert"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["not_started", "in_progress", "ready_for_intake_record", "intake_record_drafted", "blocked"]
+    },
+    "current_section": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "status", "questions"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": ["not_started", "in_progress", "complete", "blocked", "skipped"]
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "question", "answer", "risk_level", "affects"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "question": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "answer": {
+                  "type": "string"
+                },
+                "risk_level": {
+                  "type": "string",
+                  "enum": ["low", "medium", "high"]
+                },
+                "affects": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "stack_options": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "best_for", "risks", "recommendation_level"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "best_for": {
+            "type": "string",
+            "minLength": 1
+          },
+          "risks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "recommendation_level": {
+            "type": "string",
+            "enum": ["recommended", "acceptable", "not_recommended", "unknown"]
+          }
+        }
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "open_questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["question", "risk_if_unanswered"],
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1
+          },
+          "risk_if_unanswered": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["can_generate_intake", "missing_high_risk_answers"],
+      "properties": {
+        "can_generate_intake": {
+          "type": "boolean"
+        },
+        "missing_high_risk_answers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "next_action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "questions"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["ask_questions", "suggest_stack", "draft_project_intake", "handoff_to_planning", "blocked"]
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
 }
 
 ```
@@ -3659,9 +4360,17 @@ You are not implementing the product. You are not producing the full task backlo
 
 When a user provides only a rough idea and asks for help, guidelines, planning, architecture, or how to bring the project to life, treat that as a request to start intake.
 
+A request for `guidelines`, `project guidelines`, `steering help`, `starter rules`, `recommendations`, or `how should we set this up` is still a start-intake request when the user has only provided a rough idea. Do not treat those words as permission to write guidelines before intake is ready.
+
 Do not output any of the following on the first turn unless a complete intake record already exists:
 
 - full project guidelines
+- temporary or starter project guidelines
+- technical steering rules
+- target repository layout
+- repo/package split
+- definition of done
+- suggested answers or default answers for the user to accept
 - full architecture
 - final stack decision
 - full MVP scope
@@ -3673,9 +4382,37 @@ Instead, output:
 
 1. a short acknowledgement
 2. an `intake_session` update matching `contracts/intake_session.schema.json`
-3. the next high-impact questions
+3. the next high-impact question
+
+Then stop. If `readiness.can_generate_intake` is `false`, do not add any extra guidance after the question.
 
 This rule exists so the AI does not jump the gun and pretend high-risk project decisions are already known.
+
+## First-turn hard stop
+
+For a rough idea with no complete intake record, the entire response must fit this envelope:
+
+1. Short acknowledgement.
+2. One visible `intake_session` object.
+3. One next high-impact user-facing question matching `next_action.questions[0]`.
+
+After the question, stop the response.
+
+Do not append sections with headings like:
+
+- `Starter steering rules`
+- `Starter guidelines`
+- `Temporary project rules`
+- `Technical steering`
+- `Recommended stack`
+- `Repo/package split`
+- `Definition of done`
+- `Suggested answers`
+- `My suggested answers`
+- `Next planning run`
+- `Project guidelines`
+
+Even if the user explicitly asks for guidelines, say that guidelines come after the missing high-risk intake answers.
 
 ## Inputs to read first
 
@@ -3683,6 +4420,7 @@ When available, read:
 
 - `docs/PROJECT_INTAKE_WORKFLOW.md`
 - `docs/INTAKE_SESSION_FORMAT.md`
+- `docs/INTAKE_DECISION_CARDS.md`
 - `contracts/intake_session.schema.json`
 - `contracts/project_intake.schema.json`
 - `PROJECT_SPEC_TEMPLATE.md`
@@ -3700,6 +4438,64 @@ Use the ask/assume/stop rule:
 
 Do not ask questions forever. The goal is to get enough information to create a useful first planning run.
 
+## One-question guided intake rule
+
+In guided mode, ask exactly one user-facing question per turn.
+
+The `next_action.questions` array may contain only the single next question unless:
+
+- the user explicitly asks for multiple questions,
+- the mode is `quick`,
+- the mode is `expert` and the user has requested a batch review.
+
+Do not show future queued questions as a visible list. Keep future unknowns in `open_questions`, not in `next_action.questions`.
+
+The first user-facing response to a rough idea should ask the first high-impact question immediately after the `intake_session` block and then stop.
+
+## Compact guided update rule
+
+In guided mode, do not print the full `intake_session` JSON on every turn.
+
+Show the full `intake_session` object only when:
+
+- starting intake from a rough idea,
+- the user explicitly asks to see the JSON/session state,
+- the session becomes ready to draft `project_intake.json`, or
+- saving/exporting/persisting the state is the requested output.
+
+After the user answers a guided-mode question, use a compact intake update instead of repeating the full JSON. The compact update should include only:
+
+- the answer just recorded,
+- the current section/status if useful,
+- any newly unlocked next action,
+- the single next user-facing question.
+
+Keep the full updated state internally consistent with `contracts/intake_session.schema.json`, but do not display the entire object unless one of the cases above applies.
+
+## Decision-card guided questions
+
+In guided mode, the assistant still asks exactly one user-facing question per turn.
+
+For hard choices, present that one question as a decision card with A/B/C options. Use decision cards when the answer affects MVP difficulty, later scaling pain, architecture, stack, platform target, backend model, team split, or verification strategy.
+
+A decision card should include:
+
+- the single decision being made,
+- two or three options labeled A/B/C,
+- what each option means,
+- pros,
+- cons,
+- MVP risk,
+- later scaling or refactor risk,
+- when that option is best,
+- one `Agent recommendation`, with rationale.
+
+The user may answer `A`, `B`, `C`, `recommended`, or a custom answer.
+
+If the user answers `recommended`, record the recommended option as the selected answer and preserve the recommendation rationale. Do not silently choose the recommendation without user confirmation.
+
+Decision cards still count as one guided question. Do not turn them into a checklist of multiple future questions. Keep future decisions in `open_questions`.
+
 ## Intake modes
 
 If the user does not specify a mode, default to guided mode.
@@ -3710,7 +4506,7 @@ Ask at most five questions. Make assumptions explicit. Produce a draft intake re
 
 ### Guided mode
 
-Ask questions section by section. Suggest options. Confirm the MVP and stack direction before producing the intake record.
+Ask exactly one high-impact question per turn. After the first visible `intake_session`, use compact updates instead of repeating the full JSON unless the user asks for the state. For hard choices, use A/B/C decision cards with pros, cons, MVP risk, scaling/refactor risk, and one explicit agent recommendation. Suggest options only when the current `next_action.type` is `suggest_stack` or when enough high-risk platform and multiplayer answers are known. Confirm the MVP and stack direction before producing the intake record.
 
 ### Expert mode
 
@@ -3730,28 +4526,48 @@ Stop and ask instead of assuming when unclear:
 
 ## Stack suggestion behavior
 
-If the user has not chosen a stack, suggest two or three options with tradeoffs.
+If the user has not chosen a stack, you may ask whether they want a recommendation.
+
+Do not include concrete stack recommendations on the first response to a rough project idea when high-risk answers are still missing. In that case, leave `stack_options` empty and ask a question such as `Do you already prefer a stack, or should I recommend one after platform and multiplayer scope are clear?`
+
+Only suggest two or three stack options with tradeoffs when:
+
+- the user explicitly asks to compare stacks after intake has started,
+- the session `next_action.type` is `suggest_stack`, or
+- enough platform and MVP constraints are known that the suggestion will not silently decide architecture.
 
 For each option, include:
 
 - best fit
 - risks
 - why it may or may not fit the user's working style
+- MVP risk
+- later scaling or refactor risk
 
-Then give a recommendation, but do not silently force it.
+Then give a recommendation, but do not silently force it. The user may choose the recommendation by saying `recommended`.
 
 Example shape:
 
 ```text
-Option A: Godot 4
+Decision: Which stack direction should the MVP use?
+
+A) Godot 4
 Best for: fast 2D game iteration and desktop-first prototypes.
-Risks: networking architecture still needs deliberate design.
+Pros: strong game tooling; quick visual iteration.
+Cons: browser deployment and backend integration may need extra care.
+MVP risk: low-medium.
+Scaling/refactor risk: medium if web/mobile later become important.
 
-Option B: TypeScript + Phaser + Colyseus
+B) TypeScript + Phaser + Colyseus
 Best for: browser-first multiplayer.
-Risks: more web/backend setup before game feel is visible.
+Pros: easy sharing and strong web multiplayer path.
+Cons: more web/backend setup before game feel is visible.
+MVP risk: medium.
+Scaling/refactor risk: low-medium for web-first projects.
 
-Recommendation: Godot 4 if desktop-first matters most; Phaser + Colyseus if browser-first matters most.
+Agent recommendation: B if browser-first multiplayer matters most; A if desktop-first game-feel iteration matters most.
+
+Question: Choose A, B, recommended, or custom.
 ```
 
 ## Intake session output
@@ -3770,6 +4586,12 @@ The session should include:
 - next action
 
 If `readiness.can_generate_intake` is `false`, do not produce planning artifacts yet.
+
+In guided mode, `next_action.questions` must contain only the single next question unless the user explicitly asks for a batch.
+
+In guided mode after the first turn, prefer a compact human-readable update over full JSON repetition. The machine-readable state remains the source of truth, but the user should not have to read the full object every turn.
+
+Decision-card options are human-facing explanation. Record the selected answer in `intake_session`; do not treat unchosen options as project decisions.
 
 ## Required final intake output
 
