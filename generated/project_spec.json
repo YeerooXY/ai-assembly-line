@@ -1,7 +1,7 @@
 {
   "project_name": "AI Assembly Line",
   "product_summary": {
-    "goal": "Turn rough software ideas into structured, reviewable planning artifacts before implementation begins.",
+    "goal": "Turn rough software ideas into structured, reviewable intake and planning artifacts before implementation begins.",
     "users": [
       "founders",
       "product leads",
@@ -19,15 +19,15 @@
   },
   "safety_boundaries": [
     "The repository is planning-first and not an autonomous execution runtime.",
-    "Human review is required before generated planning artifacts are treated as approved.",
+    "Human review is required before generated intake or planning artifacts are treated as approved.",
     "Unsafe requests must be rejected or safely reinterpreted into planning-only outputs.",
-    "The initial frontend may render generated state but must not invent task, repo, prompt, slot, planning-run, or contract structure.",
+    "The initial frontend may render generated state but must not invent intake, task, repo, prompt, slot, planning-run, or contract structure.",
     "The phase 0 seed must remain free of authentication, databases, realtime sync, and agent automation."
   ],
   "repo_split": [
     {
       "name": "seed-docs-and-rules",
-      "purpose": "Store the human-readable phase 0 specification, product rules, workflow notes, and reusable planning template.",
+      "purpose": "Store the human-readable phase 0 specification, product rules, intake workflow notes, workflow notes, and reusable planning template.",
       "contains": [
         "PROJECT_SPEC.md",
         "PROJECT_SPEC_TEMPLATE.md",
@@ -38,8 +38,9 @@
     },
     {
       "name": "seed-contracts",
-      "purpose": "Define machine-readable contracts for project specs, repo plans, tasks, slots, prompts, and future read-only APIs.",
+      "purpose": "Define machine-readable contracts for intake records, project specs, repo plans, tasks, slots, prompts, and future read-only APIs.",
       "contains": [
+        "contracts/project_intake.schema.json",
         "contracts/*.schema.json",
         "contracts/api_contract.openapi.yaml"
       ],
@@ -65,7 +66,7 @@
     },
     {
       "name": "seed-prompts",
-      "purpose": "Store role-specific prompt source material aligned to the contracts and current project spec.",
+      "purpose": "Store role-specific prompt source material aligned to the contracts, intake workflow, and current project spec.",
       "contains": [
         "prompts/*.md"
       ],
@@ -99,6 +100,31 @@
   ],
   "domain_model": [
     {
+      "name": "ProjectIntake",
+      "fields": [
+        "schema_version",
+        "project_slug",
+        "intake_mode",
+        "project_goal",
+        "target_users",
+        "mvp",
+        "target_platforms",
+        "stack",
+        "existing_project",
+        "tools",
+        "team_mode",
+        "working_style",
+        "constraints",
+        "safety_boundaries",
+        "assumptions",
+        "open_questions",
+        "acceptance_signals"
+      ],
+      "relations": [
+        "ProjectIntake captures the guided interview result that feeds the Planning Agent before generated planning artifacts are produced."
+      ]
+    },
+    {
       "name": "ProjectSpec",
       "fields": [
         "project_name",
@@ -113,7 +139,7 @@
         "starter_prompts"
       ],
       "relations": [
-        "ProjectSpec drives RepoPlan, Task, AgentPrompt, AgentSlot, and read-only planning-run index artifacts."
+        "ProjectSpec is produced after intake and drives RepoPlan, Task, AgentPrompt, AgentSlot, and read-only planning-run index artifacts."
       ]
     },
     {
@@ -241,6 +267,7 @@
         "generated/task_backlog.json",
         "generated/agent_prompts.json",
         "generated/slots_db.json",
+        "contracts/project_intake.schema.json",
         "contracts/project_spec.schema.json",
         "contracts/repo_plan.schema.json",
         "contracts/task.schema.json",
@@ -277,22 +304,25 @@
     }
   ],
   "core_engine_responsibilities": [
+    "Capture guided intake outputs as structured source-of-truth inputs for planning.",
     "Compile rough planning intent into explicit project structure.",
     "Maintain contract-first generated artifacts for the seed repository.",
     "Derive planning-run indexes from file-based manual planning runs.",
-    "Preserve traceability from product rules to repo plan, tasks, prompts, slots, and planning-run readiness.",
+    "Preserve traceability from product rules to intake, repo plan, tasks, prompts, slots, and planning-run readiness.",
     "Reject or reinterpret unsafe scope expansion into planning-only outputs.",
     "Support deterministic validation of machine-readable seed artifacts."
   ],
   "verification_tasks": [
     "Parse every JSON file in the repository and fail clearly on invalid syntax.",
     "Validate canonical generated project state against the contracts in contracts/.",
+    "Verify that project intake records conform to contracts/project_intake.schema.json when present.",
     "Verify that the generated artifacts stay aligned with the current phase 0 scope limits.",
     "Verify that future frontend work renders generated state and does not invent hidden models.",
     "Verify that the planning-runs page renders only generated/planning_runs_index.json and does not mutate planning-run folders.",
     "Red-team prompt drift toward automation, auth, persistence, or realtime scope."
   ],
   "starter_prompts": {
+    "intake_interviewer": "Guide the user from rough idea to structured project_intake.json by asking high-impact questions, suggesting stacks, and making safe assumptions.",
     "planning_agent": "Turn rough software ideas into a safe project spec, repo split, backlog, and prompt pack before implementation begins.",
     "contract_steward": "Maintain strict schemas and reject undocumented structure across project specs, repo plans, tasks, prompts, and slots.",
     "frontend_builder": "Build only read-only views that render generated state and contract-defined structure without inventing frontend-only models.",
