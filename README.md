@@ -155,6 +155,7 @@ It should display:
 - `docs/PLANNING_RUN_WORKFLOW.md`: manual planning-run workflow
 - `contracts/`: schemas and OpenAPI contract
 - `contracts/project_intake.schema.json`: schema for guided project intake records
+- `contracts/collaboration_state.schema.json`: draft schema for future human and web-AI coordination state
 - `generated/`: canonical machine-readable planning artifacts for the current seed state
 - `generated/planning_runs_index.json`: derived index of manual planning-run folders and output completeness
 - `examples/coc-base-builder/`: example decomposition for a safe base layout planner

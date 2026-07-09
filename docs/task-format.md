@@ -17,8 +17,11 @@ Each generated task should be small, testable, and traceable.
 
 ## Optional Fields
 
+- `lane`
+- `allowed_areas`
 - `risk_tags`
 - `notes`
+- `handoff_notes`
 
 ## Rules
 
@@ -26,3 +29,4 @@ Each generated task should be small, testable, and traceable.
 - Keep tasks implementation-sized.
 - Make acceptance criteria externally checkable.
 - Reference the source spec or contract context where possible.
+- Use `lane`, `allowed_areas`, and `handoff_notes` when they make parallel work safer.

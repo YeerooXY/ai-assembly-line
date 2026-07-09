@@ -21,7 +21,9 @@
     "title": { "type": "string", "minLength": 1 },
     "summary": { "type": "string", "minLength": 1 },
     "owner_role": { "type": "string", "minLength": 1 },
+    "lane": { "type": "string", "minLength": 1 },
     "repo_target": { "type": "string", "minLength": 1 },
+    "allowed_areas": { "type": "array", "items": { "type": "string", "minLength": 1 } },
     "depends_on": { "type": "array", "items": { "type": "string" } },
     "inputs": { "type": "array", "items": { "type": "string" } },
     "outputs": { "type": "array", "items": { "type": "string" } },
@@ -40,6 +42,9 @@
       "items": { "type": "string" }
     },
     "notes": {
+      "type": "string"
+    },
+    "handoff_notes": {
       "type": "string"
     }
   }

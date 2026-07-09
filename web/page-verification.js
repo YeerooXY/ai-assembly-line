@@ -7,6 +7,7 @@ const CONTRACT_ENTRIES = [
   { id: "taskSchema", path: "contracts/task.schema.json", kind: "json" },
   { id: "slotSchema", path: "contracts/slot.schema.json", kind: "json" },
   { id: "agentPromptSchema", path: "contracts/agent_prompt.schema.json", kind: "json" },
+  { id: "collaborationStateSchema", path: "contracts/collaboration_state.schema.json", kind: "json" },
   { id: "apiContract", path: "contracts/api_contract.openapi.yaml", kind: "text" },
 ];
 

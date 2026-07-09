@@ -167,6 +167,7 @@ It should display:
 - `docs/PLANNING_RUN_WORKFLOW.md`: manual planning-run workflow
 - `contracts/`: schemas and OpenAPI contract
 - `contracts/project_intake.schema.json`: schema for guided project intake records
+- `contracts/collaboration_state.schema.json`: draft schema for future human and web-AI coordination state
 - `generated/`: canonical machine-readable planning artifacts for the current seed state
 - `generated/planning_runs_index.json`: derived index of manual planning-run folders and output completeness
 - `examples/coc-base-builder/`: example decomposition for a safe base layout planner
@@ -340,6 +341,7 @@ python tools\validate_seed.py
 - `agent_prompt.schema.json`
 - `slot.schema.json`
 - `task.schema.json`
+- `collaboration_state.schema.json`
 - `repo_plan.schema.json`
 
 ### API Contract
@@ -897,7 +899,7 @@ rough idea
   -> human review
 ```
 
-The intake session is the interactive state while questions are still being asked.
+The intake session is the internal interactive state while questions are still being asked.
 
 The intake record is not an implementation plan. It is the structured input that keeps the implementation plan grounded.
 
@@ -924,12 +926,14 @@ The Intake Interviewer must not immediately output:
 Instead, it should output:
 
 1. a short acknowledgement
-2. an `intake_session` update following `contracts/intake_session.schema.json`
-3. the next high-impact question
+2. a compact human-readable intake status summary
+3. the next high-impact question, preferably as a decision card when the choice affects MVP difficulty or later scaling/refactor risk
 
 This is true even if the user asks for guidelines or says they want to bring the idea to life. Those requests still start intake unless a complete intake record already exists.
 
 If `readiness.can_generate_intake` is `false`, the first response must stop after the single next question in guided mode. It must not continue with project guidelines, technical steering, repository layout, default answers, stack choices, definition-of-done rules, or a checklist of future questions.
+
+Do not print raw `intake_session` JSON by default. Keep it internally and show JSON only when the user asks for it, the session becomes ready for `project_intake.json`, state review is needed, or saving/exporting/persisting is requested.
 
 See `docs/INTAKE_SESSION_FORMAT.md` and `docs/INTAKE_DECISION_CARDS.md`.
 
@@ -946,11 +950,11 @@ That is still a request to start intake, not a request to produce guidelines.
 The correct first response is:
 
 1. short acknowledgement
-2. `intake_session` state
-3. one high-impact question
+2. compact intake status
+3. one high-impact question or decision card
 4. stop
 
-The incorrect response is anything that continues with starter steering rules, a recommended stack, repo/package split, project layout, definition of done, suggested answers, planning-run guidelines, or a batch checklist of future questions.
+The incorrect response is anything that continues with starter steering rules, a recommended stack, repo/package split, project layout, definition of done, suggested answers, planning-run guidelines, raw JSON dump by default, or a batch checklist of future questions.
 
 ## Recommended target-project layout
 
@@ -1013,13 +1017,14 @@ Rules:
 - Ask exactly one high-impact question per assistant turn unless the user explicitly asks for a batch.
 - The one question should be the next unanswered decision that most changes architecture, stack, MVP, safety, or parallelization.
 - Do not include a checklist of future questions in the same turn.
-- After the first visible `intake_session`, use compact updates instead of repeating the full JSON unless the user asks to see the state.
+- Use compact human-readable updates instead of repeating raw JSON unless the user asks to see the state.
 - For hard choices, present the one question as an A/B/C decision card with pros, cons, MVP risk, later scaling/refactor risk, and one explicit agent recommendation.
+- The first MVP-boundary question for a rough idea should normally be a decision card when sensible options can be inferred.
 - The user may answer `A`, `B`, `C`, `recommended`, or a custom answer.
 - Do not silently apply the recommendation; record it only if the user chooses it.
-- After the user answers, update `intake_session` and ask the next one-question step.
+- After the user answers, update `intake_session` internally and ask the next one-question step.
 - Only produce `project_intake.json` after the session is ready.
-- Suggest reasonable stack options only after platform, multiplayer mode, and project state are known.
+- Suggest reasonable stack options only after platform, multiplayer/sync mode, and project state are known.
 - Confirm the MVP before planning.
 - Confirm team/agent working style before task decomposition.
 
@@ -1091,7 +1096,7 @@ The Intake Interviewer should cover these sections, but not necessarily all in o
 
 When suggesting a stack, provide options with tradeoffs and a recommendation. Do not force a stack silently.
 
-Do not suggest concrete stack options on the first response to a rough idea when high-risk answers such as platform, multiplayer mode, existing project state, and team/agent layout are still unknown.
+Do not suggest concrete stack options on the first response to a rough idea when high-risk answers such as platform, multiplayer/sync mode, existing project state, and team/agent layout are still unknown.
 
 When enough context exists, prefer a decision card for stack/platform choices so the user can compare MVP speed against later scaling/refactor pain.
 
@@ -1131,6 +1136,7 @@ Assume when the missing detail is low-risk and easy to revise later.
 Stop and ask when the missing detail is high-risk, such as:
 
 - real-time multiplayer versus turn-based multiplayer
+- local-only versus real shared sync
 - browser-first versus desktop-first
 - existing repository versus greenfield
 - required engine/framework
@@ -1140,7 +1146,7 @@ Stop and ask when the missing detail is high-risk, such as:
 
 ## Intake session output
 
-While questions are still open, the intake interview should produce `intake_session.json`-shaped updates conforming to `contracts/intake_session.schema.json`.
+While questions are still open, maintain an internal `intake_session` state conforming to `contracts/intake_session.schema.json`.
 
 The session should include:
 
@@ -1157,8 +1163,6 @@ The session should include:
 If `readiness.can_generate_intake` is `false`, the output is not allowed to continue into guidelines or planning artifacts.
 
 In guided mode, `next_action.questions` should contain only the single next question. Other unanswered decisions belong in `open_questions`, not in the visible next-question list.
-
-In guided mode, the full JSON object should be visible on the first intake turn, when the user asks for it, when the session becomes ready for `project_intake.json`, or when saving/exporting is requested. Otherwise, use a compact update that records the latest answer, current status, and single next question.
 
 Decision-card options are human-facing guidance. Record only the user's selected answer as the intake answer; do not treat unchosen options as project decisions.
 
@@ -1208,20 +1212,20 @@ The Planning Agent must preserve all high-risk unknowns as open questions or ver
 
 `project_intake.json` is the final structured intake record.
 
-`intake_session.json` is the interactive state used while the Intake Interviewer is still asking questions.
+`intake_session.json` is the internal interactive state used while the Intake Interviewer is still asking questions.
 
-The frontend should render `intake_session.json` while intake is in progress, then render or save `project_intake.json` once the session is ready.
+A frontend can render `intake_session.json` directly. In normal chat, the assistant should show compact human-readable intake status instead of dumping raw JSON.
 
 ## Why this exists
 
 A rough project idea should not immediately turn into a full guideline document, project spec, backlog, or implementation plan.
 
-The first response should be an intake session update:
+The intended chat flow is:
 
 ```text
 rough idea
-  -> intake_session update
-  -> focused question
+  -> compact intake status
+  -> one focused question or decision card
   -> project_intake.json
   -> planning artifacts
 ```
@@ -1230,7 +1234,7 @@ This prevents the AI from jumping the gun and generating a fake-complete plan be
 
 ## Source of truth
 
-The schema is:
+The internal session schema is:
 
 ```text
 contracts/intake_session.schema.json
@@ -1262,10 +1266,12 @@ When a user provides only a rough idea, the Intake Interviewer must not output:
 Instead, it must output:
 
 1. a short acknowledgement
-2. an `intake_session` state block
-3. the next high-impact question
+2. a compact human-readable intake status summary
+3. the next high-impact question, preferably as a decision card when the choice affects MVP difficulty or later scaling/refactor pain
 
 Then it must stop. If `readiness.can_generate_intake` is `false`, the response must not continue with guidelines, recommendations, architecture, repo layout, task rules, suggested answers, or a checklist of future questions.
+
+Do not print raw `intake_session` JSON by default. Keep it internally and show JSON only when the user asks for it, the session becomes ready for `project_intake.json`, state review is needed, or saving/exporting/persisting is requested.
 
 ## Guidelines wording trap
 
@@ -1273,124 +1279,72 @@ A user may ask for `guidelines`, `steering help`, `starter rules`, or help `sett
 
 That wording still means: start intake.
 
-It does not permit the Intake Interviewer to produce:
+It does not permit the Intake Interviewer to produce starter steering rules, temporary guidelines, stack recommendations, repo split, definition of done, suggested answers, or a checklist of future intake questions.
 
-- starter steering rules
-- temporary guidelines
-- stack recommendations
-- a repo/package split
-- a target `.ai-assembly/` project layout
-- a definition of done
-- suggested answers to its own questions
-- a checklist of future intake questions
-
-The correct response is to say that guidelines can be produced after the high-risk intake questions are answered, then provide only the `intake_session` update and the single next question in guided mode.
-
-## Session states
-
-Allowed `status` values:
-
-- `not_started`
-- `in_progress`
-- `ready_for_intake_record`
-- `intake_record_drafted`
-- `blocked`
-
-Allowed `next_action.type` values:
-
-- `ask_questions`
-- `suggest_stack`
-- `draft_project_intake`
-- `handoff_to_planning`
-- `blocked`
+The correct response is to say that guidelines can be produced after the high-risk intake questions are answered, then provide only the compact intake status and the single next question in guided mode.
 
 ## Minimal first response shape
 
-For a rough idea like `I want to build a multiplayer Tron game`, the first response should look like this:
+For a rough idea like `I want to build a tiny shared grocery list app for two people`, the first response should look like this:
 
-```json
-{
-  "schema_version": "0.1.0",
-  "project_slug": "multiplayer-tron",
-  "mode": "guided",
-  "status": "in_progress",
-  "current_section": "goal-and-mvp",
-  "sections": [
-    {
-      "id": "goal-and-mvp",
-      "label": "Goal and MVP",
-      "status": "in_progress",
-      "questions": [
-        {
-          "id": "goal-001",
-          "question": "What kind of multiplayer should the first playable version support: local same-keyboard, LAN, private online rooms, or public matchmaking?",
-          "answer": "",
-          "risk_level": "high",
-          "affects": ["mvp", "networking", "stack"]
-        }
-      ]
-    }
-  ],
-  "stack_options": [],
-  "assumptions": [
-    "The project is a standalone original game, not automation of an existing game or service."
-  ],
-  "open_questions": [
-    {
-      "question": "What kind of multiplayer should the MVP support?",
-      "risk_if_unanswered": "The architecture and stack cannot be chosen safely."
-    },
-    {
-      "question": "Which platform matters first?",
-      "risk_if_unanswered": "The target platform changes stack, deployment, input handling, and networking choices."
-    },
-    {
-      "question": "Is this a greenfield project or an existing repository?",
-      "risk_if_unanswered": "The workspace layout and file-boundary plan cannot be chosen safely."
-    },
-    {
-      "question": "How many humans or AI agents should work in parallel?",
-      "risk_if_unanswered": "The task split and prompt boundaries cannot be shaped correctly."
-    }
-  ],
-  "readiness": {
-    "can_generate_intake": false,
-    "missing_high_risk_answers": [
-      "MVP multiplayer mode",
-      "target platform",
-      "stack preference or permission to recommend one",
-      "greenfield versus existing repo",
-      "parallel humans/AI agents"
-    ]
-  },
-  "next_action": {
-    "type": "ask_questions",
-    "questions": [
-      "What kind of multiplayer should the first playable version support: local same-keyboard, LAN, private online rooms, or public matchmaking?"
-    ]
-  }
-}
+```text
+Yes — this starts intake, because guidelines should come after the high-risk project choices are known.
+
+Intake status: started
+Project: shared-grocery-list
+Known: tiny shared grocery list app for two people
+Still needed: MVP boundary
+
+Decision: What is the smallest useful MVP for the two of you?
+
+A) One-device local list
+What it means: One list on one device, no sharing between devices.
+Pros: fastest to build and easiest to test.
+Cons: not truly shared.
+MVP risk: low.
+Scaling/refactor risk: high — adding real sharing later may require rethinking storage and state.
+Best when: You only want to validate the list UI first.
+
+B) Manual share/export list
+What it means: One person can copy/export the list and send it to the other.
+Pros: simple, with some sharing behavior.
+Cons: clunky and not live.
+MVP risk: low-medium.
+Scaling/refactor risk: medium.
+Best when: Sharing matters, but live collaboration is not required yet.
+
+C) Real shared list with sync
+What it means: Both people can edit the same list from separate devices.
+Pros: matches the actual product idea.
+Cons: needs backend/sync/conflict decisions.
+MVP risk: medium-high.
+Scaling/refactor risk: low-medium — avoids fake-sharing rework later.
+Best when: The core value is truly shared usage.
+
+Agent recommendation: C — if “shared” is the point of the product; A only if you want the fastest throwaway prototype.
+
+Question: Choose A, B, C, recommended, or custom.
 ```
 
-This is not a required exact output. It is the intended shape: visible session state plus the single next question.
+This is not a required exact output. It is the intended shape: compact state plus one useful decision.
 
 In guided mode, `next_action.questions` should contain only the single next question. Other unanswered decisions belong in `open_questions`, not in the visible next-question list.
 
-The first response should not include any sections after this shape except the same focused question in user-readable form.
+## Compact guided updates
 
-## Compact follow-up updates
-
-After the first visible `intake_session` in guided mode, do not print the full JSON on every turn.
+Normal guided turns should not print the full JSON.
 
 Use a compact update like:
 
 ```text
-Recorded: multiplayer mode = real-time shared rooms.
-Status: MVP section complete; platform/stack still open.
-Next question: Which platform matters first: browser, desktop, mobile, or something else?
+Recorded: MVP sharing mode = real shared list with sync.
+Status: MVP boundary is clear; platform/stack is still open.
+
+Decision: Which platform should the MVP target first?
+...
 ```
 
-Show the full `intake_session` again only when:
+Show the full `intake_session` only when:
 
 - the user asks to see the JSON or full session state,
 - the session becomes ready for `project_intake.json`,
@@ -1398,49 +1352,6 @@ Show the full `intake_session` again only when:
 - the state has become ambiguous and needs explicit review.
 
 The compact update still represents an updated `intake_session`; it just does not dump the entire object into the chat.
-
-## Decision-card follow-up updates
-
-A compact guided update may include one decision card when the next question is hard.
-
-Use this when the choice affects MVP difficulty or later scaling/refactor pain.
-
-```text
-Recorded: team mode = 2 people working in parallel.
-Status: Ready for stack choice.
-
-Decision: Which stack direction do you want for the MVP?
-
-A) Flutter client + backend service
-What it means: Build the UI in Flutter and a separate backend for rooms, game state, and realtime events.
-Pros: Best fit for desktop-first now and mobile later.
-Cons: Backend still needs separate WebSocket/game-state work.
-MVP risk: medium — more setup than a pure web prototype.
-Scaling/refactor risk: low-medium — mobile later is much less painful.
-Best when: Mobile later is real, not just a vague maybe.
-
-B) React + Tauri desktop client + backend
-What it means: Build a web-style UI wrapped as a lightweight desktop app, with a separate backend.
-Pros: Fast desktop MVP; familiar web tooling.
-Cons: Mobile later probably needs a separate client or rewrite.
-MVP risk: low-medium — good speed if the team knows web tooling.
-Scaling/refactor risk: medium — mobile later can become a second project.
-Best when: Desktop MVP speed matters more than mobile reuse.
-
-C) React web app + Electron wrapper + backend
-What it means: Build a browser-style app and package it with Electron for desktop.
-Pros: Fastest if the team knows web tooling.
-Cons: Heavier desktop app; mobile later is not clean.
-MVP risk: low — quickest path to something playable.
-Scaling/refactor risk: high — can become painful if mobile and polish matter later.
-Best when: The goal is to prove gameplay fast.
-
-Agent recommendation: A — because the stated goal is desktop first, but mobile later matters.
-
-Question: Choose A, B, C, recommended, or custom.
-```
-
-This still counts as one guided question. If the user answers `recommended`, record the recommended option as the selected answer. Unchosen options are rationale, not project decisions.
 
 ## Frontend rendering guidance
 
@@ -1476,7 +1387,7 @@ If `can_generate_intake` is `false`, the next output should ask the next single 
 
 Guided intake asks one question per assistant turn.
 
-A question may still be rich enough to help the user make a good decision. For difficult architecture, MVP, stack, scaling, or team-split choices, present the one question as a decision card.
+A question may still be rich enough to help the user make a good decision. For difficult architecture, MVP, stack, scaling, sync, persistence, or team-split choices, present the one question as a decision card.
 
 ## Purpose
 
@@ -1524,6 +1435,7 @@ This still counts as one guided intake question.
 - If the user gives a custom answer, record it and update open questions if the custom answer introduces risk.
 - Keep future decisions in `open_questions`; do not turn the card into a checklist of multiple questions.
 - Do not use decision cards for trivial low-risk choices.
+- For the first high-impact MVP-boundary question of a rough idea, prefer a decision card when sensible options can be inferred from the idea.
 
 ## When to use decision cards
 
@@ -1534,13 +1446,53 @@ Use decision cards for choices that materially affect:
 - stack or engine
 - backend architecture
 - realtime versus asynchronous behavior
+- sync/storage model
 - persistence/auth/accounts
 - deployment model
 - team/agent split
 - proof required for done
 - choices that may create later scaling or refactor pain
 
-## Example
+## Example: MVP boundary
+
+```text
+Intake status: started
+Project: shared-grocery-list
+Known: tiny shared grocery list app for two people
+Still needed: MVP boundary
+
+Decision: What is the smallest useful MVP for the two of you?
+
+A) One-device local list
+What it means: One list on one device, no sharing between devices.
+Pros: fastest to build and easiest to test.
+Cons: not truly shared.
+MVP risk: low.
+Scaling/refactor risk: high — adding real sharing later may require rethinking storage and state.
+Best when: You only want to validate the list UI first.
+
+B) Manual share/export list
+What it means: One person can copy/export the list and send it to the other.
+Pros: simple, with some sharing behavior.
+Cons: clunky and not live.
+MVP risk: low-medium.
+Scaling/refactor risk: medium.
+Best when: Sharing matters, but live collaboration is not required yet.
+
+C) Real shared list with sync
+What it means: Both people can edit the same list from separate devices.
+Pros: matches the actual product idea.
+Cons: needs backend/sync/conflict decisions.
+MVP risk: medium-high.
+Scaling/refactor risk: low-medium — avoids fake-sharing rework later.
+Best when: The core value is truly shared usage.
+
+Agent recommendation: C — if “shared” is the point of the product; A only if you want the fastest throwaway prototype.
+
+Question: Choose A, B, C, recommended, or custom.
+```
+
+## Example: stack direction
 
 ```text
 Recorded: team mode = 2 people working in parallel.
@@ -1919,14 +1871,22 @@ Use fields that match the current task contract when generating machine-readable
 
 ```json
 {
-  "id": "T-001",
+  "id": "define-realtime-event-contract",
   "title": "Define shared realtime game event contract",
+  "owner_role": "Protocol Agent",
   "lane": "shared-contract",
-  "repo_target": "shared/contracts",
+  "repo_target": "car-game-protocol",
   "depends_on": [],
   "allowed_areas": [
     "docs/",
     "shared/contracts/"
+  ],
+  "inputs": [
+    "accepted project_intake.json",
+    "repo_plan.json"
+  ],
+  "outputs": [
+    "docs/network-events.md"
   ],
   "summary": "Define the minimal client/server events required for the first playable multiplayer game loop.",
   "acceptance_criteria": [
@@ -2089,8 +2049,11 @@ Each generated task should be small, testable, and traceable.
 
 ## Optional Fields
 
+- `lane`
+- `allowed_areas`
 - `risk_tags`
 - `notes`
+- `handoff_notes`
 
 ## Rules
 
@@ -2098,6 +2061,7 @@ Each generated task should be small, testable, and traceable.
 - Keep tasks implementation-sized.
 - Make acceptance criteria externally checkable.
 - Reference the source spec or contract context where possible.
+- Use `lane`, `allowed_areas`, and `handoff_notes` when they make parallel work safer.
 
 ```
 
@@ -2432,6 +2396,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "contracts/task.schema.json",
         "contracts/slot.schema.json",
         "contracts/agent_prompt.schema.json",
+        "contracts/collaboration_state.schema.json",
         "contracts/api_contract.openapi.yaml"
       ],
       "notes": "Static verification page that exposes generated verification requirements and renders raw contract files read-only without mutable workflow state."
@@ -2529,6 +2494,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "contracts/task.schema.json",
         "contracts/slot.schema.json",
         "contracts/agent_prompt.schema.json",
+        "contracts/collaboration_state.schema.json",
         "contracts/api_contract.openapi.yaml"
       ],
       "depends_on": [
@@ -2814,11 +2780,13 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       ],
       "task_boundaries": [
         "Treat rough ideas plus requests for help, guidelines, steering, architecture, or setup as requests to start intake.",
-        "On the first response without a complete intake record, output only a short acknowledgement, intake_session update, and one high-impact guided-mode question, then stop.",
+        "On the first response without a complete intake record, output only a short acknowledgement, compact human-readable intake status, and one high-impact guided-mode question, then stop.",
+        "Do not print raw intake_session JSON by default; maintain schema-aligned state internally and show JSON only when requested, ready for project_intake, state review is needed, or saving/exporting/persisting.",
         "In guided mode, next_action.questions may contain only the single next question unless the user explicitly asks for a batch.",
         "For hard guided-mode choices, ask the single question as an A/B/C decision card with pros, cons, MVP risk, scaling/refactor risk, and one explicit agent recommendation.",
+        "For the first high-impact MVP-boundary question of a rough idea, prefer a decision card when sensible options can be inferred.",
         "Allow the user to answer A, B, C, recommended, or custom; do not silently apply the recommendation.",
-        "After the first visible intake_session, use compact human-readable updates instead of repeating full JSON unless the user asks to see the full state.",
+        "Use compact human-readable updates instead of repeating full JSON unless the user asks to see the full state.",
         "Keep future unanswered decisions in open_questions, not as a visible checklist in next_action.questions.",
         "Do not append starter guidelines, technical steering, repo/package split, definition of done, stack recommendation, suggested answers, task backlog, or agent assignments while readiness.can_generate_intake is false.",
         "Ask only questions that materially change the plan.",
@@ -2827,9 +2795,9 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "Do not produce implementation tasks until the intake record is complete enough."
       ],
       "output_required": [
-        "Full intake_session update on the first guided intake turn or when explicitly requested",
+        "Compact human-readable intake status on the first guided intake turn",
         "Compact intake update after subsequent guided-mode answers",
-        "Decision card for hard guided-mode choices when useful",
+        "Decision card for hard guided-mode choices when useful, including first MVP-boundary choice when applicable",
         "Explicit assumptions",
         "High-risk open questions",
         "Single next high-impact question in guided mode",
@@ -2837,11 +2805,12 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "Planning Agent hand-off summary only after project_intake.json is drafted"
       ],
       "verification_required": [
-        "In-progress intake session matches contracts/intake_session.schema.json.",
+        "Internal intake session matches contracts/intake_session.schema.json.",
         "Guided-mode next_action.questions contains exactly one visible question unless the user explicitly asks for a batch.",
+        "First rough-idea response does not dump raw intake_session JSON by default.",
         "Hard guided-mode choices include clear options with tradeoffs and an explicit recommendation when a decision card would help.",
         "Recommendation is not treated as accepted unless the user chooses it or answers recommended.",
-        "Subsequent guided-mode turns do not repeat the full intake_session JSON unless requested, ready for project_intake, or saving/exporting.",
+        "Subsequent guided-mode turns do not repeat the full intake_session JSON unless requested, ready for project_intake, state review, or saving/exporting.",
         "No project_intake.json or planning artifacts are produced while readiness.can_generate_intake is false.",
         "First response to a rough idea does not include starter guidelines, technical steering, repo/package split, definition of done, stack recommendation, suggested answers, backlog, agent assignments, or a checklist of future questions.",
         "Final intake record matches contracts/project_intake.schema.json.",
@@ -3506,6 +3475,12 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "path": "contracts/agent_prompt.schema.json",
       "category": "contract",
       "purpose": "Schema for the generated agent prompt pack.",
+      "required": true
+    },
+    {
+      "path": "contracts/collaboration_state.schema.json",
+      "category": "contract",
+      "purpose": "Draft schema for future coordination between humans, web-based AI agents, task claims, artifact submissions, reviews, and audit events.",
       "required": true
     },
     {
@@ -4447,7 +4422,9 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     "title": { "type": "string", "minLength": 1 },
     "summary": { "type": "string", "minLength": 1 },
     "owner_role": { "type": "string", "minLength": 1 },
+    "lane": { "type": "string", "minLength": 1 },
     "repo_target": { "type": "string", "minLength": 1 },
+    "allowed_areas": { "type": "array", "items": { "type": "string", "minLength": 1 } },
     "depends_on": { "type": "array", "items": { "type": "string" } },
     "inputs": { "type": "array", "items": { "type": "string" } },
     "outputs": { "type": "array", "items": { "type": "string" } },
@@ -4466,6 +4443,9 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "items": { "type": "string" }
     },
     "notes": {
+      "type": "string"
+    },
+    "handoff_notes": {
       "type": "string"
     }
   }
@@ -4642,6 +4622,220 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
 
 ```
 
+## `contracts/collaboration_state.schema.json`
+
+- Category: `contract`
+- Purpose: Draft schema for future coordination between humans, web-based AI agents, task claims, artifact submissions, reviews, and audit events.
+- Required: `true`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-assembly-line.local/contracts/collaboration_state.schema.json",
+  "title": "CollaborationState",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "workspace_id",
+    "actors",
+    "task_claims",
+    "artifact_submissions",
+    "reviews",
+    "audit_events"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9\\-]*$"
+    },
+    "actors": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/actor" }
+    },
+    "task_claims": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/task_claim" }
+    },
+    "artifact_submissions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/artifact_submission" }
+    },
+    "reviews": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/review" }
+    },
+    "audit_events": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/audit_event" }
+    }
+  },
+  "$defs": {
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actor_id", "display_name", "kind", "status"],
+      "properties": {
+        "actor_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9\\-]*$"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["human", "web_ai", "local_ai", "service"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "inactive", "blocked"]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "task_claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim_id", "task_id", "actor_id", "status", "claimed_at"],
+      "properties": {
+        "claim_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9\\-]*$"
+        },
+        "task_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9\\-]+$"
+        },
+        "actor_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9\\-]*$"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["claimed", "in_progress", "blocked", "submitted", "released"]
+        },
+        "claimed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "released_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "artifact_submission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["submission_id", "task_id", "actor_id", "artifact_paths", "status", "submitted_at"],
+      "properties": {
+        "submission_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9\\-]*$"
+        },
+        "task_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9\\-]+$"
+        },
+        "actor_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9\\-]*$"
+        },
+        "artifact_paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "summary": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["submitted", "needs_revision", "accepted", "rejected"]
+        },
+        "submitted_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["review_id", "submission_id", "reviewer_actor_id", "status", "findings"],
+      "properties": {
+        "review_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9\\-]*$"
+        },
+        "submission_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9\\-]*$"
+        },
+        "reviewer_actor_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9\\-]*$"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "changes_requested", "rejected"]
+        },
+        "findings": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "reviewed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "audit_event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "actor_id", "event_type", "target_id", "created_at"],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9\\-]*$"
+        },
+        "actor_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9\\-]*$"
+        },
+        "event_type": {
+          "type": "string",
+          "enum": ["claim_created", "claim_released", "artifact_submitted", "review_added", "status_changed"]
+        },
+        "target_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "details": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+
+```
+
 ## `contracts/api_contract.openapi.yaml`
 
 - Category: `contract`
@@ -4707,6 +4901,20 @@ paths:
                 type: array
                 items:
                   $ref: "./slot.schema.json"
+  /collaboration-state:
+    get:
+      summary: Get the current collaboration state draft
+      description: >
+        Future workflow surface for coordinating humans and web-based AI agents.
+        This is a contract draft only; it does not imply an implemented backend in the current Phase 0 repository.
+      operationId: getCollaborationState
+      responses:
+        "200":
+          description: Collaboration state document
+          content:
+            application/json:
+              schema:
+                $ref: "./collaboration_state.schema.json"
   /compile-spec:
     post:
       summary: Compile a rough idea into a structured project spec draft
@@ -4776,10 +4984,12 @@ Do not output any of the following on the first turn unless a complete intake re
 Instead, output:
 
 1. a short acknowledgement
-2. an `intake_session` update matching `contracts/intake_session.schema.json`
-3. the next high-impact question
+2. a compact human-readable intake status summary
+3. the next high-impact question, preferably as a decision card when the choice affects MVP difficulty or later scaling/refactor risk
 
 Then stop. If `readiness.can_generate_intake` is `false`, do not add any extra guidance after the question.
+
+Keep the internal `intake_session` state aligned with `contracts/intake_session.schema.json`, but do not dump the raw JSON unless the user asks for it, the state is ready for `project_intake.json`, or a save/export/persist step is requested.
 
 This rule exists so the AI does not jump the gun and pretend high-risk project decisions are already known.
 
@@ -4788,10 +4998,19 @@ This rule exists so the AI does not jump the gun and pretend high-risk project d
 For a rough idea with no complete intake record, the entire response must fit this envelope:
 
 1. Short acknowledgement.
-2. One visible `intake_session` object.
-3. One next high-impact user-facing question matching `next_action.questions[0]`.
+2. Compact intake status summary.
+3. One next high-impact user-facing question.
 
 After the question, stop the response.
+
+Do not print a raw `intake_session` JSON object on the first turn by default. Use a human-readable status card such as:
+
+```text
+Intake status: started
+Project: shared-grocery-list
+Known: tiny shared grocery list app for two people
+Still needed: MVP boundary
+```
 
 Do not append sections with headings like:
 
@@ -4845,22 +5064,22 @@ The `next_action.questions` array may contain only the single next question unle
 
 Do not show future queued questions as a visible list. Keep future unknowns in `open_questions`, not in `next_action.questions`.
 
-The first user-facing response to a rough idea should ask the first high-impact question immediately after the `intake_session` block and then stop.
+The first user-facing response to a rough idea should ask the first high-impact question immediately after the compact intake status summary and then stop.
 
-## Compact guided update rule
+## Human-readable guided update rule
 
-In guided mode, do not print the full `intake_session` JSON on every turn.
+In guided mode, do not print the full `intake_session` JSON by default.
 
 Show the full `intake_session` object only when:
 
-- starting intake from a rough idea,
 - the user explicitly asks to see the JSON/session state,
-- the session becomes ready to draft `project_intake.json`, or
+- the session becomes ready to draft `project_intake.json`,
+- the state has become ambiguous and needs explicit review, or
 - saving/exporting/persisting the state is the requested output.
 
-After the user answers a guided-mode question, use a compact intake update instead of repeating the full JSON. The compact update should include only:
+For normal guided turns, use a compact intake update instead of raw JSON. The compact update should include only:
 
-- the answer just recorded,
+- the answer just recorded, if any,
 - the current section/status if useful,
 - any newly unlocked next action,
 - the single next user-facing question.
@@ -4872,6 +5091,8 @@ Keep the full updated state internally consistent with `contracts/intake_session
 In guided mode, the assistant still asks exactly one user-facing question per turn.
 
 For hard choices, present that one question as a decision card with A/B/C options. Use decision cards when the answer affects MVP difficulty, later scaling pain, architecture, stack, platform target, backend model, team split, or verification strategy.
+
+The first high-impact MVP-boundary question for a rough idea should normally be a decision card, not a bare sentence, when obvious options can be inferred safely.
 
 A decision card should include:
 
@@ -4901,7 +5122,7 @@ Ask at most five questions. Make assumptions explicit. Produce a draft intake re
 
 ### Guided mode
 
-Ask exactly one high-impact question per turn. After the first visible `intake_session`, use compact updates instead of repeating the full JSON unless the user asks for the state. For hard choices, use A/B/C decision cards with pros, cons, MVP risk, scaling/refactor risk, and one explicit agent recommendation. Suggest options only when the current `next_action.type` is `suggest_stack` or when enough high-risk platform and multiplayer answers are known. Confirm the MVP and stack direction before producing the intake record.
+Ask exactly one high-impact question per turn. Use compact human-readable updates instead of raw JSON unless the user asks for the state. For hard choices, use A/B/C decision cards with pros, cons, MVP risk, scaling/refactor risk, and one explicit agent recommendation. Suggest options only when the current `next_action.type` is `suggest_stack` or when enough high-risk platform and multiplayer answers are known. Confirm the MVP and stack direction before producing the intake record.
 
 ### Expert mode
 
@@ -4965,11 +5186,11 @@ Agent recommendation: B if browser-first multiplayer matters most; A if desktop-
 Question: Choose A, B, recommended, or custom.
 ```
 
-## Intake session output
+## Intake session state
 
-While intake is in progress, produce or update an `intake_session` object matching `contracts/intake_session.schema.json`.
+While intake is in progress, maintain an internal `intake_session` object matching `contracts/intake_session.schema.json`.
 
-The session should include:
+The internal session should include:
 
 - current section
 - questions already asked
@@ -4983,8 +5204,6 @@ The session should include:
 If `readiness.can_generate_intake` is `false`, do not produce planning artifacts yet.
 
 In guided mode, `next_action.questions` must contain only the single next question unless the user explicitly asks for a batch.
-
-In guided mode after the first turn, prefer a compact human-readable update over full JSON repetition. The machine-readable state remains the source of truth, but the user should not have to read the full object every turn.
 
 Decision-card options are human-facing explanation. Record the selected answer in `intake_session`; do not treat unchosen options as project decisions.
 
@@ -6539,6 +6758,7 @@ export const CONTRACT_FILES = {
   taskSchema: "../contracts/task.schema.json",
   slotSchema: "../contracts/slot.schema.json",
   agentPromptSchema: "../contracts/agent_prompt.schema.json",
+  collaborationStateSchema: "../contracts/collaboration_state.schema.json",
   apiContract: "../contracts/api_contract.openapi.yaml",
 };
 
@@ -7367,6 +7587,7 @@ const CONTRACT_ENTRIES = [
   { id: "taskSchema", path: "contracts/task.schema.json", kind: "json" },
   { id: "slotSchema", path: "contracts/slot.schema.json", kind: "json" },
   { id: "agentPromptSchema", path: "contracts/agent_prompt.schema.json", kind: "json" },
+  { id: "collaborationStateSchema", path: "contracts/collaboration_state.schema.json", kind: "json" },
   { id: "apiContract", path: "contracts/api_contract.openapi.yaml", kind: "text" },
 ];
 
@@ -7952,6 +8173,7 @@ REQUIRED_FILES = [
     ROOT / "contracts" / "task.schema.json",
     ROOT / "contracts" / "slot.schema.json",
     ROOT / "contracts" / "agent_prompt.schema.json",
+    ROOT / "contracts" / "collaboration_state.schema.json",
     ROOT / "contracts" / "api_contract.openapi.yaml",
 ]
 
@@ -8150,14 +8372,18 @@ def validate_task(value: Any, label: str) -> None:
             "acceptance_criteria",
             "verification",
         },
-        {"risk_tags", "notes"},
+        {"risk_tags", "notes", "lane", "allowed_areas", "handoff_notes"},
     )
     expect_non_empty_string(value["id"], f"{label}.id")
     expect(re.fullmatch(r"[a-z0-9\-]+", value["id"]) is not None, f"{label}.id must match ^[a-z0-9\\-]+$")
     expect_non_empty_string(value["title"], f"{label}.title")
     expect_non_empty_string(value["summary"], f"{label}.summary")
     expect_non_empty_string(value["owner_role"], f"{label}.owner_role")
+    if "lane" in value:
+        expect_non_empty_string(value["lane"], f"{label}.lane")
     expect_non_empty_string(value["repo_target"], f"{label}.repo_target")
+    if "allowed_areas" in value:
+        expect_string_array(value["allowed_areas"], f"{label}.allowed_areas")
     expect_string_array(value["depends_on"], f"{label}.depends_on")
     expect_string_array(value["inputs"], f"{label}.inputs")
     expect_string_array(value["outputs"], f"{label}.outputs")
@@ -8167,6 +8393,8 @@ def validate_task(value: Any, label: str) -> None:
         expect_string_array(value["risk_tags"], f"{label}.risk_tags")
     if "notes" in value:
         expect_non_empty_string(value["notes"], f"{label}.notes")
+    if "handoff_notes" in value:
+        expect_non_empty_string(value["handoff_notes"], f"{label}.handoff_notes")
 
 
 def validate_slot(value: Any, label: str) -> None:

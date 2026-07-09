@@ -20,6 +20,7 @@ REQUIRED_FILES = [
     ROOT / "contracts" / "task.schema.json",
     ROOT / "contracts" / "slot.schema.json",
     ROOT / "contracts" / "agent_prompt.schema.json",
+    ROOT / "contracts" / "collaboration_state.schema.json",
     ROOT / "contracts" / "api_contract.openapi.yaml",
 ]
 
@@ -218,14 +219,18 @@ def validate_task(value: Any, label: str) -> None:
             "acceptance_criteria",
             "verification",
         },
-        {"risk_tags", "notes"},
+        {"risk_tags", "notes", "lane", "allowed_areas", "handoff_notes"},
     )
     expect_non_empty_string(value["id"], f"{label}.id")
     expect(re.fullmatch(r"[a-z0-9\-]+", value["id"]) is not None, f"{label}.id must match ^[a-z0-9\\-]+$")
     expect_non_empty_string(value["title"], f"{label}.title")
     expect_non_empty_string(value["summary"], f"{label}.summary")
     expect_non_empty_string(value["owner_role"], f"{label}.owner_role")
+    if "lane" in value:
+        expect_non_empty_string(value["lane"], f"{label}.lane")
     expect_non_empty_string(value["repo_target"], f"{label}.repo_target")
+    if "allowed_areas" in value:
+        expect_string_array(value["allowed_areas"], f"{label}.allowed_areas")
     expect_string_array(value["depends_on"], f"{label}.depends_on")
     expect_string_array(value["inputs"], f"{label}.inputs")
     expect_string_array(value["outputs"], f"{label}.outputs")
@@ -235,6 +240,8 @@ def validate_task(value: Any, label: str) -> None:
         expect_string_array(value["risk_tags"], f"{label}.risk_tags")
     if "notes" in value:
         expect_non_empty_string(value["notes"], f"{label}.notes")
+    if "handoff_notes" in value:
+        expect_non_empty_string(value["handoff_notes"], f"{label}.handoff_notes")
 
 
 def validate_slot(value: Any, label: str) -> None:

@@ -13,6 +13,7 @@ export const CONTRACT_FILES = {
   taskSchema: "../contracts/task.schema.json",
   slotSchema: "../contracts/slot.schema.json",
   agentPromptSchema: "../contracts/agent_prompt.schema.json",
+  collaborationStateSchema: "../contracts/collaboration_state.schema.json",
   apiContract: "../contracts/api_contract.openapi.yaml",
 };
 
