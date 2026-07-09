@@ -26,6 +26,12 @@
       "required": true
     },
     {
+      "path": ".gitignore",
+      "category": "repo-config",
+      "purpose": "Local noise and generated cache ignore rules for developer workflows.",
+      "required": false
+    },
+    {
       "path": "docs/AI_CONTEXT.md",
       "category": "review-doc",
       "purpose": "Remote AI review entry guidance for environments that cannot clone or run shell commands.",
@@ -107,6 +113,12 @@
       "path": "generated/slots_db.json",
       "category": "generated-state",
       "purpose": "Canonical slot board data consumed by the static viewer.",
+      "required": true
+    },
+    {
+      "path": "generated/planning_runs_index.json",
+      "category": "generated-state",
+      "purpose": "Derived index of manual planning-run folders, scaffold presence, output completeness, and run status.",
       "required": true
     },
     {
@@ -366,6 +378,18 @@
       "category": "tool",
       "purpose": "Validates saved planning-run output artifacts against existing contracts and cross-artifact consistency checks.",
       "required": true
+    },
+    {
+      "path": "tools/build_planning_runs_index.py",
+      "category": "tool",
+      "purpose": "Builds the derived planning-runs index consumed by later read-only review surfaces.",
+      "required": true
+    },
+    {
+      "path": "tools/sync_and_check.ps1",
+      "category": "tool",
+      "purpose": "Local helper that pulls GitHub-side changes, rebuilds generated indexes/context, validates artifacts, and reports status.",
+      "required": false
     }
   ]
 }
