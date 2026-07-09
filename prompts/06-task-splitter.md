@@ -12,10 +12,11 @@ Do not generate the entire `task_backlog.json` in one response for large plans.
 
 Large one-shot JSON outputs are hard to copy, easy to truncate, and likely to fail in web AI chats.
 
-Instead, use this two-step workflow:
+Instead, use this guided batch workflow:
 
 1. Create a compact `task_batch_index` grouped by agent role, repo target, or lane.
-2. Generate exactly one selected task batch file at a time.
+2. On each follow-up message, generate exactly one next task batch file.
+3. Continue until every batch listed in the index has been emitted.
 
 Each response must be small enough to copy from a single code block.
 
@@ -39,7 +40,21 @@ If the plan contains high-risk open questions, preserve them as blocking tasks o
 
 ## Requested Mode
 
-Set exactly one mode before using this prompt:
+Use guided mode for normal web AI usage:
+
+```text
+MODE: guided
+```
+
+Guided mode is conversational:
+
+- On the first response, return the batch index for `generated/task_batch_index.json`.
+- After the user replies `continue`, `next`, `sounds good`, or equivalent, return the next not-yet-emitted batch file.
+- Keep track of emitted batches from the conversation history.
+- Emit batches in the exact order listed in the batch index.
+- Stop after the final batch and say that no batches remain.
+
+Explicit modes are still available for debugging or recovering from a lost chat context:
 
 ```text
 MODE: batch-index
@@ -53,19 +68,54 @@ MODE: task-batch
 TARGET_BATCH_ID: <one batch_id from the task_batch_index>
 ```
 
-If `MODE` is missing, use `batch-index`.
+If `MODE` is missing, use `guided`.
 
 If `MODE` is `task-batch` but `TARGET_BATCH_ID` is missing, return a batch index instead.
 
 ## Output UX Rule
 
-Return exactly one fenced `json` code block and no prose outside it.
+For `MODE: guided`, return one small file per response.
+
+Use this response shape:
+
+````text
+Save to: generated/task_batch_index.json
+Next: reply continue to generate the first task batch.
+
+```json
+{ ...valid JSON for that one file... }
+```
+````
+
+For batch responses, use:
+
+````text
+Save to: generated/task_batches/<batch_id>.json
+Next: reply continue to generate the next task batch.
+
+```json
+{ ...valid JSON for that one batch file... }
+```
+````
+
+After the final batch, use:
+
+````text
+Save to: generated/task_batches/<batch_id>.json
+Next: no batches remain. Run python tools/validate_task_batches.py.
+
+```json
+{ ...valid JSON for the final batch file... }
+```
+````
+
+For explicit `MODE: batch-index` or `MODE: task-batch`, return exactly one fenced `json` code block and no prose outside it.
 
 The code block is intentional: web AI interfaces usually provide a copy button for code blocks. The future frontend should strip the fence automatically when pasting.
 
 ## Batch Index Output
 
-When `MODE: batch-index`, return a compact JSON object with this shape:
+When `MODE: guided` on the first response or `MODE: batch-index`, return a compact JSON object with this shape:
 
 ```json
 {
@@ -99,9 +149,21 @@ Batching rules:
 - Use stable lowercase `batch_id` values.
 - Do not include full task objects in the batch index.
 
+## Guided Continuation Output
+
+When `MODE: guided` and the user asks to continue:
+
+- Select the next batch in the `batches` array that has not already been emitted in this conversation.
+- Return only that batch file.
+- Do not ask the user to provide `TARGET_BATCH_ID`.
+- Do not regenerate the batch index unless the user explicitly asks to restart.
+- If the user asks for a specific batch by ID, generate that batch only and then resume the remaining order on the next continuation.
+- If conversation context is missing the batch index, ask the user to paste `generated/task_batch_index.json` or restart guided mode with the generated plan.
+- If every batch has already been emitted, do not output JSON. Say: `No batches remain. Run python tools/validate_task_batches.py.`
+
 ## Task Batch Output
 
-When `MODE: task-batch`, return only the task objects for `TARGET_BATCH_ID`.
+When `MODE: task-batch` or guided continuation, return only the task batch object for the selected batch.
 
 The top-level JSON value must be one task batch object matching `contracts/task_batch.schema.json`.
 
@@ -198,9 +260,11 @@ Order batches roughly like this when the plan supports it:
 
 Read the generated plan below.
 
+If `MODE: guided`, return the next required file for the guided conversation.
+
 If `MODE: batch-index`, return only the task batch index.
 
-If `MODE: task-batch`, return only the task array for `TARGET_BATCH_ID`.
+If `MODE: task-batch`, return only the task batch object for `TARGET_BATCH_ID`.
 
 ## Generated Plan
 

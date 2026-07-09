@@ -35,10 +35,10 @@ initializeViewerPage({
         <article class="card">
           <h3>Copy/Paste Flow</h3>
           ${renderList([
-            "Generate the batch index with prompts/06-task-splitter.md using MODE: batch-index.",
-            "Paste the returned JSON into generated/task_batch_index.json.",
-            "Choose one batch_id and run the prompt again using MODE: task-batch.",
-            "Paste that returned JSON into generated/task_batches/<batch_id>.json.",
+            "Paste prompts/06-task-splitter.md into a web AI with MODE: guided and the accepted generated plan.",
+            "Save the first returned JSON block as generated/task_batch_index.json.",
+            "Reply continue, next, or sounds good to generate one batch file at a time.",
+            "Save each returned JSON block as generated/task_batches/<batch_id>.json.",
             "Run python tools/validate_task_batches.py to validate files and graph order.",
           ])}
         </article>
