@@ -31,10 +31,12 @@ Do not output any of the following on the first turn unless a complete intake re
 Instead, output:
 
 1. a short acknowledgement
-2. an `intake_session` update matching `contracts/intake_session.schema.json`
-3. the next high-impact question
+2. a compact human-readable intake status summary
+3. the next high-impact question, preferably as a decision card when the choice affects MVP difficulty or later scaling/refactor risk
 
 Then stop. If `readiness.can_generate_intake` is `false`, do not add any extra guidance after the question.
+
+Keep the internal `intake_session` state aligned with `contracts/intake_session.schema.json`, but do not dump the raw JSON unless the user asks for it, the state is ready for `project_intake.json`, or a save/export/persist step is requested.
 
 This rule exists so the AI does not jump the gun and pretend high-risk project decisions are already known.
 
@@ -43,10 +45,19 @@ This rule exists so the AI does not jump the gun and pretend high-risk project d
 For a rough idea with no complete intake record, the entire response must fit this envelope:
 
 1. Short acknowledgement.
-2. One visible `intake_session` object.
-3. One next high-impact user-facing question matching `next_action.questions[0]`.
+2. Compact intake status summary.
+3. One next high-impact user-facing question.
 
 After the question, stop the response.
+
+Do not print a raw `intake_session` JSON object on the first turn by default. Use a human-readable status card such as:
+
+```text
+Intake status: started
+Project: shared-grocery-list
+Known: tiny shared grocery list app for two people
+Still needed: MVP boundary
+```
 
 Do not append sections with headings like:
 
@@ -100,22 +111,22 @@ The `next_action.questions` array may contain only the single next question unle
 
 Do not show future queued questions as a visible list. Keep future unknowns in `open_questions`, not in `next_action.questions`.
 
-The first user-facing response to a rough idea should ask the first high-impact question immediately after the `intake_session` block and then stop.
+The first user-facing response to a rough idea should ask the first high-impact question immediately after the compact intake status summary and then stop.
 
-## Compact guided update rule
+## Human-readable guided update rule
 
-In guided mode, do not print the full `intake_session` JSON on every turn.
+In guided mode, do not print the full `intake_session` JSON by default.
 
 Show the full `intake_session` object only when:
 
-- starting intake from a rough idea,
 - the user explicitly asks to see the JSON/session state,
-- the session becomes ready to draft `project_intake.json`, or
+- the session becomes ready to draft `project_intake.json`,
+- the state has become ambiguous and needs explicit review, or
 - saving/exporting/persisting the state is the requested output.
 
-After the user answers a guided-mode question, use a compact intake update instead of repeating the full JSON. The compact update should include only:
+For normal guided turns, use a compact intake update instead of raw JSON. The compact update should include only:
 
-- the answer just recorded,
+- the answer just recorded, if any,
 - the current section/status if useful,
 - any newly unlocked next action,
 - the single next user-facing question.
@@ -127,6 +138,8 @@ Keep the full updated state internally consistent with `contracts/intake_session
 In guided mode, the assistant still asks exactly one user-facing question per turn.
 
 For hard choices, present that one question as a decision card with A/B/C options. Use decision cards when the answer affects MVP difficulty, later scaling pain, architecture, stack, platform target, backend model, team split, or verification strategy.
+
+The first high-impact MVP-boundary question for a rough idea should normally be a decision card, not a bare sentence, when obvious options can be inferred safely.
 
 A decision card should include:
 
@@ -156,7 +169,7 @@ Ask at most five questions. Make assumptions explicit. Produce a draft intake re
 
 ### Guided mode
 
-Ask exactly one high-impact question per turn. After the first visible `intake_session`, use compact updates instead of repeating the full JSON unless the user asks for the state. For hard choices, use A/B/C decision cards with pros, cons, MVP risk, scaling/refactor risk, and one explicit agent recommendation. Suggest options only when the current `next_action.type` is `suggest_stack` or when enough high-risk platform and multiplayer answers are known. Confirm the MVP and stack direction before producing the intake record.
+Ask exactly one high-impact question per turn. Use compact human-readable updates instead of raw JSON unless the user asks for the state. For hard choices, use A/B/C decision cards with pros, cons, MVP risk, scaling/refactor risk, and one explicit agent recommendation. Suggest options only when the current `next_action.type` is `suggest_stack` or when enough high-risk platform and multiplayer answers are known. Confirm the MVP and stack direction before producing the intake record.
 
 ### Expert mode
 
@@ -220,11 +233,11 @@ Agent recommendation: B if browser-first multiplayer matters most; A if desktop-
 Question: Choose A, B, recommended, or custom.
 ```
 
-## Intake session output
+## Intake session state
 
-While intake is in progress, produce or update an `intake_session` object matching `contracts/intake_session.schema.json`.
+While intake is in progress, maintain an internal `intake_session` object matching `contracts/intake_session.schema.json`.
 
-The session should include:
+The internal session should include:
 
 - current section
 - questions already asked
@@ -238,8 +251,6 @@ The session should include:
 If `readiness.can_generate_intake` is `false`, do not produce planning artifacts yet.
 
 In guided mode, `next_action.questions` must contain only the single next question unless the user explicitly asks for a batch.
-
-In guided mode after the first turn, prefer a compact human-readable update over full JSON repetition. The machine-readable state remains the source of truth, but the user should not have to read the full object every turn.
 
 Decision-card options are human-facing explanation. Record the selected answer in `intake_session`; do not treat unchosen options as project decisions.
 
