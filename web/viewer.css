@@ -163,6 +163,11 @@ h4 {
   color: var(--warn);
 }
 
+.status.success {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .status.loading {
   background: #ebe6d7;
   color: #6e5d2d;
@@ -243,6 +248,18 @@ h4 {
 .error-card {
   border-color: rgba(157, 61, 31, 0.35);
   background: rgba(248, 228, 221, 0.7);
+}
+
+.code-block {
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #f6f1e6;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.45;
 }
 
 .list {

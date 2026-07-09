@@ -366,6 +366,92 @@ def validate_with_schema(
     return []
 
 
+def collect_string_values(value: Any) -> list[str]:
+    values: list[str] = []
+
+    if isinstance(value, str):
+        values.append(value)
+    elif isinstance(value, list):
+        for item in value:
+            values.extend(collect_string_values(item))
+    elif isinstance(value, dict):
+        for item in value.values():
+            values.extend(collect_string_values(item))
+
+    return values
+
+
+def run_consistency_checks(parsed_payloads: dict[Path, Any]) -> list[str]:
+    messages: list[str] = []
+
+    project_spec = parsed_payloads[ROOT / "generated" / "project_spec.json"]
+    repo_plan = parsed_payloads[ROOT / "generated" / "repo_plan.json"]
+    task_backlog = parsed_payloads[ROOT / "generated" / "task_backlog.json"]
+    agent_prompts = parsed_payloads[ROOT / "generated" / "agent_prompts.json"]
+
+    repo_names = {repo["name"] for repo in repo_plan["repos"]}
+
+    for index, task in enumerate(task_backlog):
+        expect(
+            task["repo_target"] in repo_names,
+            f"generated/task_backlog.json[{index}].repo_target must exist in generated/repo_plan.json",
+        )
+
+    for index, prompt in enumerate(agent_prompts["prompts"]):
+        expect(
+            prompt["target_repo"] in repo_names,
+            f"generated/agent_prompts.json[{index}].target_repo must exist in generated/repo_plan.json",
+        )
+
+    forbidden_strings = {
+        "seed-web-placeholder",
+        "web/static-docs-or-dashboard-placeholder",
+    }
+    generated_files = [
+        ROOT / "generated" / "project_spec.json",
+        ROOT / "generated" / "repo_plan.json",
+        ROOT / "generated" / "task_backlog.json",
+        ROOT / "generated" / "agent_prompts.json",
+        ROOT / "generated" / "slots_db.json",
+    ]
+    for path in generated_files:
+        rel = format_rel(path)
+        string_values = collect_string_values(parsed_payloads[path])
+        for forbidden in forbidden_strings:
+          expect(
+              forbidden not in string_values,
+              f"{rel} must not reference stale value: {forbidden}",
+          )
+
+    screens = project_spec["frontend_screens"]
+    screen_names = {screen["name"] for screen in screens}
+    expected_screen_names = {
+        "Overview",
+        "Repo Split",
+        "Task Backlog",
+        "Prompt Pack",
+        "Slot Board",
+        "Contracts and Verification",
+    }
+    expect(
+        expected_screen_names.issubset(screen_names),
+        "generated/project_spec.json.frontend_screens must include the actual viewer pages, including Slot Board",
+    )
+
+    slot_screen = next(screen for screen in screens if screen["name"] == "Slot Board")
+    expect(
+        "generated/slots_db.json" in slot_screen["renders_from"],
+        "generated/project_spec.json Slot Board screen must render from generated/slots_db.json",
+    )
+
+    messages.append("CONSISTENCY OK generated task repo_target values map to generated/repo_plan.json")
+    messages.append("CONSISTENCY OK generated prompt target_repo values map to generated/repo_plan.json")
+    messages.append("CONSISTENCY OK generated artifacts contain no stale web placeholder references")
+    messages.append("CONSISTENCY OK generated frontend_screens includes the actual viewer pages, including Slot Board")
+
+    return messages
+
+
 def main() -> int:
     json_files = discover_json_files(ROOT)
     if not json_files:
@@ -436,6 +522,22 @@ def main() -> int:
         print(
             f"RESULT FAIL parse_failures={parse_failures} "
             f"schema_failures={schema_failures}"
+        )
+        return 1
+
+    consistency_failures = 0
+    try:
+        for message in run_consistency_checks(parsed_payloads):
+            print(message)
+    except ValueError as exc:
+        consistency_failures += 1
+        print(f"CONSISTENCY FAIL {exc}")
+
+    if consistency_failures:
+        print(
+            f"RESULT FAIL parse_failures={parse_failures} "
+            f"schema_failures={schema_failures} "
+            f"consistency_failures={consistency_failures}"
         )
         return 1
 

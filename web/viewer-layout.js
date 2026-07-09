@@ -16,6 +16,8 @@ export function initializeViewerPage(config) {
     title,
     description,
     requiredKeys,
+    extraSourceFiles = [],
+    helperNote = "",
     renderContent,
   } = config;
 
@@ -24,7 +26,7 @@ export function initializeViewerPage(config) {
     throw new Error('Missing required root element: #app');
   }
 
-  const sourceFiles = sourceFilesForKeys(requiredKeys);
+  const sourceFiles = [...sourceFilesForKeys(requiredKeys), ...extraSourceFiles];
   app.innerHTML = `
     <header class="hero shell-width">
       <div class="hero-copy">
@@ -57,6 +59,7 @@ export function initializeViewerPage(config) {
           Serve the repo root with <code>python -m http.server 8000</code> and open <code>http://localhost:8000/web/</code>.
           If the page is opened with <code>file://</code> and fetch is blocked, load the required JSON files with the button above.
         </p>
+        ${helperNote ? `<p class="helper">${helperNote}</p>` : ""}
         <p class="helper">
           Required local files for this page: ${sourceFiles.map((path) => `<code>${escapeHtml(path)}</code>`).join(", ")}.
         </p>

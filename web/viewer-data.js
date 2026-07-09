@@ -6,6 +6,15 @@ export const DATA_FILES = {
   slotsDb: "../generated/slots_db.json",
 };
 
+export const CONTRACT_FILES = {
+  projectSpecSchema: "../contracts/project_spec.schema.json",
+  repoPlanSchema: "../contracts/repo_plan.schema.json",
+  taskSchema: "../contracts/task.schema.json",
+  slotSchema: "../contracts/slot.schema.json",
+  agentPromptSchema: "../contracts/agent_prompt.schema.json",
+  apiContract: "../contracts/api_contract.openapi.yaml",
+};
+
 export const FILE_NAMES = {
   projectSpec: "project_spec.json",
   repoPlan: "repo_plan.json",
@@ -59,6 +68,16 @@ export async function loadLocalState(requiredKeys, files) {
   );
 
   return Object.fromEntries(entries);
+}
+
+export async function loadTextFile(path) {
+  const response = await fetch(path, { cache: "no-store" });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${path}: ${response.status} ${response.statusText}`);
+  }
+
+  return response.text();
 }
 
 export function sourceFilesForKeys(requiredKeys) {

@@ -34,7 +34,7 @@
 ### Product Spec
 
 - `PROJECT_SPEC.md`
-- future generated `project_spec.json`
+- current machine-readable product spec: `generated/project_spec.json`
 
 ### Schemas
 
@@ -51,14 +51,13 @@
 
 The initial web surface should be read-only and generated from the source-of-truth files.
 
-Suggested tabs:
+Current static viewer pages:
 
 - Overview
 - Repo Split
-- Tasks
-- Roles
-- Contracts
-- Prompt Pack
+- Backlog
+- Prompts
+- Slots
 - Verification
 
 ## 6. Frontend Constraint
@@ -69,7 +68,9 @@ It must not invent its own:
 
 - task model
 - repo model
+- prompt model
 - slot model
+- contract model
 - verification model
 
 ## 7. Core Functional Feature

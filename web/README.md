@@ -17,9 +17,10 @@ The viewer pages are:
 - `web/backlog.html`: backlog grouped by `repo_target` from `generated/task_backlog.json`
 - `web/prompts.html`: prompt pack from `generated/agent_prompts.json`
 - `web/slots.html`: slot board from `generated/slots_db.json`
-- `web/verification.html`: verification rules and proof requirements from the generated JSON artifacts
+- `web/verification.html`: verification rules, proof requirements, and raw contract rendering from generated JSON artifacts plus `contracts/*.schema.json` and `contracts/api_contract.openapi.yaml`
 
 If the browser blocks `file://` fetches, open any page directly and use the page-level file picker to load the required `generated/*.json` files for that page.
+The Verification page can still use that fallback for generated JSON, but contract rendering is fetched from the repository paths and is most reliable when serving the repo root with `python -m http.server 8000`.
 
 Shared files:
 

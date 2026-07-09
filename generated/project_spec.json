@@ -9,7 +9,7 @@
       "engineering teams supervising AI-assisted work"
     ],
     "non_goals": [
-      "frontend implementation in phase 0",
+      "interactive or mutable frontend implementation beyond the read-only static viewer",
       "authentication",
       "database persistence",
       "realtime sync",
@@ -206,15 +206,27 @@
       "notes": "Static prompts page that shows generated role prompts and contract-defined constraints."
     },
     {
+      "name": "Slot Board",
+      "renders_from": [
+        "generated/slots_db.json"
+      ],
+      "notes": "Static slots page that renders the generated slot board without mutable workflow state."
+    },
+    {
       "name": "Contracts and Verification",
       "renders_from": [
         "generated/project_spec.json",
         "generated/task_backlog.json",
         "generated/agent_prompts.json",
         "generated/slots_db.json",
-        "contracts/"
+        "contracts/project_spec.schema.json",
+        "contracts/repo_plan.schema.json",
+        "contracts/task.schema.json",
+        "contracts/slot.schema.json",
+        "contracts/agent_prompt.schema.json",
+        "contracts/api_contract.openapi.yaml"
       ],
-      "notes": "Static verification page that exposes generated verification requirements and source-of-truth constraints without mutable workflow state."
+      "notes": "Static verification page that exposes generated verification requirements and renders raw contract files read-only without mutable workflow state."
     }
   ],
   "backend_services": [

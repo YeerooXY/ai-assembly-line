@@ -109,7 +109,7 @@ The viewer displays:
 - task backlog grouped by repo target
 - agent prompts
 - slot board
-- verification rules, source-of-truth notes, and proof requirements
+- verification rules, source-of-truth notes, proof requirements, and raw contract files
 
 The viewer intentionally does not do the following yet:
 
@@ -165,6 +165,7 @@ The validator:
 - schema-validates the canonical generated artifacts when `jsonschema` is available
 
 For fresh-clone external review instructions, see `docs/EXTERNAL_REVIEW_PROMPT.md`.
+The static viewer reads contract files directly for the Verification page, but this is still read-only documentation and not an implemented backend or live API.
 
 ## Current Use
 
