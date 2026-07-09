@@ -12,12 +12,15 @@ REQUIRED_FILES = [
     ROOT / "generated" / "project_spec.json",
     ROOT / "generated" / "repo_plan.json",
     ROOT / "generated" / "task_backlog.json",
+    ROOT / "generated" / "task_batch_index.json",
     ROOT / "generated" / "agent_prompts.json",
     ROOT / "generated" / "slots_db.json",
     ROOT / "generated" / "review_manifest.json",
     ROOT / "contracts" / "project_spec.schema.json",
     ROOT / "contracts" / "repo_plan.schema.json",
     ROOT / "contracts" / "task.schema.json",
+    ROOT / "contracts" / "task_batch_index.schema.json",
+    ROOT / "contracts" / "task_batch.schema.json",
     ROOT / "contracts" / "slot.schema.json",
     ROOT / "contracts" / "agent_prompt.schema.json",
     ROOT / "contracts" / "collaboration_state.schema.json",
@@ -289,6 +292,79 @@ def validate_task(value: Any, label: str) -> None:
         expect_non_empty_string(value["handoff_notes"], f"{label}.handoff_notes")
 
 
+def validate_task_batch_index(value: Any, label: str) -> None:
+    expect_object_keys(value, label, {"schema_version", "source_plan_path", "batching_strategy", "batches"})
+    expect_non_empty_string(value["schema_version"], f"{label}.schema_version")
+    expect_non_empty_string(value["source_plan_path"], f"{label}.source_plan_path")
+    expect(
+        value["batching_strategy"] in {"owner_role", "repo_target", "lane", "milestone", "mixed"},
+        f"{label}.batching_strategy must be an allowed strategy",
+    )
+    expect_type(value["batches"], list, f"{label}.batches")
+
+    batch_ids: set[str] = set()
+    task_ids: set[str] = set()
+    for index, batch in enumerate(value["batches"]):
+        batch_label = f"{label}.batches[{index}]"
+        expect_object_keys(
+            batch,
+            batch_label,
+            {
+                "batch_id",
+                "owner_role",
+                "repo_targets",
+                "lanes",
+                "milestones",
+                "expected_task_count",
+                "expected_task_ids",
+                "depends_on_batches",
+                "output_path",
+                "status",
+            },
+            {"notes"},
+        )
+        expect_non_empty_string(batch["batch_id"], f"{batch_label}.batch_id")
+        expect(
+            re.fullmatch(r"[a-z0-9][a-z0-9\-]*", batch["batch_id"]) is not None,
+            f"{batch_label}.batch_id must match ^[a-z0-9][a-z0-9\\-]*$",
+        )
+        expect(batch["batch_id"] not in batch_ids, f"{batch_label}.batch_id must be unique")
+        batch_ids.add(batch["batch_id"])
+        expect_non_empty_string(batch["owner_role"], f"{batch_label}.owner_role")
+        expect_string_array(batch["repo_targets"], f"{batch_label}.repo_targets")
+        expect_string_array(batch["lanes"], f"{batch_label}.lanes")
+        expect_string_array(batch["milestones"], f"{batch_label}.milestones")
+        expect_type(batch["expected_task_count"], int, f"{batch_label}.expected_task_count")
+        expect(batch["expected_task_count"] >= 0, f"{batch_label}.expected_task_count must be >= 0")
+        expect_string_array(batch["expected_task_ids"], f"{batch_label}.expected_task_ids")
+        expect(
+            len(batch["expected_task_ids"]) == batch["expected_task_count"],
+            f"{batch_label}.expected_task_ids length must match expected_task_count",
+        )
+        for task_id in batch["expected_task_ids"]:
+            expect(task_id not in task_ids, f"{batch_label}.expected_task_ids contains duplicate task id: {task_id}")
+            task_ids.add(task_id)
+        expect_string_array(batch["depends_on_batches"], f"{batch_label}.depends_on_batches")
+        expect_non_empty_string(batch["output_path"], f"{batch_label}.output_path")
+        expect(
+            batch["output_path"] == f"generated/task_batches/{batch['batch_id']}.json",
+            f"{batch_label}.output_path must match batch_id",
+        )
+        expect(
+            batch["status"] in {"planned", "generated", "validated", "accepted", "rejected"},
+            f"{batch_label}.status must be an allowed status",
+        )
+        if "notes" in batch:
+            expect_non_empty_string(batch["notes"], f"{batch_label}.notes")
+
+    for index, batch in enumerate(value["batches"]):
+        for dependency in batch["depends_on_batches"]:
+            expect(
+                dependency in batch_ids,
+                f"{label}.batches[{index}].depends_on_batches refers to unknown batch: {dependency}",
+            )
+
+
 def validate_slot(value: Any, label: str) -> None:
     expect_object_keys(
         value,
@@ -382,6 +458,9 @@ def validate_without_jsonschema(path: Path, payload: Any) -> list[str]:
     if rel == "generated/agent_prompts.json":
         validate_agent_prompt_set(payload, rel)
         return [f"SCHEMA OK   {rel} -> contracts/agent_prompt.schema.json (builtin)"]
+    if rel == "generated/task_batch_index.json":
+        validate_task_batch_index(payload, rel)
+        return [f"SCHEMA OK   {rel} -> contracts/task_batch_index.schema.json (builtin)"]
     if rel == "examples/coc-base-builder/generated-repo-plan.json":
         validate_repo_plan(payload, rel)
         return [f"SCHEMA OK   {rel} -> contracts/repo_plan.schema.json (builtin)"]
@@ -417,6 +496,7 @@ def validate_with_schema(
     }
     element_map = {
         "generated/task_backlog.json": "contracts/task.schema.json",
+        "generated/task_batch_index.json": "contracts/task_batch_index.schema.json",
         "generated/slots_db.json": "contracts/slot.schema.json",
         "examples/coc-base-builder/generated-task-backlog.json": "contracts/task.schema.json",
     }
@@ -437,6 +517,11 @@ def validate_with_schema(
                 f"SCHEMA OK   {rel}[{index}] -> {element_map[rel]}"
             )
         return messages
+
+    if rel.startswith("generated/task_batches/") and rel.endswith(".json"):
+        schema = schemas["contracts/task_batch.schema.json"]
+        jsonschema_module.validate(instance=payload, schema=schema)
+        return [f"SCHEMA OK   {rel} -> contracts/task_batch.schema.json"]
 
     return []
 

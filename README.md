@@ -46,6 +46,7 @@ The source-of-truth layers are:
 4. Canonical generated planning state
    - `generated/repo_plan.json`
    - `generated/task_backlog.json`
+   - `generated/task_batch_index.json`
    - `generated/agent_prompts.json`
    - `generated/slots_db.json`
 5. Derived planning-run index
@@ -157,6 +158,7 @@ It should display:
 - `contracts/`: schemas and OpenAPI contract
 - `contracts/project_intake.schema.json`: schema for guided project intake records
 - `contracts/collaboration_state.schema.json`: draft schema for future human and web-AI coordination state
+- `contracts/task_batch_index.schema.json` and `contracts/task_batch.schema.json`: schemas for copy-paste task generation batches
 - `generated/`: canonical machine-readable planning artifacts for the current seed state
 - `generated/planning_runs_index.json`: derived index of manual planning-run folders and output completeness
 - `examples/coc-base-builder/`: example decomposition for a safe base layout planner
