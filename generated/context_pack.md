@@ -106,6 +106,7 @@ The viewer pages are:
 - `web/backlog.html`
 - `web/prompts.html`
 - `web/slots.html`
+- `web/planning-runs.html`
 - `web/verification.html`
 
 The generated sources remain:
@@ -124,6 +125,7 @@ The viewer displays:
 - task backlog grouped by repo target
 - agent prompts
 - slot board
+- planning-run scaffold and output completeness
 - verification rules, source-of-truth notes, proof requirements, and raw contract files
 
 The viewer intentionally does not do the following yet:
@@ -133,7 +135,7 @@ The viewer intentionally does not do the following yet:
 - authentication
 - realtime sync
 - mutable workflow state
-- frontend-owned task, repo, prompt, slot, or contract models
+- frontend-owned task, repo, prompt, slot, planning-run, or contract models
 
 ## Initial Public Surface
 
@@ -148,6 +150,7 @@ It should display:
 - task backlog
 - contract files
 - prompt pack
+- planning-run index
 - verification rules
 
 ## Repository Map
@@ -202,7 +205,7 @@ Planning runs can also be indexed for read-only review:
 python tools/build_planning_runs_index.py
 ```
 
-This writes `generated/planning_runs_index.json`, which records each run's scaffold status and which required output files are present. The local sync helper runs this automatically before validation.
+This writes `generated/planning_runs_index.json`, which records each run's scaffold status and which required output files are present. The local sync helper runs this automatically before validation. The static viewer renders this index on `web/planning-runs.html` without editing or inventing planning-run state.
 
 ## Validation
 
@@ -1049,7 +1052,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     "The repository is planning-first and not an autonomous execution runtime.",
     "Human review is required before generated planning artifacts are treated as approved.",
     "Unsafe requests must be rejected or safely reinterpreted into planning-only outputs.",
-    "The initial frontend may render generated state but must not invent task, repo, prompt, slot, or contract structure.",
+    "The initial frontend may render generated state but must not invent task, repo, prompt, slot, planning-run, or contract structure.",
     "The phase 0 seed must remain free of authentication, databases, realtime sync, and agent automation."
   ],
   "repo_split": [
@@ -1077,13 +1080,14 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     },
     {
       "name": "seed-generated-state",
-      "purpose": "Provide canonical generated artifacts for the current seed repository state.",
+      "purpose": "Provide canonical generated artifacts and derived planning-run indexes for the current seed repository state.",
       "contains": [
         "generated/project_spec.json",
         "generated/repo_plan.json",
         "generated/task_backlog.json",
         "generated/agent_prompts.json",
-        "generated/slots_db.json"
+        "generated/slots_db.json",
+        "generated/planning_runs_index.json"
       ],
       "depends_on": [
         "seed-docs-and-rules",
@@ -1110,6 +1114,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "web/backlog.html",
         "web/prompts.html",
         "web/slots.html",
+        "web/planning-runs.html",
         "web/verification.html",
         "web/viewer-data.js",
         "web/viewer-layout.js",
@@ -1139,7 +1144,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "starter_prompts"
       ],
       "relations": [
-        "ProjectSpec drives RepoPlan, Task, AgentPrompt, and AgentSlot artifacts."
+        "ProjectSpec drives RepoPlan, Task, AgentPrompt, AgentSlot, and read-only planning-run index artifacts."
       ]
     },
     {
@@ -1201,6 +1206,19 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "relations": [
         "AgentSlot is the operational slot view of role-scoped work against source-of-truth artifacts."
       ]
+    },
+    {
+      "name": "PlanningRunIndex",
+      "fields": [
+        "schema_version",
+        "generated_by",
+        "planning_runs_path",
+        "required_outputs",
+        "runs"
+      ],
+      "relations": [
+        "PlanningRunIndex is a derived read-only index of planning run folders, scaffold files, output presence, missing outputs, and run status."
+      ]
     }
   ],
   "frontend_screens": [
@@ -1239,6 +1257,13 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "generated/slots_db.json"
       ],
       "notes": "Static slots page that renders the generated slot board without mutable workflow state."
+    },
+    {
+      "name": "Planning Runs",
+      "renders_from": [
+        "generated/planning_runs_index.json"
+      ],
+      "notes": "Static planning-runs page that renders the derived planning-run index without editing or inventing planning-run state."
     },
     {
       "name": "Contracts and Verification",
@@ -1285,7 +1310,8 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
   "core_engine_responsibilities": [
     "Compile rough planning intent into explicit project structure.",
     "Maintain contract-first generated artifacts for the seed repository.",
-    "Preserve traceability from product rules to repo plan, tasks, prompts, and slots.",
+    "Derive planning-run indexes from file-based manual planning runs.",
+    "Preserve traceability from product rules to repo plan, tasks, prompts, slots, and planning-run readiness.",
     "Reject or reinterpret unsafe scope expansion into planning-only outputs.",
     "Support deterministic validation of machine-readable seed artifacts."
   ],
@@ -1294,6 +1320,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     "Validate canonical generated project state against the contracts in contracts/.",
     "Verify that the generated artifacts stay aligned with the current phase 0 scope limits.",
     "Verify that future frontend work renders generated state and does not invent hidden models.",
+    "Verify that the planning-runs page renders only generated/planning_runs_index.json and does not mutate planning-run folders.",
     "Red-team prompt drift toward automation, auth, persistence, or realtime scope."
   ],
   "starter_prompts": {
@@ -1355,13 +1382,14 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     },
     {
       "name": "seed-generated-state",
-      "purpose": "Own the canonical machine-readable planning artifacts consumed by future read-only interfaces.",
+      "purpose": "Own the canonical machine-readable planning artifacts and derived planning-run index consumed by read-only interfaces.",
       "contains": [
         "generated/project_spec.json",
         "generated/repo_plan.json",
         "generated/task_backlog.json",
         "generated/agent_prompts.json",
-        "generated/slots_db.json"
+        "generated/slots_db.json",
+        "generated/planning_runs_index.json"
       ],
       "depends_on": [
         "seed-docs-and-rules",
@@ -1402,6 +1430,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "web/backlog.html",
         "web/prompts.html",
         "web/slots.html",
+        "web/planning-runs.html",
         "web/verification.html",
         "web/viewer-data.js",
         "web/viewer-layout.js",
@@ -2323,6 +2352,12 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "required": true
     },
     {
+      "path": "web/planning-runs.html",
+      "category": "viewer",
+      "purpose": "Planning-runs page entry point that renders the derived planning-run index read-only.",
+      "required": true
+    },
+    {
       "path": "web/verification.html",
       "category": "viewer",
       "purpose": "Verification page entry point that also renders raw contract files read-only.",
@@ -2368,6 +2403,12 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "path": "web/page-slots.js",
       "category": "viewer",
       "purpose": "Slots page rendering logic.",
+      "required": true
+    },
+    {
+      "path": "web/page-planning-runs.js",
+      "category": "viewer",
+      "purpose": "Planning-runs page rendering logic for scaffold presence, output completeness, and run status.",
       "required": true
     },
     {
@@ -4132,6 +4173,7 @@ The viewer pages are:
 - `web/backlog.html`: backlog grouped by `repo_target` from `generated/task_backlog.json`
 - `web/prompts.html`: prompt pack from `generated/agent_prompts.json`
 - `web/slots.html`: slot board from `generated/slots_db.json`
+- `web/planning-runs.html`: planning-run scaffold and output completeness from `generated/planning_runs_index.json`
 - `web/verification.html`: verification rules, proof requirements, and raw contract rendering from generated JSON artifacts plus `contracts/*.schema.json` and `contracts/api_contract.openapi.yaml`
 
 If the browser blocks `file://` fetches, open any page directly and use the page-level file picker to load the required `generated/*.json` files for that page.
@@ -4153,7 +4195,7 @@ The viewer does not add:
 - backend APIs
 - authentication
 - realtime sync
-- frontend-only task, repo, prompt, slot, or contract models
+- frontend-only task, repo, prompt, slot, planning-run, or contract models
 
 ```
 
@@ -4272,6 +4314,29 @@ The viewer does not add:
 
 ```
 
+## `web/planning-runs.html`
+
+- Category: `viewer`
+- Purpose: Planning-runs page entry point that renders the derived planning-run index read-only.
+- Required: `true`
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Assembly Line Viewer - Planning Runs</title>
+  <link rel="stylesheet" href="viewer.css">
+</head>
+<body data-page="planning-runs">
+  <div id="app"></div>
+  <script type="module" src="page-planning-runs.js"></script>
+</body>
+</html>
+
+```
+
 ## `web/verification.html`
 
 - Category: `viewer`
@@ -4308,6 +4373,7 @@ export const DATA_FILES = {
   taskBacklog: "../generated/task_backlog.json",
   agentPrompts: "../generated/agent_prompts.json",
   slotsDb: "../generated/slots_db.json",
+  planningRunsIndex: "../generated/planning_runs_index.json",
 };
 
 export const CONTRACT_FILES = {
@@ -4325,6 +4391,7 @@ export const FILE_NAMES = {
   taskBacklog: "task_backlog.json",
   agentPrompts: "agent_prompts.json",
   slotsDb: "slots_db.json",
+  planningRunsIndex: "planning_runs_index.json",
 };
 
 export async function loadGeneratedState(requiredKeys) {
@@ -4413,6 +4480,7 @@ const NAV_ITEMS = [
   { id: "backlog", label: "Backlog", href: "backlog.html" },
   { id: "prompts", label: "Prompts", href: "prompts.html" },
   { id: "slots", label: "Slots", href: "slots.html" },
+  { id: "planning-runs", label: "Planning Runs", href: "planning-runs.html" },
   { id: "verification", label: "Verification", href: "verification.html" },
 ];
 
@@ -4456,7 +4524,7 @@ export function initializeViewerPage(config) {
         <h2>Status</h2>
         <p id="statusMessage" class="status loading">Loading generated state...</p>
         <p class="source-note">
-          This page renders generated state only. It does not edit or invent task, repo, prompt, slot, or contract structure.
+          This page renders generated state only. It does not edit or invent task, repo, prompt, slot, planning-run, or contract structure.
         </p>
         <p class="source-note">
           Source of truth for this page:
@@ -4993,6 +5061,135 @@ function renderSlotCard(slot) {
       ${renderList(slot.verification_requirements)}
     </article>
   `;
+}
+
+```
+
+## `web/page-planning-runs.js`
+
+- Category: `viewer`
+- Purpose: Planning-runs page rendering logic for scaffold presence, output completeness, and run status.
+- Required: `true`
+
+```javascript
+import { escapeHtml, initializeViewerPage, renderCardGrid, renderKeyValueRows, renderList } from "./viewer-layout.js";
+
+const REQUIRED_OUTPUTS = [
+  "project_spec.json",
+  "repo_plan.json",
+  "task_backlog.json",
+  "agent_prompts.json",
+  "slots_db.json",
+];
+
+initializeViewerPage({
+  pageId: "planning-runs",
+  eyebrow: "Manual Planning Run Index",
+  title: "Planning Runs",
+  description: "Read-only view of planning run folders, scaffold completeness, and generated output readiness.",
+  requiredKeys: ["planningRunsIndex"],
+  helperNote: "This page renders the derived planning-run index only. Rebuild it with python tools/build_planning_runs_index.py after creating or updating planning runs.",
+  renderContent(container, data) {
+    const index = data.planningRunsIndex;
+    const runs = Array.isArray(index.runs) ? index.runs : [];
+    const totalRuns = runs.length;
+    const completeRuns = runs.filter((run) => run.status === "outputs_present").length;
+    const incompleteRuns = totalRuns - completeRuns;
+
+    container.innerHTML = `
+      <div class="stack">
+        <div class="card">
+          <h2>Planning Run Index</h2>
+          ${renderKeyValueRows([
+            { label: "Schema Version", value: `<code>${escapeHtml(index.schema_version ?? "unknown")}</code>` },
+            { label: "Generated By", value: `<code>${escapeHtml(index.generated_by ?? "unknown")}</code>` },
+            { label: "Planning Runs Path", value: `<code>${escapeHtml(index.planning_runs_path ?? "planning_runs")}</code>` },
+            { label: "Runs", value: escapeHtml(String(totalRuns)) },
+            { label: "Complete Runs", value: escapeHtml(String(completeRuns)) },
+            { label: "Incomplete Runs", value: escapeHtml(String(incompleteRuns)) },
+          ])}
+        </div>
+
+        <article class="card">
+          <h3>Required Outputs</h3>
+          ${renderList(index.required_outputs ?? REQUIRED_OUTPUTS)}
+        </article>
+
+        ${runs.length === 0 ? `<p class="muted">No planning runs found in the index.</p>` : renderRuns(runs)}
+      </div>
+    `;
+  },
+});
+
+function renderRuns(runs) {
+  return renderCardGrid(
+    runs.map((run) => renderRunCard(run)).join(""),
+    "two-up",
+  );
+}
+
+function renderRunCard(run) {
+  const outputs = run.outputs ?? {};
+  const missingOutputs = Array.isArray(run.missing_outputs) ? run.missing_outputs : [];
+  const missingScaffold = Array.isArray(run.missing_scaffold) ? run.missing_scaffold : [];
+
+  return `
+    <article class="card">
+      <div class="section-heading">
+        <div>
+          <h3>${escapeHtml(run.slug ?? "unnamed-run")}</h3>
+          <p class="muted"><code>${escapeHtml(run.path ?? "planning_runs/unknown")}</code></p>
+        </div>
+        <span class="chip ${statusClass(run.status)}">${escapeHtml(run.status ?? "unknown")}</span>
+      </div>
+
+      ${renderKeyValueRows([
+        { label: "Input Idea", value: renderBoolean(run.has_input_idea) },
+        { label: "Planning Prompt", value: renderBoolean(run.has_planning_prompt) },
+        { label: "Review Notes", value: renderBoolean(run.has_review_notes) },
+        { label: "Outputs Directory", value: renderBoolean(run.has_outputs_dir) },
+      ])}
+
+      <h4>Output Files</h4>
+      <div class="chip-row">
+        ${REQUIRED_OUTPUTS.map((name) => renderOutputChip(name, outputs[name])).join("")}
+      </div>
+
+      <h4>Missing Outputs</h4>
+      ${renderList(missingOutputs, "No missing output files")}
+
+      <h4>Missing Scaffold</h4>
+      ${renderList(missingScaffold, "No missing scaffold files")}
+    </article>
+  `;
+}
+
+function renderOutputChip(name, present) {
+  const label = present ? `${name}: present` : `${name}: missing`;
+  const className = present ? "chip status-complete" : "chip status-blocked";
+  return `<span class="${className}">${escapeHtml(label)}</span>`;
+}
+
+function renderBoolean(value) {
+  const label = value ? "present" : "missing";
+  const className = value ? "chip status-complete" : "chip status-blocked";
+  return `<span class="${className}">${label}</span>`;
+}
+
+function statusClass(status) {
+  if (status === "outputs_present") {
+    return "status-complete";
+  }
+
+  if (status === "draft_partial_outputs" || status === "draft_missing_outputs") {
+    return "status-planned";
+  }
+
+  if (status === "invalid_missing_scaffold") {
+    return "status-blocked";
+  }
+
+  return "";
 }
 
 ```
