@@ -3,7 +3,7 @@
   "repos": [
     {
       "name": "seed-docs-and-rules",
-      "purpose": "Own the reusable planning spec template and human-readable product rules for phase 0.",
+      "purpose": "Own the reusable planning spec template, human-readable product rules, project intake workflow, and phase 0 docs.",
       "contains": [
         "PROJECT_SPEC.md",
         "PROJECT_SPEC_TEMPLATE.md",
@@ -19,8 +19,9 @@
     },
     {
       "name": "seed-contracts",
-      "purpose": "Own JSON schemas and the future read-only API contract.",
+      "purpose": "Own JSON schemas for intake and planning artifacts plus the future read-only API contract.",
       "contains": [
+        "contracts/project_intake.schema.json",
         "contracts/project_spec.schema.json",
         "contracts/repo_plan.schema.json",
         "contracts/task.schema.json",
@@ -58,8 +59,9 @@
     },
     {
       "name": "seed-prompts",
-      "purpose": "Own copy-paste role prompts constrained by the project spec and contracts.",
+      "purpose": "Own copy-paste role prompts constrained by the project spec, intake workflow, and contracts.",
       "contains": [
+        "prompts/00-intake-interviewer.md",
         "prompts/00-planning-agent.md",
         "prompts/01-contract-steward.md",
         "prompts/02-frontend-builder.md",
