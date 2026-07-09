@@ -62,6 +62,7 @@ if ($Before -ne $After) {
     Write-Host "`n== No new commits pulled =="
 }
 
+Invoke-NativeChecked "Build planning runs index" { python tools\build_planning_runs_index.py }
 Invoke-NativeChecked "Validate seed" { python tools\validate_seed.py }
 Invoke-NativeChecked "Rebuild context pack" { python tools\build_context_pack.py }
 Invoke-NativeChecked "Validate seed after context rebuild" { python tools\validate_seed.py }
