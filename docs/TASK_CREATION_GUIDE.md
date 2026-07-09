@@ -199,12 +199,17 @@ A task should normally belong to one `repo_target`. If it touches multiple repos
 
 For large generated plans, do not ask a web AI to return the whole backlog in one response.
 
-Use a two-step batch workflow:
+Use a guided batch workflow for normal web AI usage:
 
-1. Generate a compact `task_batch_index` grouped by `owner_role`, `repo_target`, or `lane`.
-2. Generate one selected batch at a time as a `contracts/task_batch.schema.json` object.
+1. Paste `prompts/06-task-splitter.md` with `MODE: guided` and the accepted generated plan.
+2. Save the first returned JSON block as `generated/task_batch_index.json`.
+3. Reply `continue`, `next`, or equivalent.
+4. Save each returned JSON block as `generated/task_batches/<batch_id>.json`.
+5. Repeat until the task splitter says no batches remain.
 
 This keeps outputs copy-pastable and reduces the chance of truncation.
+
+The explicit `MODE: batch-index` and `MODE: task-batch` controls still exist for debugging or recovering a lost chat context, but the guided flow should be the default user-facing flow.
 
 Each task batch must conform to `contracts/task_batch.schema.json`.
 
@@ -214,9 +219,8 @@ The future frontend should support:
 
 - copy prompt for batch index
 - paste returned batch index
-- choose one batch
-- copy prompt for that selected batch
-- paste returned task JSON
+- continue through one generated batch per response
+- paste each returned task batch JSON
 - validate task graph dependencies and topological batch order
 - merge accepted batches into `generated/task_backlog.json`
 

@@ -46,7 +46,7 @@ A complete planning run should produce or update:
 
 The task backlog must be traceable to the project spec and repo plan.
 
-For large plans, generate task output in batches rather than one large `task_backlog.json` response. Start with `generated/task_batch_index.json`, then generate one `generated/task_batches/<batch_id>.json` file at a time by owner role, repo target, or lane.
+For large plans, generate task output in batches rather than one large `task_backlog.json` response. The preferred web AI flow is guided: paste `prompts/06-task-splitter.md` with `MODE: guided`, save the first response as `generated/task_batch_index.json`, then reply `continue` until each `generated/task_batches/<batch_id>.json` file has been emitted.
 
 ## Generation phases
 

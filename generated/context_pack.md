@@ -1677,7 +1677,7 @@ A complete planning run should produce or update:
 
 The task backlog must be traceable to the project spec and repo plan.
 
-For large plans, generate task output in batches rather than one large `task_backlog.json` response. Start with `generated/task_batch_index.json`, then generate one `generated/task_batches/<batch_id>.json` file at a time by owner role, repo target, or lane.
+For large plans, generate task output in batches rather than one large `task_backlog.json` response. The preferred web AI flow is guided: paste `prompts/06-task-splitter.md` with `MODE: guided`, save the first response as `generated/task_batch_index.json`, then reply `continue` until each `generated/task_batches/<batch_id>.json` file has been emitted.
 
 ## Generation phases
 
@@ -2051,12 +2051,17 @@ A task should normally belong to one `repo_target`. If it touches multiple repos
 
 For large generated plans, do not ask a web AI to return the whole backlog in one response.
 
-Use a two-step batch workflow:
+Use a guided batch workflow for normal web AI usage:
 
-1. Generate a compact `task_batch_index` grouped by `owner_role`, `repo_target`, or `lane`.
-2. Generate one selected batch at a time as a `contracts/task_batch.schema.json` object.
+1. Paste `prompts/06-task-splitter.md` with `MODE: guided` and the accepted generated plan.
+2. Save the first returned JSON block as `generated/task_batch_index.json`.
+3. Reply `continue`, `next`, or equivalent.
+4. Save each returned JSON block as `generated/task_batches/<batch_id>.json`.
+5. Repeat until the task splitter says no batches remain.
 
 This keeps outputs copy-pastable and reduces the chance of truncation.
+
+The explicit `MODE: batch-index` and `MODE: task-batch` controls still exist for debugging or recovering a lost chat context, but the guided flow should be the default user-facing flow.
 
 Each task batch must conform to `contracts/task_batch.schema.json`.
 
@@ -2066,9 +2071,8 @@ The future frontend should support:
 
 - copy prompt for batch index
 - paste returned batch index
-- choose one batch
-- copy prompt for that selected batch
-- paste returned task JSON
+- continue through one generated batch per response
+- paste each returned task batch JSON
 - validate task graph dependencies and topological batch order
 - merge accepted batches into `generated/task_backlog.json`
 
@@ -3366,7 +3370,11 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "docs/TASK_CARD_FORMAT.md",
         "docs/task-format.md",
         "contracts/task.schema.json",
+        "contracts/task_batch_index.schema.json",
+        "contracts/task_batch.schema.json",
         "generated_plan.md",
+        "generated/task_batch_index.json",
+        "generated/task_batches/*.json",
         "generated/task_backlog.json"
       ],
       "forbidden_files": [
@@ -3385,7 +3393,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       ],
       "task_boundaries": [
         "Convert an accepted generated plan into schema-valid task batches.",
-        "For large plans, produce a compact task_batch_index first and then one selected task batch at a time.",
+        "For large plans, use guided mode by producing a compact task_batch_index first and then one next task batch per continuation.",
         "Do not implement project code.",
         "Do not invent architecture, repositories, features, or scope beyond the accepted plan.",
         "Preserve high-risk open questions as blocking tasks or explicit context instead of silently deciding them.",
@@ -3393,9 +3401,9 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "Keep tasks small, verifiable, parallel-safe, and traceable to the accepted plan."
       ],
       "output_required": [
-        "Exactly one fenced json code block per response",
-        "Compact task_batch_index when no target batch is selected",
-        "Valid task batch object for one selected batch",
+        "One copy-pastable fenced json code block per response",
+        "Compact task_batch_index on the first guided response",
+        "Valid task batch object for one next guided batch per continuation",
         "Task records conforming to contracts/task.schema.json in each batch",
         "Dependencies by stable task ID",
         "Repo targets from the accepted plan",
@@ -3403,7 +3411,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "Proof requirements, edge cases, non-goals, and estimated size when useful"
       ],
       "verification_required": [
-        "Output contains exactly one json code block and no prose outside it.",
+        "Guided output contains exactly one json code block plus only short Save to and Next instructions outside it.",
         "Batch index output contains no full task objects.",
         "Task batch output parses as a JSON object with a tasks array.",
         "Every task in each batch conforms to contracts/task.schema.json.",
@@ -6469,10 +6477,11 @@ Do not generate the entire `task_backlog.json` in one response for large plans.
 
 Large one-shot JSON outputs are hard to copy, easy to truncate, and likely to fail in web AI chats.
 
-Instead, use this two-step workflow:
+Instead, use this guided batch workflow:
 
 1. Create a compact `task_batch_index` grouped by agent role, repo target, or lane.
-2. Generate exactly one selected task batch file at a time.
+2. On each follow-up message, generate exactly one next task batch file.
+3. Continue until every batch listed in the index has been emitted.
 
 Each response must be small enough to copy from a single code block.
 
@@ -6496,7 +6505,21 @@ If the plan contains high-risk open questions, preserve them as blocking tasks o
 
 ## Requested Mode
 
-Set exactly one mode before using this prompt:
+Use guided mode for normal web AI usage:
+
+```text
+MODE: guided
+```
+
+Guided mode is conversational:
+
+- On the first response, return the batch index for `generated/task_batch_index.json`.
+- After the user replies `continue`, `next`, `sounds good`, or equivalent, return the next not-yet-emitted batch file.
+- Keep track of emitted batches from the conversation history.
+- Emit batches in the exact order listed in the batch index.
+- Stop after the final batch and say that no batches remain.
+
+Explicit modes are still available for debugging or recovering from a lost chat context:
 
 ```text
 MODE: batch-index
@@ -6510,19 +6533,54 @@ MODE: task-batch
 TARGET_BATCH_ID: <one batch_id from the task_batch_index>
 ```
 
-If `MODE` is missing, use `batch-index`.
+If `MODE` is missing, use `guided`.
 
 If `MODE` is `task-batch` but `TARGET_BATCH_ID` is missing, return a batch index instead.
 
 ## Output UX Rule
 
-Return exactly one fenced `json` code block and no prose outside it.
+For `MODE: guided`, return one small file per response.
+
+Use this response shape:
+
+````text
+Save to: generated/task_batch_index.json
+Next: reply continue to generate the first task batch.
+
+```json
+{ ...valid JSON for that one file... }
+```
+````
+
+For batch responses, use:
+
+````text
+Save to: generated/task_batches/<batch_id>.json
+Next: reply continue to generate the next task batch.
+
+```json
+{ ...valid JSON for that one batch file... }
+```
+````
+
+After the final batch, use:
+
+````text
+Save to: generated/task_batches/<batch_id>.json
+Next: no batches remain. Run python tools/validate_task_batches.py.
+
+```json
+{ ...valid JSON for the final batch file... }
+```
+````
+
+For explicit `MODE: batch-index` or `MODE: task-batch`, return exactly one fenced `json` code block and no prose outside it.
 
 The code block is intentional: web AI interfaces usually provide a copy button for code blocks. The future frontend should strip the fence automatically when pasting.
 
 ## Batch Index Output
 
-When `MODE: batch-index`, return a compact JSON object with this shape:
+When `MODE: guided` on the first response or `MODE: batch-index`, return a compact JSON object with this shape:
 
 ```json
 {
@@ -6556,9 +6614,21 @@ Batching rules:
 - Use stable lowercase `batch_id` values.
 - Do not include full task objects in the batch index.
 
+## Guided Continuation Output
+
+When `MODE: guided` and the user asks to continue:
+
+- Select the next batch in the `batches` array that has not already been emitted in this conversation.
+- Return only that batch file.
+- Do not ask the user to provide `TARGET_BATCH_ID`.
+- Do not regenerate the batch index unless the user explicitly asks to restart.
+- If the user asks for a specific batch by ID, generate that batch only and then resume the remaining order on the next continuation.
+- If conversation context is missing the batch index, ask the user to paste `generated/task_batch_index.json` or restart guided mode with the generated plan.
+- If every batch has already been emitted, do not output JSON. Say: `No batches remain. Run python tools/validate_task_batches.py.`
+
 ## Task Batch Output
 
-When `MODE: task-batch`, return only the task objects for `TARGET_BATCH_ID`.
+When `MODE: task-batch` or guided continuation, return only the task batch object for the selected batch.
 
 The top-level JSON value must be one task batch object matching `contracts/task_batch.schema.json`.
 
@@ -6655,9 +6725,11 @@ Order batches roughly like this when the plan supports it:
 
 Read the generated plan below.
 
+If `MODE: guided`, return the next required file for the guided conversation.
+
 If `MODE: batch-index`, return only the task batch index.
 
-If `MODE: task-batch`, return only the task array for `TARGET_BATCH_ID`.
+If `MODE: task-batch`, return only the task batch object for `TARGET_BATCH_ID`.
 
 ## Generated Plan
 
@@ -8205,10 +8277,10 @@ initializeViewerPage({
         <article class="card">
           <h3>Copy/Paste Flow</h3>
           ${renderList([
-            "Generate the batch index with prompts/06-task-splitter.md using MODE: batch-index.",
-            "Paste the returned JSON into generated/task_batch_index.json.",
-            "Choose one batch_id and run the prompt again using MODE: task-batch.",
-            "Paste that returned JSON into generated/task_batches/<batch_id>.json.",
+            "Paste prompts/06-task-splitter.md into a web AI with MODE: guided and the accepted generated plan.",
+            "Save the first returned JSON block as generated/task_batch_index.json.",
+            "Reply continue, next, or sounds good to generate one batch file at a time.",
+            "Save each returned JSON block as generated/task_batches/<batch_id>.json.",
             "Run python tools/validate_task_batches.py to validate files and graph order.",
           ])}
         </article>
