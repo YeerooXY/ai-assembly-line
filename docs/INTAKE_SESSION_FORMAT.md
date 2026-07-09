@@ -41,6 +41,12 @@ contracts/project_intake.schema.json
 When a user provides only a rough idea, the Intake Interviewer must not output:
 
 - a full guideline document
+- temporary or starter project guidelines
+- technical steering rules
+- target repository layout
+- repo/package split
+- definition of done
+- suggested answers or default answers for the user to accept
 - a full project specification
 - a full task backlog
 - agent work assignments
@@ -52,6 +58,26 @@ Instead, it must output:
 1. a short acknowledgement
 2. an `intake_session` state block
 3. the next high-impact questions
+
+Then it must stop. If `readiness.can_generate_intake` is `false`, the response must not continue with guidelines, recommendations, architecture, repo layout, task rules, or suggested answers.
+
+## Guidelines wording trap
+
+A user may ask for `guidelines`, `steering help`, `starter rules`, or help `setting up` a project while providing only a rough idea.
+
+That wording still means: start intake.
+
+It does not permit the Intake Interviewer to produce:
+
+- starter steering rules
+- temporary guidelines
+- stack recommendations
+- a repo/package split
+- a target `.ai-assembly/` project layout
+- a definition of done
+- suggested answers to its own questions
+
+The correct response is to say that guidelines can be produced after the high-risk intake questions are answered, then provide only the `intake_session` update and questions.
 
 ## Session states
 
@@ -123,7 +149,7 @@ For a rough idea like `I want to build a multiplayer Tron game`, the first respo
     "questions": [
       "What kind of multiplayer should the first playable version support: local same-keyboard, LAN, private online rooms, or public matchmaking?",
       "Which platform matters first: browser, desktop, mobile, or something else?",
-      "Do you already prefer a stack, or should I recommend one?",
+      "Do you already prefer a stack, or should I recommend one after platform and multiplayer scope are clear?",
       "Is this a greenfield project or an existing repository?",
       "How many humans or AI agents should work in parallel?"
     ]
@@ -132,6 +158,8 @@ For a rough idea like `I want to build a multiplayer Tron game`, the first respo
 ```
 
 This is not a required exact output. It is the intended shape: visible session state plus focused questions.
+
+The first response should not include any sections after this shape except the same focused questions in user-readable form.
 
 ## Frontend rendering guidance
 
