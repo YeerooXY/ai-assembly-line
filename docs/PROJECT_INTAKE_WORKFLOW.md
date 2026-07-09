@@ -50,11 +50,11 @@ Instead, it should output:
 
 1. a short acknowledgement
 2. an `intake_session` update following `contracts/intake_session.schema.json`
-3. the next high-impact questions
+3. the next high-impact question
 
 This is true even if the user asks for guidelines or says they want to bring the idea to life. Those requests still start intake unless a complete intake record already exists.
 
-If `readiness.can_generate_intake` is `false`, the first response must stop after the questions. It must not continue with project guidelines, technical steering, repository layout, default answers, stack choices, or definition-of-done rules.
+If `readiness.can_generate_intake` is `false`, the first response must stop after the single next question in guided mode. It must not continue with project guidelines, technical steering, repository layout, default answers, stack choices, definition-of-done rules, or a checklist of future questions.
 
 See `docs/INTAKE_SESSION_FORMAT.md`.
 
@@ -72,10 +72,10 @@ The correct first response is:
 
 1. short acknowledgement
 2. `intake_session` state
-3. high-impact questions
+3. one high-impact question
 4. stop
 
-The incorrect response is anything that continues with starter steering rules, a recommended stack, repo/package split, project layout, definition of done, suggested answers, or planning-run guidelines.
+The incorrect response is anything that continues with starter steering rules, a recommended stack, repo/package split, project layout, definition of done, suggested answers, planning-run guidelines, or a batch checklist of future questions.
 
 ## Recommended target-project layout
 
@@ -135,11 +135,14 @@ Use as the default.
 
 Rules:
 
-- Ask questions in small sections.
-- Suggest reasonable stack options when the user has not chosen one and enough platform/MVP context exists.
+- Ask exactly one high-impact question per assistant turn unless the user explicitly asks for a batch.
+- The one question should be the next unanswered decision that most changes architecture, stack, MVP, safety, or parallelization.
+- Do not include a checklist of future questions in the same turn.
+- After the user answers, update `intake_session` and ask the next one-question step.
+- Only produce `project_intake.json` after the session is ready.
+- Suggest reasonable stack options only after platform, multiplayer mode, and project state are known.
 - Confirm the MVP before planning.
 - Confirm team/agent working style before task decomposition.
-- Produce a structured intake record after enough information is known.
 
 ### Expert mode
 
@@ -238,6 +241,8 @@ The session should include:
 - next action
 
 If `readiness.can_generate_intake` is `false`, the output is not allowed to continue into guidelines or planning artifacts.
+
+In guided mode, `next_action.questions` should contain only the single next question. Other unanswered decisions belong in `open_questions`, not in the visible next-question list.
 
 ## Required intake output
 

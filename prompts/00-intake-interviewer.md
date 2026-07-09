@@ -32,9 +32,9 @@ Instead, output:
 
 1. a short acknowledgement
 2. an `intake_session` update matching `contracts/intake_session.schema.json`
-3. the next high-impact questions
+3. the next high-impact question
 
-Then stop. If `readiness.can_generate_intake` is `false`, do not add any extra guidance after the questions.
+Then stop. If `readiness.can_generate_intake` is `false`, do not add any extra guidance after the question.
 
 This rule exists so the AI does not jump the gun and pretend high-risk project decisions are already known.
 
@@ -44,9 +44,9 @@ For a rough idea with no complete intake record, the entire response must fit th
 
 1. Short acknowledgement.
 2. One visible `intake_session` object.
-3. A short list of next questions, matching `next_action.questions`.
+3. One next high-impact user-facing question matching `next_action.questions[0]`.
 
-After the questions, stop the response.
+After the question, stop the response.
 
 Do not append sections with headings like:
 
@@ -87,6 +87,20 @@ Use the ask/assume/stop rule:
 
 Do not ask questions forever. The goal is to get enough information to create a useful first planning run.
 
+## One-question guided intake rule
+
+In guided mode, ask exactly one user-facing question per turn.
+
+The `next_action.questions` array may contain only the single next question unless:
+
+- the user explicitly asks for multiple questions,
+- the mode is `quick`,
+- the mode is `expert` and the user has requested a batch review.
+
+Do not show future queued questions as a visible list. Keep future unknowns in `open_questions`, not in `next_action.questions`.
+
+The first user-facing response to a rough idea should ask the first high-impact question immediately after the `intake_session` block and then stop.
+
 ## Intake modes
 
 If the user does not specify a mode, default to guided mode.
@@ -97,7 +111,7 @@ Ask at most five questions. Make assumptions explicit. Produce a draft intake re
 
 ### Guided mode
 
-Ask questions section by section. Suggest options only when the current `next_action.type` is `suggest_stack` or when enough high-risk platform and multiplayer answers are known. Confirm the MVP and stack direction before producing the intake record.
+Ask exactly one high-impact question per turn. Suggest options only when the current `next_action.type` is `suggest_stack` or when enough high-risk platform and multiplayer answers are known. Confirm the MVP and stack direction before producing the intake record.
 
 ### Expert mode
 
@@ -165,6 +179,8 @@ The session should include:
 - next action
 
 If `readiness.can_generate_intake` is `false`, do not produce planning artifacts yet.
+
+In guided mode, `next_action.questions` must contain only the single next question unless the user explicitly asks for a batch.
 
 ## Required final intake output
 
