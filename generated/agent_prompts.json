@@ -11,6 +11,7 @@
         "PRODUCT_RULES.md",
         "docs/PROJECT_INTAKE_WORKFLOW.md",
         "docs/INTAKE_SESSION_FORMAT.md",
+        "docs/INTAKE_DECISION_CARDS.md",
         "contracts/intake_session.schema.json",
         "contracts/project_intake.schema.json",
         "prompts/00-intake-interviewer.md"
@@ -26,6 +27,7 @@
         "User rough idea",
         "Project intake workflow",
         "Intake session format",
+        "Intake decision card guidance",
         "Intake session schema",
         "Project intake schema",
         "Product rules",
@@ -35,6 +37,8 @@
         "Treat rough ideas plus requests for help, guidelines, steering, architecture, or setup as requests to start intake.",
         "On the first response without a complete intake record, output only a short acknowledgement, intake_session update, and one high-impact guided-mode question, then stop.",
         "In guided mode, next_action.questions may contain only the single next question unless the user explicitly asks for a batch.",
+        "For hard guided-mode choices, ask the single question as an A/B/C decision card with pros, cons, MVP risk, scaling/refactor risk, and one explicit agent recommendation.",
+        "Allow the user to answer A, B, C, recommended, or custom; do not silently apply the recommendation.",
         "After the first visible intake_session, use compact human-readable updates instead of repeating full JSON unless the user asks to see the full state.",
         "Keep future unanswered decisions in open_questions, not as a visible checklist in next_action.questions.",
         "Do not append starter guidelines, technical steering, repo/package split, definition of done, stack recommendation, suggested answers, task backlog, or agent assignments while readiness.can_generate_intake is false.",
@@ -46,6 +50,7 @@
       "output_required": [
         "Full intake_session update on the first guided intake turn or when explicitly requested",
         "Compact intake update after subsequent guided-mode answers",
+        "Decision card for hard guided-mode choices when useful",
         "Explicit assumptions",
         "High-risk open questions",
         "Single next high-impact question in guided mode",
@@ -55,6 +60,8 @@
       "verification_required": [
         "In-progress intake session matches contracts/intake_session.schema.json.",
         "Guided-mode next_action.questions contains exactly one visible question unless the user explicitly asks for a batch.",
+        "Hard guided-mode choices include clear options with tradeoffs and an explicit recommendation when a decision card would help.",
+        "Recommendation is not treated as accepted unless the user chooses it or answers recommended.",
         "Subsequent guided-mode turns do not repeat the full intake_session JSON unless requested, ready for project_intake, or saving/exporting.",
         "No project_intake.json or planning artifacts are produced while readiness.can_generate_intake is false.",
         "First response to a rough idea does not include starter guidelines, technical steering, repo/package split, definition of done, stack recommendation, suggested answers, backlog, agent assignments, or a checklist of future questions.",

@@ -193,6 +193,49 @@ Show the full `intake_session` again only when:
 
 The compact update still represents an updated `intake_session`; it just does not dump the entire object into the chat.
 
+## Decision-card follow-up updates
+
+A compact guided update may include one decision card when the next question is hard.
+
+Use this when the choice affects MVP difficulty or later scaling/refactor pain.
+
+```text
+Recorded: team mode = 2 people working in parallel.
+Status: Ready for stack choice.
+
+Decision: Which stack direction do you want for the MVP?
+
+A) Flutter client + backend service
+What it means: Build the UI in Flutter and a separate backend for rooms, game state, and realtime events.
+Pros: Best fit for desktop-first now and mobile later.
+Cons: Backend still needs separate WebSocket/game-state work.
+MVP risk: medium — more setup than a pure web prototype.
+Scaling/refactor risk: low-medium — mobile later is much less painful.
+Best when: Mobile later is real, not just a vague maybe.
+
+B) React + Tauri desktop client + backend
+What it means: Build a web-style UI wrapped as a lightweight desktop app, with a separate backend.
+Pros: Fast desktop MVP; familiar web tooling.
+Cons: Mobile later probably needs a separate client or rewrite.
+MVP risk: low-medium — good speed if the team knows web tooling.
+Scaling/refactor risk: medium — mobile later can become a second project.
+Best when: Desktop MVP speed matters more than mobile reuse.
+
+C) React web app + Electron wrapper + backend
+What it means: Build a browser-style app and package it with Electron for desktop.
+Pros: Fastest if the team knows web tooling.
+Cons: Heavier desktop app; mobile later is not clean.
+MVP risk: low — quickest path to something playable.
+Scaling/refactor risk: high — can become painful if mobile and polish matter later.
+Best when: The goal is to prove gameplay fast.
+
+Agent recommendation: A — because the stated goal is desktop first, but mobile later matters.
+
+Question: Choose A, B, C, recommended, or custom.
+```
+
+This still counts as one guided question. If the user answers `recommended`, record the recommended option as the selected answer. Unchosen options are rationale, not project decisions.
+
 ## Frontend rendering guidance
 
 A frontend intake page should render:
