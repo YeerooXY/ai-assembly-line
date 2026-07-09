@@ -10,6 +10,8 @@
         "PROJECT_SPEC_TEMPLATE.md",
         "PRODUCT_RULES.md",
         "docs/PROJECT_INTAKE_WORKFLOW.md",
+        "docs/INTAKE_SESSION_FORMAT.md",
+        "contracts/intake_session.schema.json",
         "contracts/project_intake.schema.json",
         "prompts/00-intake-interviewer.md"
       ],
@@ -23,24 +25,34 @@
       "input_context_required": [
         "User rough idea",
         "Project intake workflow",
+        "Intake session format",
+        "Intake session schema",
         "Project intake schema",
         "Product rules",
         "Known tools, paths, stack preferences, or repo constraints"
       ],
       "task_boundaries": [
+        "Treat rough ideas plus requests for help, guidelines, steering, architecture, or setup as requests to start intake.",
+        "On the first response without a complete intake record, output only a short acknowledgement, intake_session update, and high-impact questions, then stop.",
+        "Do not append starter guidelines, technical steering, repo/package split, definition of done, stack recommendation, suggested answers, task backlog, or agent assignments while readiness.can_generate_intake is false.",
         "Ask only questions that materially change the plan.",
-        "Suggest stack options with tradeoffs when the user has not chosen one.",
-        "Produce a project_intake.json draft before planning artifacts.",
+        "Suggest stack options with tradeoffs only after intake has started and platform/MVP constraints make the suggestion safe.",
+        "Produce a project_intake.json draft only after the intake session is ready.",
         "Do not produce implementation tasks until the intake record is complete enough."
       ],
       "output_required": [
-        "Structured project intake record",
+        "intake_session update while intake is in progress",
         "Explicit assumptions",
         "High-risk open questions",
-        "Planning Agent hand-off summary"
+        "Next high-impact questions",
+        "Structured project_intake.json only when readiness.can_generate_intake is true",
+        "Planning Agent hand-off summary only after project_intake.json is drafted"
       ],
       "verification_required": [
-        "Intake record matches contracts/project_intake.schema.json.",
+        "In-progress intake session matches contracts/intake_session.schema.json.",
+        "No project_intake.json or planning artifacts are produced while readiness.can_generate_intake is false.",
+        "First response to a rough idea does not include starter guidelines, technical steering, repo/package split, definition of done, stack recommendation, suggested answers, backlog, or agent assignments.",
+        "Final intake record matches contracts/project_intake.schema.json.",
         "Unsafe or ambiguous scope is rejected, bounded, or preserved as open questions."
       ]
     },
