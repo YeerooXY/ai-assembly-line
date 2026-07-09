@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { id: "backlog", label: "Backlog", href: "backlog.html" },
   { id: "prompts", label: "Prompts", href: "prompts.html" },
   { id: "slots", label: "Slots", href: "slots.html" },
+  { id: "planning-runs", label: "Planning Runs", href: "planning-runs.html" },
   { id: "verification", label: "Verification", href: "verification.html" },
 ];
 
@@ -49,7 +50,7 @@ export function initializeViewerPage(config) {
         <h2>Status</h2>
         <p id="statusMessage" class="status loading">Loading generated state...</p>
         <p class="source-note">
-          This page renders generated state only. It does not edit or invent task, repo, prompt, slot, or contract structure.
+          This page renders generated state only. It does not edit or invent task, repo, prompt, slot, planning-run, or contract structure.
         </p>
         <p class="source-note">
           Source of truth for this page:
