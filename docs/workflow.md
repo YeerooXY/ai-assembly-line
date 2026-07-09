@@ -18,7 +18,7 @@ Generate a repo plan describing packages or repositories and their boundaries.
 
 ## 5. Generate Tasks
 
-Produce a microtask backlog with explicit owners, dependencies, and verification criteria.
+Produce a microtask backlog with explicit owners, dependencies, and verification criteria. For large plans, use guided task-batch generation so each response produces one copy-pastable file.
 
 ## 6. Generate Prompt Pack
 

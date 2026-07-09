@@ -47,6 +47,7 @@ The source-of-truth layers are:
    - `generated/repo_plan.json`
    - `generated/task_backlog.json`
    - `generated/task_batch_index.json`
+   - `generated/task_batches/*.json`
    - `generated/agent_prompts.json`
    - `generated/slots_db.json`
 5. Derived planning-run index
@@ -243,6 +244,12 @@ Planning run outputs can be validated separately with:
 python tools/validate_planning_run.py planning_runs\<run-slug>
 ```
 
+Task batch outputs can be validated separately with:
+
+```powershell
+python tools\validate_task_batches.py
+```
+
 The validator:
 
 - fails clearly when required generated and contract files are missing
@@ -252,6 +259,8 @@ The validator:
 - schema-validates the canonical generated artifacts when `jsonschema` is available
 - runs dependency-light consistency checks across generated planning artifacts
 - optionally parses `contracts/api_contract.openapi.yaml` when `PyYAML` is available
+
+The task-batch validator checks `generated/task_batch_index.json`, every generated batch under `generated/task_batches/`, task dependency references, blocking references, cycle safety, and topological batch order.
 
 For fresh-clone external review instructions, see `docs/EXTERNAL_REVIEW_PROMPT.md`.
 The static viewer reads contract files directly for the Verification page, but this is still read-only documentation and not an implemented backend or live API.
@@ -272,4 +281,5 @@ Run validation:
 
 ```powershell
 python tools\validate_seed.py
+python tools\validate_task_batches.py
 ```
