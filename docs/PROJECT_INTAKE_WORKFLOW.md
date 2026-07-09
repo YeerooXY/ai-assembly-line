@@ -56,7 +56,7 @@ This is true even if the user asks for guidelines or says they want to bring the
 
 If `readiness.can_generate_intake` is `false`, the first response must stop after the single next question in guided mode. It must not continue with project guidelines, technical steering, repository layout, default answers, stack choices, definition-of-done rules, or a checklist of future questions.
 
-See `docs/INTAKE_SESSION_FORMAT.md`.
+See `docs/INTAKE_SESSION_FORMAT.md` and `docs/INTAKE_DECISION_CARDS.md`.
 
 ## Guidelines wording trap
 
@@ -139,6 +139,9 @@ Rules:
 - The one question should be the next unanswered decision that most changes architecture, stack, MVP, safety, or parallelization.
 - Do not include a checklist of future questions in the same turn.
 - After the first visible `intake_session`, use compact updates instead of repeating the full JSON unless the user asks to see the state.
+- For hard choices, present the one question as an A/B/C decision card with pros, cons, MVP risk, later scaling/refactor risk, and one explicit agent recommendation.
+- The user may answer `A`, `B`, `C`, `recommended`, or a custom answer.
+- Do not silently apply the recommendation; record it only if the user chooses it.
 - After the user answers, update `intake_session` and ask the next one-question step.
 - Only produce `project_intake.json` after the session is ready.
 - Suggest reasonable stack options only after platform, multiplayer mode, and project state are known.
@@ -154,6 +157,39 @@ Rules:
 - Let the user paste stack choices, tool paths, repo constraints, architecture notes, and team layout.
 - Ask only for missing high-risk decisions.
 - Produce the intake record with minimal back-and-forth.
+
+## Decision-card guided questions
+
+Guided mode still asks one question per turn. A decision card is a richer way to ask that one question when the choice is difficult.
+
+Use a decision card when the answer may create MVP difficulty or later scaling/refactor pain, especially for:
+
+- MVP scope
+- platform target
+- stack or engine
+- realtime versus asynchronous behavior
+- backend architecture
+- accounts/auth/persistence
+- deployment model
+- team/agent split
+- proof required for done
+
+A decision card should include:
+
+- the single decision being made
+- two or three options labeled A/B/C
+- what each option means
+- pros
+- cons
+- MVP risk
+- later scaling/refactor risk
+- when each option is best
+- one `Agent recommendation`, with rationale
+- a final question: `Choose A, B, C, recommended, or custom.`
+
+This still counts as one guided question. Future decisions stay in `open_questions`, not in the visible decision card.
+
+If the user answers `recommended`, record the recommended option as the selected answer and preserve the rationale. If the user answers with a custom option, record it and keep any new uncertainty as an open question.
 
 ## Question sections
 
@@ -181,6 +217,8 @@ The Intake Interviewer should cover these sections, but not necessarily all in o
 When suggesting a stack, provide options with tradeoffs and a recommendation. Do not force a stack silently.
 
 Do not suggest concrete stack options on the first response to a rough idea when high-risk answers such as platform, multiplayer mode, existing project state, and team/agent layout are still unknown.
+
+When enough context exists, prefer a decision card for stack/platform choices so the user can compare MVP speed against later scaling/refactor pain.
 
 ### 4. Existing project state
 
@@ -246,6 +284,8 @@ If `readiness.can_generate_intake` is `false`, the output is not allowed to cont
 In guided mode, `next_action.questions` should contain only the single next question. Other unanswered decisions belong in `open_questions`, not in the visible next-question list.
 
 In guided mode, the full JSON object should be visible on the first intake turn, when the user asks for it, when the session becomes ready for `project_intake.json`, or when saving/exporting is requested. Otherwise, use a compact update that records the latest answer, current status, and single next question.
+
+Decision-card options are human-facing guidance. Record only the user's selected answer as the intake answer; do not treat unchosen options as project decisions.
 
 ## Required intake output
 
