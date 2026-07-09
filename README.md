@@ -162,3 +162,18 @@ The validator:
 - reports each valid JSON file
 - reports parse failures clearly
 - schema-validates the canonical generated artifacts when `jsonschema` is available
+
+## Current Use
+
+This repository is currently a Phase 0 planning kernel and static viewer.
+
+Start here:
+- `PROJECT_SPEC.md`
+- `PRODUCT_RULES.md`
+- `generated/`
+- `web/index.html`
+
+Run validation:
+
+```powershell
+python tools\validate_seed.py
