@@ -70,6 +70,7 @@ When available, read:
 
 - `docs/PROJECT_INTAKE_WORKFLOW.md`
 - `docs/INTAKE_SESSION_FORMAT.md`
+- `docs/INTAKE_DECISION_CARDS.md`
 - `contracts/intake_session.schema.json`
 - `contracts/project_intake.schema.json`
 - `PROJECT_SPEC_TEMPLATE.md`
@@ -121,6 +122,30 @@ After the user answers a guided-mode question, use a compact intake update inste
 
 Keep the full updated state internally consistent with `contracts/intake_session.schema.json`, but do not display the entire object unless one of the cases above applies.
 
+## Decision-card guided questions
+
+In guided mode, the assistant still asks exactly one user-facing question per turn.
+
+For hard choices, present that one question as a decision card with A/B/C options. Use decision cards when the answer affects MVP difficulty, later scaling pain, architecture, stack, platform target, backend model, team split, or verification strategy.
+
+A decision card should include:
+
+- the single decision being made,
+- two or three options labeled A/B/C,
+- what each option means,
+- pros,
+- cons,
+- MVP risk,
+- later scaling or refactor risk,
+- when that option is best,
+- one `Agent recommendation`, with rationale.
+
+The user may answer `A`, `B`, `C`, `recommended`, or a custom answer.
+
+If the user answers `recommended`, record the recommended option as the selected answer and preserve the recommendation rationale. Do not silently choose the recommendation without user confirmation.
+
+Decision cards still count as one guided question. Do not turn them into a checklist of multiple future questions. Keep future decisions in `open_questions`.
+
 ## Intake modes
 
 If the user does not specify a mode, default to guided mode.
@@ -131,7 +156,7 @@ Ask at most five questions. Make assumptions explicit. Produce a draft intake re
 
 ### Guided mode
 
-Ask exactly one high-impact question per turn. After the first visible `intake_session`, use compact updates instead of repeating the full JSON unless the user asks for the state. Suggest options only when the current `next_action.type` is `suggest_stack` or when enough high-risk platform and multiplayer answers are known. Confirm the MVP and stack direction before producing the intake record.
+Ask exactly one high-impact question per turn. After the first visible `intake_session`, use compact updates instead of repeating the full JSON unless the user asks for the state. For hard choices, use A/B/C decision cards with pros, cons, MVP risk, scaling/refactor risk, and one explicit agent recommendation. Suggest options only when the current `next_action.type` is `suggest_stack` or when enough high-risk platform and multiplayer answers are known. Confirm the MVP and stack direction before producing the intake record.
 
 ### Expert mode
 
@@ -157,7 +182,7 @@ Do not include concrete stack recommendations on the first response to a rough p
 
 Only suggest two or three stack options with tradeoffs when:
 
-- the user explicitly asks to compare stacks after intake has started, or
+- the user explicitly asks to compare stacks after intake has started,
 - the session `next_action.type` is `suggest_stack`, or
 - enough platform and MVP constraints are known that the suggestion will not silently decide architecture.
 
@@ -166,21 +191,33 @@ For each option, include:
 - best fit
 - risks
 - why it may or may not fit the user's working style
+- MVP risk
+- later scaling or refactor risk
 
-Then give a recommendation, but do not silently force it.
+Then give a recommendation, but do not silently force it. The user may choose the recommendation by saying `recommended`.
 
 Example shape:
 
 ```text
-Option A: Godot 4
+Decision: Which stack direction should the MVP use?
+
+A) Godot 4
 Best for: fast 2D game iteration and desktop-first prototypes.
-Risks: networking architecture still needs deliberate design.
+Pros: strong game tooling; quick visual iteration.
+Cons: browser deployment and backend integration may need extra care.
+MVP risk: low-medium.
+Scaling/refactor risk: medium if web/mobile later become important.
 
-Option B: TypeScript + Phaser + Colyseus
+B) TypeScript + Phaser + Colyseus
 Best for: browser-first multiplayer.
-Risks: more web/backend setup before game feel is visible.
+Pros: easy sharing and strong web multiplayer path.
+Cons: more web/backend setup before game feel is visible.
+MVP risk: medium.
+Scaling/refactor risk: low-medium for web-first projects.
 
-Recommendation: Godot 4 if desktop-first matters most; Phaser + Colyseus if browser-first matters most.
+Agent recommendation: B if browser-first multiplayer matters most; A if desktop-first game-feel iteration matters most.
+
+Question: Choose A, B, recommended, or custom.
 ```
 
 ## Intake session output
@@ -203,6 +240,8 @@ If `readiness.can_generate_intake` is `false`, do not produce planning artifacts
 In guided mode, `next_action.questions` must contain only the single next question unless the user explicitly asks for a batch.
 
 In guided mode after the first turn, prefer a compact human-readable update over full JSON repetition. The machine-readable state remains the source of truth, but the user should not have to read the full object every turn.
+
+Decision-card options are human-facing explanation. Record the selected answer in `intake_session`; do not treat unchosen options as project decisions.
 
 ## Required final intake output
 
