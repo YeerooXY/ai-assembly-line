@@ -8,6 +8,20 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+REQUIRED_FILES = [
+    ROOT / "generated" / "project_spec.json",
+    ROOT / "generated" / "repo_plan.json",
+    ROOT / "generated" / "task_backlog.json",
+    ROOT / "generated" / "agent_prompts.json",
+    ROOT / "generated" / "slots_db.json",
+    ROOT / "generated" / "review_manifest.json",
+    ROOT / "contracts" / "project_spec.schema.json",
+    ROOT / "contracts" / "repo_plan.schema.json",
+    ROOT / "contracts" / "task.schema.json",
+    ROOT / "contracts" / "slot.schema.json",
+    ROOT / "contracts" / "agent_prompt.schema.json",
+    ROOT / "contracts" / "api_contract.openapi.yaml",
+]
 
 
 def load_json(path: Path) -> Any:
@@ -29,6 +43,14 @@ def load_optional_jsonschema():
     except ImportError:
         return None
     return jsonschema
+
+
+def load_optional_yaml():
+    try:
+        import yaml  # type: ignore
+    except ImportError:
+        return None
+    return yaml
 
 
 def expect(condition: bool, message: str) -> None:
@@ -381,27 +403,92 @@ def collect_string_values(value: Any) -> list[str]:
     return values
 
 
+def path_exists_or_pattern(path_value: str) -> bool:
+    path = ROOT / path_value
+    if path.exists():
+        return True
+    if any(char in path_value for char in "*?[]"):
+        return any(candidate.is_file() for candidate in ROOT.glob(path_value))
+    if path_value.endswith("/"):
+        return path.is_dir()
+    return False
+
+
+def validate_required_files() -> int:
+    missing_count = 0
+    for path in REQUIRED_FILES:
+        if not path.exists():
+            print(f"MISSING FAIL {format_rel(path)}")
+            missing_count += 1
+    return missing_count
+
+
+def validate_yaml_contract() -> int:
+    yaml_module = load_optional_yaml()
+    rel = "contracts/api_contract.openapi.yaml"
+    path = ROOT / rel
+
+    if yaml_module is None:
+        print(f"YAML SKIP {rel} (PyYAML not installed)")
+        return 0
+
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            yaml_module.safe_load(handle)
+    except OSError as exc:
+        print(f"YAML FAIL {rel}: {exc}")
+        return 1
+    except Exception as exc:
+        print(f"YAML FAIL {rel}: {exc}")
+        return 1
+
+    print(f"YAML OK   {rel}")
+    return 0
+
+
 def run_consistency_checks(parsed_payloads: dict[Path, Any]) -> list[str]:
     messages: list[str] = []
+    warnings: list[str] = []
 
     project_spec = parsed_payloads[ROOT / "generated" / "project_spec.json"]
     repo_plan = parsed_payloads[ROOT / "generated" / "repo_plan.json"]
     task_backlog = parsed_payloads[ROOT / "generated" / "task_backlog.json"]
     agent_prompts = parsed_payloads[ROOT / "generated" / "agent_prompts.json"]
+    slots_db = parsed_payloads[ROOT / "generated" / "slots_db.json"]
 
     repo_names = {repo["name"] for repo in repo_plan["repos"]}
+    task_ids = {task["id"] for task in task_backlog}
 
     for index, task in enumerate(task_backlog):
         expect(
             task["repo_target"] in repo_names,
             f"generated/task_backlog.json[{index}].repo_target must exist in generated/repo_plan.json",
         )
+        for dependency in task["depends_on"]:
+            expect(
+                dependency in task_ids,
+                f"generated/task_backlog.json[{index}].depends_on entry must refer to an existing task id: {dependency}",
+            )
 
     for index, prompt in enumerate(agent_prompts["prompts"]):
         expect(
             prompt["target_repo"] in repo_names,
             f"generated/agent_prompts.json[{index}].target_repo must exist in generated/repo_plan.json",
         )
+
+    for index, screen in enumerate(project_spec["frontend_screens"]):
+        for render_path in screen["renders_from"]:
+            expect(
+                path_exists_or_pattern(render_path),
+                f"generated/project_spec.json.frontend_screens[{index}].renders_from path must exist: {render_path}",
+            )
+
+    for repo_index, repo in enumerate(repo_plan["repos"]):
+        for contains_path in repo["contains"]:
+            expect(
+                path_exists_or_pattern(contains_path),
+                f"generated/repo_plan.json.repos[{repo_index}].contains path must exist or match a documented pattern: {contains_path}",
+            )
 
     forbidden_strings = {
         "seed-web-placeholder",
@@ -418,10 +505,10 @@ def run_consistency_checks(parsed_payloads: dict[Path, Any]) -> list[str]:
         rel = format_rel(path)
         string_values = collect_string_values(parsed_payloads[path])
         for forbidden in forbidden_strings:
-          expect(
-              forbidden not in string_values,
-              f"{rel} must not reference stale value: {forbidden}",
-          )
+            expect(
+                forbidden not in string_values,
+                f"{rel} must not reference stale value: {forbidden}",
+            )
 
     screens = project_spec["frontend_screens"]
     screen_names = {screen["name"] for screen in screens}
@@ -445,14 +532,27 @@ def run_consistency_checks(parsed_payloads: dict[Path, Any]) -> list[str]:
     )
 
     messages.append("CONSISTENCY OK generated task repo_target values map to generated/repo_plan.json")
+    messages.append("CONSISTENCY OK generated task depends_on values refer to existing task ids")
     messages.append("CONSISTENCY OK generated prompt target_repo values map to generated/repo_plan.json")
+    messages.append("CONSISTENCY OK generated frontend_screens renders_from paths exist")
+    messages.append("CONSISTENCY OK generated repo_plan contains paths exist or match documented patterns")
     messages.append("CONSISTENCY OK generated artifacts contain no stale web placeholder references")
     messages.append("CONSISTENCY OK generated frontend_screens includes the actual viewer pages, including Slot Board")
 
-    return messages
+    prompt_roles = {prompt["role"] for prompt in agent_prompts["prompts"]}
+    for slot in slots_db:
+        if slot["role"] not in prompt_roles:
+            warnings.append(f"CONSISTENCY WARN slot role has no matching generated prompt role: {slot['role']}")
+
+    return messages + warnings
 
 
 def main() -> int:
+    missing_required = validate_required_files()
+    if missing_required:
+        print(f"RESULT FAIL missing_required={missing_required}")
+        return 1
+
     json_files = discover_json_files(ROOT)
     if not json_files:
         print("No JSON files found.")
@@ -463,6 +563,7 @@ def main() -> int:
 
     parse_failures = 0
     schema_failures = 0
+    yaml_failures = 0
     parsed_payloads: dict[Path, Any] = {}
 
     for path in json_files:
@@ -522,6 +623,15 @@ def main() -> int:
         print(
             f"RESULT FAIL parse_failures={parse_failures} "
             f"schema_failures={schema_failures}"
+        )
+        return 1
+
+    yaml_failures += validate_yaml_contract()
+    if yaml_failures:
+        print(
+            f"RESULT FAIL parse_failures={parse_failures} "
+            f"schema_failures={schema_failures} "
+            f"yaml_failures={yaml_failures}"
         )
         return 1
 

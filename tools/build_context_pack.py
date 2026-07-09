@@ -63,6 +63,23 @@ def main() -> int:
         required = bool(entry["required"])
         path = ROOT / rel_path
 
+        if path == OUTPUT_PATH:
+            sections.extend(
+                [
+                    f"## `{rel_path}`",
+                    "",
+                    f"- Category: `{category}`",
+                    f"- Purpose: {purpose}",
+                    f"- Required: `{str(required).lower()}`",
+                    "",
+                    "_Skipped self-embedding to avoid recursive context-pack inclusion._",
+                    "",
+                ]
+            )
+            included_count += 1
+            print(f"SKIP SELF {rel_path}")
+            continue
+
         if not path.exists():
             message = f"{'ERROR' if required else 'WARN '} missing {'required' if required else 'optional'} file: {rel_path}"
             if required:

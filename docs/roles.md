@@ -10,7 +10,7 @@ Maintains schemas, contract compatibility, and fixture validity.
 
 ## Frontend Builder
 
-Builds read-only or interactive frontend views that render contract-defined project state without inventing structure.
+Builds read-only static frontend views for Phase 0 that render generated planning state and contracts without inventing structure.
 
 ## Backend Builder
 
@@ -18,7 +18,9 @@ Implements API surfaces described by the OpenAPI contract when a later phase all
 
 ## Core Engine Builder
 
-Implements deterministic domain logic, scoring, simulation-style evaluation, and validators.
+Implements deterministic planning-kernel logic and validators for the current seed repository.
+
+Domain-specific scoring or simulation-style evaluation belongs to future or example-specific work, such as `examples/coc-base-builder/`, not the current Phase 0 planning kernel.
 
 ## Red Team Verifier
 

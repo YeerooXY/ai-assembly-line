@@ -18,7 +18,7 @@ initializeViewerPage({
   requiredKeys: ["projectSpec", "taskBacklog", "agentPrompts", "slotsDb"],
   extraSourceFiles: CONTRACT_ENTRIES.map((entry) => entry.path),
   helperNote:
-    "The generated JSON sections still support the page-level file picker fallback. Contract files are fetched directly from the repository paths, so contract rendering is most reliable when the repo root is served with python -m http.server 8000.",
+    "Generated JSON files can still be loaded with the local file picker. Contract files are fetched from repository paths separately and are most reliable when the repo root is served with python -m http.server 8000.",
   renderContent(container, data) {
     const taskGroups = groupTaskVerification(data.taskBacklog);
     const promptCards = data.agentPrompts.prompts.map(

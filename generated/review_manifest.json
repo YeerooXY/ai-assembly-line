@@ -38,10 +38,40 @@
       "required": true
     },
     {
+      "path": "docs/public-overview.md",
+      "category": "review-doc",
+      "purpose": "Short public-facing overview of the planning-kernel repository scope.",
+      "required": true
+    },
+    {
+      "path": "docs/workflow.md",
+      "category": "review-doc",
+      "purpose": "Workflow description for decomposition, tasks, prompts, and verification.",
+      "required": true
+    },
+    {
+      "path": "docs/roles.md",
+      "category": "review-doc",
+      "purpose": "Role descriptions for the planning kernel and static viewer work.",
+      "required": true
+    },
+    {
+      "path": "docs/task-format.md",
+      "category": "review-doc",
+      "purpose": "Task record expectations referenced by generated planning artifacts.",
+      "required": true
+    },
+    {
       "path": "docs/verification-rules.md",
       "category": "review-doc",
       "purpose": "Verification and frontend source-of-truth rules referenced by the generated planning state.",
       "required": true
+    },
+    {
+      "path": "generated/context_pack.md",
+      "category": "entry-point",
+      "purpose": "Single-file remote review context pack for web-only AI environments. Included as an entry point but skipped for self-embedding during context-pack generation.",
+      "required": false
     },
     {
       "path": "generated/project_spec.json",
@@ -114,6 +144,72 @@
       "category": "contract",
       "purpose": "Future API and spec-compiler contract draft, not an implemented backend.",
       "required": true
+    },
+    {
+      "path": "prompts/00-planning-agent.md",
+      "category": "prompt-source",
+      "purpose": "Prompt source file for the planning agent role.",
+      "required": true
+    },
+    {
+      "path": "prompts/01-contract-steward.md",
+      "category": "prompt-source",
+      "purpose": "Prompt source file for the contract steward role.",
+      "required": true
+    },
+    {
+      "path": "prompts/02-frontend-builder.md",
+      "category": "prompt-source",
+      "purpose": "Prompt source file for the Phase 0 frontend builder role.",
+      "required": true
+    },
+    {
+      "path": "prompts/03-backend-builder.md",
+      "category": "prompt-source",
+      "purpose": "Prompt source file for the backend builder role.",
+      "required": true
+    },
+    {
+      "path": "prompts/04-core-engine-builder.md",
+      "category": "prompt-source",
+      "purpose": "Prompt source file for the core engine builder role.",
+      "required": true
+    },
+    {
+      "path": "prompts/05-red-team-verifier.md",
+      "category": "prompt-source",
+      "purpose": "Prompt source file for the red-team verifier role.",
+      "required": true
+    },
+    {
+      "path": "examples/coc-base-builder/input-idea.md",
+      "category": "example",
+      "purpose": "Example input idea used to demonstrate safe decomposition in a domain-specific sample.",
+      "required": false
+    },
+    {
+      "path": "examples/coc-base-builder/generated-project-spec.md",
+      "category": "example",
+      "purpose": "Human-readable example project spec output for the coc-base-builder sample.",
+      "required": false
+    },
+    {
+      "path": "examples/coc-base-builder/generated-repo-plan.json",
+      "category": "example",
+      "purpose": "Machine-readable example repo-plan output for the coc-base-builder sample.",
+      "required": false
+    },
+    {
+      "path": "examples/coc-base-builder/generated-task-backlog.json",
+      "category": "example",
+      "purpose": "Machine-readable example task backlog output for the coc-base-builder sample.",
+      "required": false
+    },
+    {
+      "path": "examples/coc-base-builder/generated-agent-prompts.md",
+      "category": "example",
+      "purpose": "Human-readable example prompt pack output for the coc-base-builder sample.",
+      "required": false
     },
     {
       "path": "web/README.md",

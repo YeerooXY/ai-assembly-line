@@ -20,7 +20,10 @@ The viewer pages are:
 - `web/verification.html`: verification rules, proof requirements, and raw contract rendering from generated JSON artifacts plus `contracts/*.schema.json` and `contracts/api_contract.openapi.yaml`
 
 If the browser blocks `file://` fetches, open any page directly and use the page-level file picker to load the required `generated/*.json` files for that page.
-The Verification page can still use that fallback for generated JSON, but contract rendering is fetched from the repository paths and is most reliable when serving the repo root with `python -m http.server 8000`.
+Generated JSON and contract files are handled differently on the Verification page:
+
+- generated JSON can still be loaded through the local file picker
+- contract files are fetched from repository paths and are most reliable when serving the repo root with `python -m http.server 8000`
 
 Shared files:
 

@@ -170,6 +170,8 @@ For remote AI or web-only review environments, start with:
 - `generated/review_manifest.json`
 - `generated/context_pack.md`
 
+These files provide broad review context for the current repository state. They are intended to reduce setup friction for web-only review environments, not to imply that one file permanently contains the entire repository.
+
 ## Validation
 
 Run:
@@ -180,10 +182,13 @@ python tools/validate_seed.py
 
 The validator:
 
+- fails clearly when required generated and contract files are missing
 - parses every JSON file in the repository
 - reports each valid JSON file
 - reports parse failures clearly
 - schema-validates the canonical generated artifacts when `jsonschema` is available
+- runs dependency-light consistency checks across generated planning artifacts
+- optionally parses `contracts/api_contract.openapi.yaml` when `PyYAML` is available
 
 For fresh-clone external review instructions, see `docs/EXTERNAL_REVIEW_PROMPT.md`.
 The static viewer reads contract files directly for the Verification page, but this is still read-only documentation and not an implemented backend or live API.
@@ -668,6 +673,151 @@ Check for:
 
 ```
 
+## `docs/public-overview.md`
+
+- Category: `review-doc`
+- Purpose: Short public-facing overview of the planning-kernel repository scope.
+- Required: `true`
+
+```markdown
+# Public Overview
+
+AI Assembly Line is a planning kernel for software teams using AI agents under human supervision.
+
+It creates a strict path from rough idea to implementation-ready planning artifacts:
+
+- project specification
+- repository split
+- task backlog
+- role prompts
+- verification rules
+
+The initial version is deliberately narrow. It focuses on decomposition quality, contract discipline, and safe scope boundaries.
+
+```
+
+## `docs/workflow.md`
+
+- Category: `review-doc`
+- Purpose: Workflow description for decomposition, tasks, prompts, and verification.
+- Required: `true`
+
+```markdown
+# Workflow
+
+## 1. Input Idea
+
+Capture a rough product idea in plain language.
+
+## 2. Safe Interpretation
+
+Rewrite or constrain the idea into an allowed product boundary when needed.
+
+## 3. Compile Spec
+
+Produce a structured project specification from the idea.
+
+## 4. Split Repositories
+
+Generate a repo plan describing packages or repositories and their boundaries.
+
+## 5. Generate Tasks
+
+Produce a microtask backlog with explicit owners, dependencies, and verification criteria.
+
+## 6. Generate Prompt Pack
+
+Produce prompts for planner, contracts, frontend, backend, core engine, and red team roles.
+
+## 7. Verify
+
+Validate contracts, check rule compliance, and red-team likely drift paths.
+
+## 8. Human Review
+
+Accept, revise, or reject the planning outputs before any implementation phase begins.
+
+```
+
+## `docs/roles.md`
+
+- Category: `review-doc`
+- Purpose: Role descriptions for the planning kernel and static viewer work.
+- Required: `true`
+
+```markdown
+# Roles
+
+## Planning Agent
+
+Turns rough ideas into structured product specs and decomposition artifacts.
+
+## Contract Steward
+
+Maintains schemas, contract compatibility, and fixture validity.
+
+## Frontend Builder
+
+Builds read-only static frontend views for Phase 0 that render generated planning state and contracts without inventing structure.
+
+## Backend Builder
+
+Implements API surfaces described by the OpenAPI contract when a later phase allows it.
+
+## Core Engine Builder
+
+Implements deterministic planning-kernel logic and validators for the current seed repository.
+
+Domain-specific scoring or simulation-style evaluation belongs to future or example-specific work, such as `examples/coc-base-builder/`, not the current Phase 0 planning kernel.
+
+## Red Team Verifier
+
+Tries to trigger scope drift, safety failures, undocumented state, and weak verification logic.
+
+## Human Reviewer
+
+Approves scopes, boundaries, and planning outputs.
+
+```
+
+## `docs/task-format.md`
+
+- Category: `review-doc`
+- Purpose: Task record expectations referenced by generated planning artifacts.
+- Required: `true`
+
+```markdown
+# Task Format
+
+Each generated task should be small, testable, and traceable.
+
+## Required Fields
+
+- `id`
+- `title`
+- `summary`
+- `owner_role`
+- `repo_target`
+- `depends_on`
+- `inputs`
+- `outputs`
+- `acceptance_criteria`
+- `verification`
+
+## Optional Fields
+
+- `risk_tags`
+- `notes`
+
+## Rules
+
+- Use stable identifiers.
+- Keep tasks implementation-sized.
+- Make acceptance criteria externally checkable.
+- Reference the source spec or contract context where possible.
+
+```
+
 ## `docs/verification-rules.md`
 
 - Category: `review-doc`
@@ -708,6 +858,14 @@ Check for:
 - unverifiable prompts
 
 ```
+
+## `generated/context_pack.md`
+
+- Category: `entry-point`
+- Purpose: Single-file remote review context pack for web-only AI environments. Included as an entry point but skipped for self-embedding during context-pack generation.
+- Required: `false`
+
+_Skipped self-embedding to avoid recursive context-pack inclusion._
 
 ## `generated/project_spec.json`
 
@@ -1707,10 +1865,40 @@ Check for:
       "required": true
     },
     {
+      "path": "docs/public-overview.md",
+      "category": "review-doc",
+      "purpose": "Short public-facing overview of the planning-kernel repository scope.",
+      "required": true
+    },
+    {
+      "path": "docs/workflow.md",
+      "category": "review-doc",
+      "purpose": "Workflow description for decomposition, tasks, prompts, and verification.",
+      "required": true
+    },
+    {
+      "path": "docs/roles.md",
+      "category": "review-doc",
+      "purpose": "Role descriptions for the planning kernel and static viewer work.",
+      "required": true
+    },
+    {
+      "path": "docs/task-format.md",
+      "category": "review-doc",
+      "purpose": "Task record expectations referenced by generated planning artifacts.",
+      "required": true
+    },
+    {
       "path": "docs/verification-rules.md",
       "category": "review-doc",
       "purpose": "Verification and frontend source-of-truth rules referenced by the generated planning state.",
       "required": true
+    },
+    {
+      "path": "generated/context_pack.md",
+      "category": "entry-point",
+      "purpose": "Single-file remote review context pack for web-only AI environments. Included as an entry point but skipped for self-embedding during context-pack generation.",
+      "required": false
     },
     {
       "path": "generated/project_spec.json",
@@ -1783,6 +1971,72 @@ Check for:
       "category": "contract",
       "purpose": "Future API and spec-compiler contract draft, not an implemented backend.",
       "required": true
+    },
+    {
+      "path": "prompts/00-planning-agent.md",
+      "category": "prompt-source",
+      "purpose": "Prompt source file for the planning agent role.",
+      "required": true
+    },
+    {
+      "path": "prompts/01-contract-steward.md",
+      "category": "prompt-source",
+      "purpose": "Prompt source file for the contract steward role.",
+      "required": true
+    },
+    {
+      "path": "prompts/02-frontend-builder.md",
+      "category": "prompt-source",
+      "purpose": "Prompt source file for the Phase 0 frontend builder role.",
+      "required": true
+    },
+    {
+      "path": "prompts/03-backend-builder.md",
+      "category": "prompt-source",
+      "purpose": "Prompt source file for the backend builder role.",
+      "required": true
+    },
+    {
+      "path": "prompts/04-core-engine-builder.md",
+      "category": "prompt-source",
+      "purpose": "Prompt source file for the core engine builder role.",
+      "required": true
+    },
+    {
+      "path": "prompts/05-red-team-verifier.md",
+      "category": "prompt-source",
+      "purpose": "Prompt source file for the red-team verifier role.",
+      "required": true
+    },
+    {
+      "path": "examples/coc-base-builder/input-idea.md",
+      "category": "example",
+      "purpose": "Example input idea used to demonstrate safe decomposition in a domain-specific sample.",
+      "required": false
+    },
+    {
+      "path": "examples/coc-base-builder/generated-project-spec.md",
+      "category": "example",
+      "purpose": "Human-readable example project spec output for the coc-base-builder sample.",
+      "required": false
+    },
+    {
+      "path": "examples/coc-base-builder/generated-repo-plan.json",
+      "category": "example",
+      "purpose": "Machine-readable example repo-plan output for the coc-base-builder sample.",
+      "required": false
+    },
+    {
+      "path": "examples/coc-base-builder/generated-task-backlog.json",
+      "category": "example",
+      "purpose": "Machine-readable example task backlog output for the coc-base-builder sample.",
+      "required": false
+    },
+    {
+      "path": "examples/coc-base-builder/generated-agent-prompts.md",
+      "category": "example",
+      "purpose": "Human-readable example prompt pack output for the coc-base-builder sample.",
+      "required": false
     },
     {
       "path": "web/README.md",
@@ -2407,6 +2661,661 @@ paths:
 
 ```
 
+## `prompts/00-planning-agent.md`
+
+- Category: `prompt-source`
+- Purpose: Prompt source file for the planning agent role.
+- Required: `true`
+
+```markdown
+# Planning Agent Prompt
+
+You are the planning agent for AI Assembly Line.
+
+Your job is to convert a rough idea into a structured project specification.
+
+Required outputs:
+
+- safe product interpretation
+- product summary
+- scope boundaries
+- repo split
+- domain model
+- API contract draft
+- frontend screens
+- backend services
+- core-engine responsibilities
+- verification tasks
+- role-specific starter prompts
+
+Rules:
+
+- work from strict files and contracts, not inferred product structure
+- reinterpret unsafe automation requests into safe planning tools when possible
+- reject scopes involving botting, client control, account access, emulator control, or live service interference
+- keep the output implementation-ready but planning-only
+
+```
+
+## `prompts/01-contract-steward.md`
+
+- Category: `prompt-source`
+- Purpose: Prompt source file for the contract steward role.
+- Required: `true`
+
+```markdown
+# Contract Steward Prompt
+
+You are the contract steward for AI Assembly Line.
+
+Your job is to keep schemas strict, coherent, and useful to downstream builders.
+
+Rules:
+
+- prefer explicit required fields
+- disallow undocumented structure unless there is a strong reason not to
+- keep schemas aligned with `PROJECT_SPEC.md`
+- ensure the frontend can render generated state directly from contracts
+- reject schema drift that would let builders invent hidden state
+
+```
+
+## `prompts/02-frontend-builder.md`
+
+- Category: `prompt-source`
+- Purpose: Prompt source file for the Phase 0 frontend builder role.
+- Required: `true`
+
+```markdown
+# Frontend Builder Prompt
+
+You are the frontend builder for AI Assembly Line.
+
+Build UI from source-of-truth files:
+
+- `PROJECT_SPEC.md`
+- `generated/project_spec.json`
+- `generated/repo_plan.json`
+- `generated/task_backlog.json`
+- `generated/agent_prompts.json`
+- `generated/slots_db.json`
+- `contracts/*.schema.json`
+- `contracts/api_contract.openapi.yaml`
+
+Rules:
+
+- do not invent frontend-owned task, repo, prompt, slot, or contract structures
+- render missing or invalid data as visible contract failures
+- the first visible version is read-only
+- no backend routes, login, realtime sync, editing, or mutable coordination logic in this phase
+
+```
+
+## `prompts/03-backend-builder.md`
+
+- Category: `prompt-source`
+- Purpose: Prompt source file for the backend builder role.
+- Required: `true`
+
+```markdown
+# Backend Builder Prompt
+
+You are the backend builder for AI Assembly Line.
+
+Implement only the HTTP surface described by `contracts/api_contract.openapi.yaml` when a later implementation phase begins.
+
+Rules:
+
+- keep endpoints contract-first
+- support read-only project state first
+- no authentication
+- no database
+- no background orchestration
+- no autonomous multi-agent execution
+
+```
+
+## `prompts/04-core-engine-builder.md`
+
+- Category: `prompt-source`
+- Purpose: Prompt source file for the core engine builder role.
+- Required: `true`
+
+```markdown
+# Core Engine Builder Prompt
+
+You are the core engine builder for AI Assembly Line.
+
+Implement deterministic planning logic and spec-compilation helpers.
+
+Priorities:
+
+- decomposition logic
+- validation
+- normalization
+- verification support
+
+Rules:
+
+- outputs must remain traceable to the spec
+- deterministic behavior is preferred over clever heuristics with hidden state
+- keep implementation boundaries separate from UI and transport layers
+
+```
+
+## `prompts/05-red-team-verifier.md`
+
+- Category: `prompt-source`
+- Purpose: Prompt source file for the red-team verifier role.
+- Required: `true`
+
+```markdown
+# Red Team Verifier Prompt
+
+You are the red team verifier for AI Assembly Line.
+
+Attack the planning outputs for:
+
+- unsafe reinterpretation
+- scope creep
+- schema drift
+- hidden frontend state invention
+- unverifiable tasks
+- prompt ambiguity
+
+Rules:
+
+- produce concrete failing cases
+- tie each failure back to a rule or missing guardrail
+- prioritize risks that would make the assembly line unsafe or incoherent
+
+```
+
+## `examples/coc-base-builder/input-idea.md`
+
+- Category: `example`
+- Purpose: Example input idea used to demonstrate safe decomposition in a domain-specific sample.
+- Required: `false`
+
+```markdown
+# Input Idea
+
+I want to build a fully automatic base-builder app for Clash of Clans.
+
+Safe interpretation for this repository:
+
+- do not build a bot
+- do not control a game client
+- do not connect to accounts or emulators
+- reinterpret the idea as an offline base layout planner and evaluator
+
+```
+
+## `examples/coc-base-builder/generated-project-spec.md`
+
+- Category: `example`
+- Purpose: Human-readable example project spec output for the coc-base-builder sample.
+- Required: `false`
+
+```markdown
+# CoC Base Builder Generated Project Spec
+
+## 1. Safe Product Interpretation
+
+Requested idea: "fully automatic base-builder app for Clash of Clans"
+
+Accepted interpretation: an offline Clash of Clans base layout planner, editor, scorer, and simulator-style evaluator.
+
+Rejected interpretations:
+
+- botting or gameplay automation
+- game client control
+- account access
+- emulator orchestration
+- live service interaction
+
+## 2. Product Summary
+
+- Product name: CoC Base Builder
+- Goal: help users design and compare base layouts outside the game
+- Users: players, clan planners, guide authors
+- Primary outcomes:
+  - edit layouts on a grid
+  - score layouts with transparent heuristics
+  - save and load planner files
+  - run offline simulation-style evaluation
+
+## 3. Scope Boundaries
+
+- Allowed:
+  - offline planning
+  - local save/load
+  - heuristic scoring
+  - route and coverage simulation
+- Not allowed:
+  - bot behavior
+  - client hooks
+  - memory reading
+  - account login
+  - emulator control
+  - live service calls
+
+## 4. Repo Split
+
+- `coc-base-frontend`
+  - render spec-derived state, layout editor, reports
+- `coc-base-backend`
+  - local-only file and evaluation API
+- `coc-base-engine`
+  - placement rules, scoring, path evaluation
+- `coc-base-contracts`
+  - schemas and fixtures
+
+## 5. Domain Model
+
+- `BaseLayout`
+  - fields: `layoutId`, `townHallLevel`, `width`, `height`, `placements`, `metadata`
+- `BuildingPlacement`
+  - fields: `placementId`, `buildingType`, `x`, `y`, `rotation`
+- `RuleSet`
+  - fields: `ruleSetId`, `weights`, `penalties`, `version`
+- `ScoreReport`
+  - fields: `reportId`, `totalScore`, `subscores`, `warnings`
+- `SimulationReport`
+  - fields: `simulationId`, `coverageSummary`, `pathingSummary`, `notes`
+
+## 6. API Contract Draft
+
+- `POST /compile-layout`
+  - validate and normalize a layout file
+- `POST /score-layout`
+  - return a score report for a layout
+- `POST /simulate-layout`
+  - return a simulation-style evaluation report
+- `POST /save-layout`
+  - save a local planner document
+- `POST /load-layout`
+  - load a local planner document
+
+## 7. Frontend Screens
+
+- Overview
+- Layout Editor
+- Score Report
+- Simulation Review
+- Saved Layouts
+- Contracts and Verification
+
+Rule: the frontend must render current project state from generated files and contracts. It must not invent its own task, repo, or contract structure.
+
+## 8. Backend Services
+
+- layout validation service
+- score service
+- simulation service
+- local file save/load service
+- fixture serving service
+
+## 9. Core Engine Responsibilities
+
+- bounds checking
+- placement collision validation
+- score computation
+- simulation-style path and coverage analysis
+- deterministic serialization
+- warnings for invalid or weak layouts
+
+## 10. Verification Tasks
+
+- validate generated JSON against schemas
+- test invalid placement fixtures
+- test repeatable score outputs
+- test simulation report structure
+- verify frontend renders contract-defined artifacts only
+- red-team automation or bot reinterpretation attempts
+
+## 11. Copy-Paste Starter Prompts
+
+### Planning Agent
+
+Convert rough base-builder ideas into safe offline planner specs. Reject botting, automation, client control, account access, emulator usage, and live service integration.
+
+### Contract Steward
+
+Define strict schemas for layouts, reports, repo plans, and tasks. Keep the frontend contract-driven and reject undocumented state.
+
+### Frontend Builder
+
+Build views that render the current project spec and generated artifacts directly. Do not invent structure or UI-only task models.
+
+### Backend Builder
+
+Implement local-only HTTP routes matching the contract draft. No auth, database, cloud sync, or live service access.
+
+### Core Engine Builder
+
+Implement deterministic layout validation, scoring, and simulation-style evaluation for an offline planner only.
+
+### Red Team Verifier
+
+Probe for bot-like reinterpretation, client hooks, account workflows, schema drift, and frontend state invention.
+
+```
+
+## `examples/coc-base-builder/generated-repo-plan.json`
+
+- Category: `example`
+- Purpose: Machine-readable example repo-plan output for the coc-base-builder sample.
+- Required: `false`
+
+```json
+{
+  "project_name": "CoC Base Builder",
+  "repos": [
+    {
+      "name": "coc-base-frontend",
+      "purpose": "Render contract-defined project state, layout editing, reports, and verification views.",
+      "contains": [
+        "overview page",
+        "layout editor",
+        "score report views",
+        "simulation review views",
+        "contracts browser"
+      ],
+      "depends_on": [
+        "coc-base-contracts",
+        "coc-base-engine"
+      ],
+      "excludes": [
+        "invented state structures",
+        "client automation",
+        "account integration"
+      ]
+    },
+    {
+      "name": "coc-base-backend",
+      "purpose": "Provide local-only API routes for validation, scoring, simulation, and file operations.",
+      "contains": [
+        "request validation",
+        "route handlers",
+        "file orchestration",
+        "fixture endpoints"
+      ],
+      "depends_on": [
+        "coc-base-contracts",
+        "coc-base-engine"
+      ],
+      "excludes": [
+        "auth",
+        "database persistence",
+        "cloud sync"
+      ]
+    },
+    {
+      "name": "coc-base-engine",
+      "purpose": "Implement deterministic planner logic.",
+      "contains": [
+        "placement validation",
+        "collision checks",
+        "score heuristics",
+        "path evaluation",
+        "report generation"
+      ],
+      "depends_on": [
+        "coc-base-contracts"
+      ],
+      "excludes": [
+        "UI rendering",
+        "real game integration"
+      ]
+    },
+    {
+      "name": "coc-base-contracts",
+      "purpose": "Store schemas and fixtures shared across the planner.",
+      "contains": [
+        "layout schema",
+        "report schemas",
+        "planner state schema",
+        "fixtures"
+      ],
+      "depends_on": [],
+      "excludes": [
+        "business logic",
+        "undocumented UI data models"
+      ]
+    }
+  ]
+}
+
+```
+
+## `examples/coc-base-builder/generated-task-backlog.json`
+
+- Category: `example`
+- Purpose: Machine-readable example task backlog output for the coc-base-builder sample.
+- Required: `false`
+
+```json
+[
+  {
+    "id": "contracts-layout-and-report-schemas",
+    "title": "Define layout and report contracts",
+    "summary": "Create strict schemas for base layouts, score reports, simulation reports, and planner state.",
+    "owner_role": "Contract Steward",
+    "repo_target": "coc-base-contracts",
+    "depends_on": [],
+    "inputs": [
+      "generated-project-spec.md",
+      "PRODUCT_RULES.md"
+    ],
+    "outputs": [
+      "layout schema",
+      "score report schema",
+      "simulation report schema",
+      "planner state schema"
+    ],
+    "acceptance_criteria": [
+      "Schemas reject undocumented fields where not explicitly allowed.",
+      "Schemas cover frontend-rendered artifacts.",
+      "Fixtures include both valid and invalid examples."
+    ],
+    "verification": [
+      "Schema tests pass for valid fixtures and fail for invalid fixtures."
+    ],
+    "risk_tags": [
+      "schema-drift"
+    ]
+  },
+  {
+    "id": "engine-placement-validation",
+    "title": "Implement deterministic placement validation",
+    "summary": "Add bounds checks and collision rules for building placement on the planner grid.",
+    "owner_role": "Core Engine Builder",
+    "repo_target": "coc-base-engine",
+    "depends_on": [
+      "contracts-layout-and-report-schemas"
+    ],
+    "inputs": [
+      "layout schema",
+      "building definitions"
+    ],
+    "outputs": [
+      "placement validator",
+      "invalid placement fixtures"
+    ],
+    "acceptance_criteria": [
+      "Out-of-bounds placements are rejected.",
+      "Overlapping buildings are rejected.",
+      "The same input yields the same validation output."
+    ],
+    "verification": [
+      "Unit tests cover valid and invalid layouts."
+    ],
+    "risk_tags": [
+      "determinism"
+    ]
+  },
+  {
+    "id": "engine-score-and-simulate",
+    "title": "Implement score and simulation-style evaluation",
+    "summary": "Produce reproducible score reports and offline simulation-style reports for saved layouts.",
+    "owner_role": "Core Engine Builder",
+    "repo_target": "coc-base-engine",
+    "depends_on": [
+      "contracts-layout-and-report-schemas",
+      "engine-placement-validation"
+    ],
+    "inputs": [
+      "rule set definitions",
+      "validated layouts"
+    ],
+    "outputs": [
+      "score module",
+      "simulation module",
+      "report fixtures"
+    ],
+    "acceptance_criteria": [
+      "Reports conform to the declared contracts.",
+      "Outputs are repeatable for the same layout and rule set.",
+      "No live client hooks or service integrations are present."
+    ],
+    "verification": [
+      "Fixture-based tests confirm structure and repeatability."
+    ],
+    "risk_tags": [
+      "safety",
+      "scope-drift"
+    ]
+  },
+  {
+    "id": "backend-local-api-draft",
+    "title": "Implement local-only planner API draft",
+    "summary": "Expose validate, score, simulate, save, and load routes matching the declared contract style.",
+    "owner_role": "Backend Builder",
+    "repo_target": "coc-base-backend",
+    "depends_on": [
+      "contracts-layout-and-report-schemas",
+      "engine-score-and-simulate"
+    ],
+    "inputs": [
+      "OpenAPI draft",
+      "engine modules"
+    ],
+    "outputs": [
+      "route handlers",
+      "request and response fixtures"
+    ],
+    "acceptance_criteria": [
+      "Input validation happens before engine execution.",
+      "Responses match contract-defined shapes.",
+      "No auth or database dependencies are introduced."
+    ],
+    "verification": [
+      "Integration tests cover success and rejection cases."
+    ],
+    "risk_tags": [
+      "boundary-control"
+    ]
+  },
+  {
+    "id": "frontend-read-only-board",
+    "title": "Build read-only project board",
+    "summary": "Render project name, goal, repo split, roles, backlog, contracts, prompt pack, and verification rules from source artifacts.",
+    "owner_role": "Frontend Builder",
+    "repo_target": "coc-base-frontend",
+    "depends_on": [
+      "contracts-layout-and-report-schemas"
+    ],
+    "inputs": [
+      "PROJECT_SPEC.md",
+      "generated-repo-plan.json",
+      "generated-task-backlog.json",
+      "prompt files",
+      "verification rules"
+    ],
+    "outputs": [
+      "read-only board UI"
+    ],
+    "acceptance_criteria": [
+      "The UI reads source artifacts directly.",
+      "No hidden UI state model replaces the contract structures.",
+      "Contract mismatches fail visibly."
+    ],
+    "verification": [
+      "UI tests render fixture artifacts and assert visible output."
+    ],
+    "risk_tags": [
+      "frontend-state-invention"
+    ]
+  },
+  {
+    "id": "red-team-unsafe-reinterpretation",
+    "title": "Create unsafe reinterpretation test set",
+    "summary": "Add cases that try to turn the planner into a bot or expand it into live integration.",
+    "owner_role": "Red Team Verifier",
+    "repo_target": "coc-base-contracts",
+    "depends_on": [
+      "contracts-layout-and-report-schemas"
+    ],
+    "inputs": [
+      "PRODUCT_RULES.md",
+      "generated-project-spec.md"
+    ],
+    "outputs": [
+      "rejection fixtures",
+      "guardrail notes"
+    ],
+    "acceptance_criteria": [
+      "Cases cover botting, account login, emulator control, client hooks, and hidden frontend state invention.",
+      "Each case maps to a clear rejection reason."
+    ],
+    "verification": [
+      "Human review confirms the rejection set covers likely drift paths."
+    ],
+    "risk_tags": [
+      "safety",
+      "scope-drift"
+    ]
+  }
+]
+
+```
+
+## `examples/coc-base-builder/generated-agent-prompts.md`
+
+- Category: `example`
+- Purpose: Human-readable example prompt pack output for the coc-base-builder sample.
+- Required: `false`
+
+```markdown
+# CoC Base Builder Agent Prompts
+
+## Planning Agent
+
+Convert rough product ideas into safe offline planner specs. If the user asks for automation, reinterpret it into a planning-only product or reject the unsafe portions. Output repo split, domain model, API draft, screens, services, verification tasks, and role prompts.
+
+## Contract Steward
+
+Maintain strict schemas for project specs, tasks, repo plans, layouts, reports, and slots. Ensure downstream consumers can render source artifacts directly without inventing undocumented structure.
+
+## Frontend Builder
+
+Build a contract-driven UI that renders the current spec, repo plan, backlog, prompts, and verification rules. Do not invent task, repo, or contract structure. Fail visibly on missing or invalid data.
+
+## Backend Builder
+
+Implement a local-only backend matching the contract draft. Support validation, scoring, simulation, save, and load operations. Do not add auth, databases, cloud services, or live game integration.
+
+## Core Engine Builder
+
+Implement deterministic layout validation, scoring, and simulation-style evaluation for an offline base planner. No game automation, client hooks, memory access, account workflows, or emulator control.
+
+## Red Team Verifier
+
+Probe for unsafe reinterpretation, hidden operational state, schema drift, frontend structure invention, client integration, and unverifiable prompt behavior. Produce concrete failing cases.
+
+```
+
 ## `web/README.md`
 
 - Category: `viewer`
@@ -2436,7 +3345,10 @@ The viewer pages are:
 - `web/verification.html`: verification rules, proof requirements, and raw contract rendering from generated JSON artifacts plus `contracts/*.schema.json` and `contracts/api_contract.openapi.yaml`
 
 If the browser blocks `file://` fetches, open any page directly and use the page-level file picker to load the required `generated/*.json` files for that page.
-The Verification page can still use that fallback for generated JSON, but contract rendering is fetched from the repository paths and is most reliable when serving the repo root with `python -m http.server 8000`.
+Generated JSON and contract files are handled differently on the Verification page:
+
+- generated JSON can still be loaded through the local file picker
+- contract files are fetched from repository paths and are most reliable when serving the repo root with `python -m http.server 8000`
 
 Shared files:
 
@@ -3322,7 +4234,7 @@ initializeViewerPage({
   requiredKeys: ["projectSpec", "taskBacklog", "agentPrompts", "slotsDb"],
   extraSourceFiles: CONTRACT_ENTRIES.map((entry) => entry.path),
   helperNote:
-    "The generated JSON sections still support the page-level file picker fallback. Contract files are fetched directly from the repository paths, so contract rendering is most reliable when the repo root is served with python -m http.server 8000.",
+    "Generated JSON files can still be loaded with the local file picker. Contract files are fetched from repository paths separately and are most reliable when the repo root is served with python -m http.server 8000.",
   renderContent(container, data) {
     const taskGroups = groupTaskVerification(data.taskBacklog);
     const promptCards = data.agentPrompts.prompts.map(
@@ -3884,6 +4796,20 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+REQUIRED_FILES = [
+    ROOT / "generated" / "project_spec.json",
+    ROOT / "generated" / "repo_plan.json",
+    ROOT / "generated" / "task_backlog.json",
+    ROOT / "generated" / "agent_prompts.json",
+    ROOT / "generated" / "slots_db.json",
+    ROOT / "generated" / "review_manifest.json",
+    ROOT / "contracts" / "project_spec.schema.json",
+    ROOT / "contracts" / "repo_plan.schema.json",
+    ROOT / "contracts" / "task.schema.json",
+    ROOT / "contracts" / "slot.schema.json",
+    ROOT / "contracts" / "agent_prompt.schema.json",
+    ROOT / "contracts" / "api_contract.openapi.yaml",
+]
 
 
 def load_json(path: Path) -> Any:
@@ -3905,6 +4831,14 @@ def load_optional_jsonschema():
     except ImportError:
         return None
     return jsonschema
+
+
+def load_optional_yaml():
+    try:
+        import yaml  # type: ignore
+    except ImportError:
+        return None
+    return yaml
 
 
 def expect(condition: bool, message: str) -> None:
@@ -4257,27 +5191,92 @@ def collect_string_values(value: Any) -> list[str]:
     return values
 
 
+def path_exists_or_pattern(path_value: str) -> bool:
+    path = ROOT / path_value
+    if path.exists():
+        return True
+    if any(char in path_value for char in "*?[]"):
+        return any(candidate.is_file() for candidate in ROOT.glob(path_value))
+    if path_value.endswith("/"):
+        return path.is_dir()
+    return False
+
+
+def validate_required_files() -> int:
+    missing_count = 0
+    for path in REQUIRED_FILES:
+        if not path.exists():
+            print(f"MISSING FAIL {format_rel(path)}")
+            missing_count += 1
+    return missing_count
+
+
+def validate_yaml_contract() -> int:
+    yaml_module = load_optional_yaml()
+    rel = "contracts/api_contract.openapi.yaml"
+    path = ROOT / rel
+
+    if yaml_module is None:
+        print(f"YAML SKIP {rel} (PyYAML not installed)")
+        return 0
+
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            yaml_module.safe_load(handle)
+    except OSError as exc:
+        print(f"YAML FAIL {rel}: {exc}")
+        return 1
+    except Exception as exc:
+        print(f"YAML FAIL {rel}: {exc}")
+        return 1
+
+    print(f"YAML OK   {rel}")
+    return 0
+
+
 def run_consistency_checks(parsed_payloads: dict[Path, Any]) -> list[str]:
     messages: list[str] = []
+    warnings: list[str] = []
 
     project_spec = parsed_payloads[ROOT / "generated" / "project_spec.json"]
     repo_plan = parsed_payloads[ROOT / "generated" / "repo_plan.json"]
     task_backlog = parsed_payloads[ROOT / "generated" / "task_backlog.json"]
     agent_prompts = parsed_payloads[ROOT / "generated" / "agent_prompts.json"]
+    slots_db = parsed_payloads[ROOT / "generated" / "slots_db.json"]
 
     repo_names = {repo["name"] for repo in repo_plan["repos"]}
+    task_ids = {task["id"] for task in task_backlog}
 
     for index, task in enumerate(task_backlog):
         expect(
             task["repo_target"] in repo_names,
             f"generated/task_backlog.json[{index}].repo_target must exist in generated/repo_plan.json",
         )
+        for dependency in task["depends_on"]:
+            expect(
+                dependency in task_ids,
+                f"generated/task_backlog.json[{index}].depends_on entry must refer to an existing task id: {dependency}",
+            )
 
     for index, prompt in enumerate(agent_prompts["prompts"]):
         expect(
             prompt["target_repo"] in repo_names,
             f"generated/agent_prompts.json[{index}].target_repo must exist in generated/repo_plan.json",
         )
+
+    for index, screen in enumerate(project_spec["frontend_screens"]):
+        for render_path in screen["renders_from"]:
+            expect(
+                path_exists_or_pattern(render_path),
+                f"generated/project_spec.json.frontend_screens[{index}].renders_from path must exist: {render_path}",
+            )
+
+    for repo_index, repo in enumerate(repo_plan["repos"]):
+        for contains_path in repo["contains"]:
+            expect(
+                path_exists_or_pattern(contains_path),
+                f"generated/repo_plan.json.repos[{repo_index}].contains path must exist or match a documented pattern: {contains_path}",
+            )
 
     forbidden_strings = {
         "seed-web-placeholder",
@@ -4294,10 +5293,10 @@ def run_consistency_checks(parsed_payloads: dict[Path, Any]) -> list[str]:
         rel = format_rel(path)
         string_values = collect_string_values(parsed_payloads[path])
         for forbidden in forbidden_strings:
-          expect(
-              forbidden not in string_values,
-              f"{rel} must not reference stale value: {forbidden}",
-          )
+            expect(
+                forbidden not in string_values,
+                f"{rel} must not reference stale value: {forbidden}",
+            )
 
     screens = project_spec["frontend_screens"]
     screen_names = {screen["name"] for screen in screens}
@@ -4321,14 +5320,27 @@ def run_consistency_checks(parsed_payloads: dict[Path, Any]) -> list[str]:
     )
 
     messages.append("CONSISTENCY OK generated task repo_target values map to generated/repo_plan.json")
+    messages.append("CONSISTENCY OK generated task depends_on values refer to existing task ids")
     messages.append("CONSISTENCY OK generated prompt target_repo values map to generated/repo_plan.json")
+    messages.append("CONSISTENCY OK generated frontend_screens renders_from paths exist")
+    messages.append("CONSISTENCY OK generated repo_plan contains paths exist or match documented patterns")
     messages.append("CONSISTENCY OK generated artifacts contain no stale web placeholder references")
     messages.append("CONSISTENCY OK generated frontend_screens includes the actual viewer pages, including Slot Board")
 
-    return messages
+    prompt_roles = {prompt["role"] for prompt in agent_prompts["prompts"]}
+    for slot in slots_db:
+        if slot["role"] not in prompt_roles:
+            warnings.append(f"CONSISTENCY WARN slot role has no matching generated prompt role: {slot['role']}")
+
+    return messages + warnings
 
 
 def main() -> int:
+    missing_required = validate_required_files()
+    if missing_required:
+        print(f"RESULT FAIL missing_required={missing_required}")
+        return 1
+
     json_files = discover_json_files(ROOT)
     if not json_files:
         print("No JSON files found.")
@@ -4339,6 +5351,7 @@ def main() -> int:
 
     parse_failures = 0
     schema_failures = 0
+    yaml_failures = 0
     parsed_payloads: dict[Path, Any] = {}
 
     for path in json_files:
@@ -4398,6 +5411,15 @@ def main() -> int:
         print(
             f"RESULT FAIL parse_failures={parse_failures} "
             f"schema_failures={schema_failures}"
+        )
+        return 1
+
+    yaml_failures += validate_yaml_contract()
+    if yaml_failures:
+        print(
+            f"RESULT FAIL parse_failures={parse_failures} "
+            f"schema_failures={schema_failures} "
+            f"yaml_failures={yaml_failures}"
         )
         return 1
 
@@ -4500,6 +5522,23 @@ def main() -> int:
         purpose = entry["purpose"]
         required = bool(entry["required"])
         path = ROOT / rel_path
+
+        if path == OUTPUT_PATH:
+            sections.extend(
+                [
+                    f"## `{rel_path}`",
+                    "",
+                    f"- Category: `{category}`",
+                    f"- Purpose: {purpose}",
+                    f"- Required: `{str(required).lower()}`",
+                    "",
+                    "_Skipped self-embedding to avoid recursive context-pack inclusion._",
+                    "",
+                ]
+            )
+            included_count += 1
+            print(f"SKIP SELF {rel_path}")
+            continue
 
         if not path.exists():
             message = f"{'ERROR' if required else 'WARN '} missing {'required' if required else 'optional'} file: {rel_path}"

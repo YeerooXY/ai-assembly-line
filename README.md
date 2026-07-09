@@ -158,6 +158,8 @@ For remote AI or web-only review environments, start with:
 - `generated/review_manifest.json`
 - `generated/context_pack.md`
 
+These files provide broad review context for the current repository state. They are intended to reduce setup friction for web-only review environments, not to imply that one file permanently contains the entire repository.
+
 ## Validation
 
 Run:
@@ -168,10 +170,13 @@ python tools/validate_seed.py
 
 The validator:
 
+- fails clearly when required generated and contract files are missing
 - parses every JSON file in the repository
 - reports each valid JSON file
 - reports parse failures clearly
 - schema-validates the canonical generated artifacts when `jsonschema` is available
+- runs dependency-light consistency checks across generated planning artifacts
+- optionally parses `contracts/api_contract.openapi.yaml` when `PyYAML` is available
 
 For fresh-clone external review instructions, see `docs/EXTERNAL_REVIEW_PROMPT.md`.
 The static viewer reads contract files directly for the Verification page, but this is still read-only documentation and not an implemented backend or live API.
