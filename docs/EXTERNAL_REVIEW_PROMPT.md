@@ -2,6 +2,8 @@
 
 Use this prompt when reviewing `ai-assembly-line` from a fresh clone.
 
+If clone access fails, use the no-clone fallback in this same document.
+
 ## Review Rules
 
 - Treat the Git repository contents as the only source of truth.
@@ -29,6 +31,16 @@ Use this prompt when reviewing `ai-assembly-line` from a fresh clone.
    - `web/verification.html`
    - every `.js` file under `web/`
 5. Inspect relevant docs under `docs/`.
+
+## No-Clone Fallback
+
+If the review environment cannot clone the repository or run shell commands:
+
+1. Fetch and read `generated/context_pack.md`.
+2. If `generated/context_pack.md` is missing, fetch `generated/review_manifest.json`.
+3. Use the manifest to inspect the listed files manually.
+4. Keep treating the Git repository files as the only source of truth.
+5. Do not rely on chat history or unstated repository context.
 
 ## Validation Commands
 

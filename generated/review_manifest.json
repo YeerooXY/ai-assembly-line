@@ -1,0 +1,227 @@
+{
+  "project_name": "AI Assembly Line",
+  "review_files": [
+    {
+      "path": "README.md",
+      "category": "root-doc",
+      "purpose": "Repository overview, source-of-truth rules, viewer constraints, validation guidance, and remote AI review links.",
+      "required": true
+    },
+    {
+      "path": "PROJECT_SPEC.md",
+      "category": "root-doc",
+      "purpose": "Human-readable phase 0 product specification and current viewer scope.",
+      "required": true
+    },
+    {
+      "path": "PROJECT_SPEC_TEMPLATE.md",
+      "category": "root-doc",
+      "purpose": "Reusable planning template that shows the intended product-spec structure.",
+      "required": false
+    },
+    {
+      "path": "PRODUCT_RULES.md",
+      "category": "root-doc",
+      "purpose": "Hard product rules, scope boundaries, and frontend source-of-truth constraints.",
+      "required": true
+    },
+    {
+      "path": "docs/AI_CONTEXT.md",
+      "category": "review-doc",
+      "purpose": "Remote AI review entry guidance for environments that cannot clone or run shell commands.",
+      "required": true
+    },
+    {
+      "path": "docs/EXTERNAL_REVIEW_PROMPT.md",
+      "category": "review-doc",
+      "purpose": "External reviewer instructions, including clone and no-clone fallback flows.",
+      "required": true
+    },
+    {
+      "path": "docs/verification-rules.md",
+      "category": "review-doc",
+      "purpose": "Verification and frontend source-of-truth rules referenced by the generated planning state.",
+      "required": true
+    },
+    {
+      "path": "generated/project_spec.json",
+      "category": "generated-state",
+      "purpose": "Canonical machine-readable product spec and frontend screen list.",
+      "required": true
+    },
+    {
+      "path": "generated/repo_plan.json",
+      "category": "generated-state",
+      "purpose": "Canonical repo ownership split for the phase 0 seed.",
+      "required": true
+    },
+    {
+      "path": "generated/task_backlog.json",
+      "category": "generated-state",
+      "purpose": "Canonical task backlog grouped by repo ownership targets.",
+      "required": true
+    },
+    {
+      "path": "generated/agent_prompts.json",
+      "category": "generated-state",
+      "purpose": "Canonical machine-readable prompt pack for the current seed.",
+      "required": true
+    },
+    {
+      "path": "generated/slots_db.json",
+      "category": "generated-state",
+      "purpose": "Canonical slot board data consumed by the static viewer.",
+      "required": true
+    },
+    {
+      "path": "generated/review_manifest.json",
+      "category": "generated-state",
+      "purpose": "Remote review manifest listing the key files needed to inspect the repository without a full clone.",
+      "required": true
+    },
+    {
+      "path": "contracts/project_spec.schema.json",
+      "category": "contract",
+      "purpose": "Schema for the generated machine-readable project spec.",
+      "required": true
+    },
+    {
+      "path": "contracts/repo_plan.schema.json",
+      "category": "contract",
+      "purpose": "Schema for the generated repository plan.",
+      "required": true
+    },
+    {
+      "path": "contracts/task.schema.json",
+      "category": "contract",
+      "purpose": "Schema for each generated task backlog entry.",
+      "required": true
+    },
+    {
+      "path": "contracts/slot.schema.json",
+      "category": "contract",
+      "purpose": "Schema for each generated slot board entry.",
+      "required": true
+    },
+    {
+      "path": "contracts/agent_prompt.schema.json",
+      "category": "contract",
+      "purpose": "Schema for the generated agent prompt pack.",
+      "required": true
+    },
+    {
+      "path": "contracts/api_contract.openapi.yaml",
+      "category": "contract",
+      "purpose": "Future API and spec-compiler contract draft, not an implemented backend.",
+      "required": true
+    },
+    {
+      "path": "web/README.md",
+      "category": "viewer",
+      "purpose": "Static viewer documentation and file:// versus local server usage notes.",
+      "required": true
+    },
+    {
+      "path": "web/index.html",
+      "category": "viewer",
+      "purpose": "Overview page entry point for the static viewer.",
+      "required": true
+    },
+    {
+      "path": "web/repos.html",
+      "category": "viewer",
+      "purpose": "Repository split page entry point.",
+      "required": true
+    },
+    {
+      "path": "web/backlog.html",
+      "category": "viewer",
+      "purpose": "Backlog page entry point.",
+      "required": true
+    },
+    {
+      "path": "web/prompts.html",
+      "category": "viewer",
+      "purpose": "Prompts page entry point.",
+      "required": true
+    },
+    {
+      "path": "web/slots.html",
+      "category": "viewer",
+      "purpose": "Slots page entry point.",
+      "required": true
+    },
+    {
+      "path": "web/verification.html",
+      "category": "viewer",
+      "purpose": "Verification page entry point that also renders raw contract files read-only.",
+      "required": true
+    },
+    {
+      "path": "web/viewer-data.js",
+      "category": "viewer",
+      "purpose": "Shared generated-data and contract-loading helpers for the static viewer.",
+      "required": true
+    },
+    {
+      "path": "web/viewer-layout.js",
+      "category": "viewer",
+      "purpose": "Shared viewer shell, status handling, and reusable rendering helpers.",
+      "required": true
+    },
+    {
+      "path": "web/page-overview.js",
+      "category": "viewer",
+      "purpose": "Overview page rendering logic.",
+      "required": true
+    },
+    {
+      "path": "web/page-repos.js",
+      "category": "viewer",
+      "purpose": "Repository split page rendering logic.",
+      "required": true
+    },
+    {
+      "path": "web/page-backlog.js",
+      "category": "viewer",
+      "purpose": "Backlog page rendering logic.",
+      "required": true
+    },
+    {
+      "path": "web/page-prompts.js",
+      "category": "viewer",
+      "purpose": "Prompts page rendering logic.",
+      "required": true
+    },
+    {
+      "path": "web/page-slots.js",
+      "category": "viewer",
+      "purpose": "Slots page rendering logic.",
+      "required": true
+    },
+    {
+      "path": "web/page-verification.js",
+      "category": "viewer",
+      "purpose": "Verification page rendering logic, including raw contract display.",
+      "required": true
+    },
+    {
+      "path": "web/viewer.css",
+      "category": "viewer",
+      "purpose": "Shared static viewer styles.",
+      "required": true
+    },
+    {
+      "path": "tools/validate_seed.py",
+      "category": "tool",
+      "purpose": "Dependency-light validation script for generated JSON, contracts, and traceability consistency.",
+      "required": true
+    },
+    {
+      "path": "tools/build_context_pack.py",
+      "category": "tool",
+      "purpose": "Builds the remote-review context pack from this manifest.",
+      "required": true
+    }
+  ]
+}

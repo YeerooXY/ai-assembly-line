@@ -149,6 +149,15 @@ It should display:
 - `tools/validate_seed.py`: repository JSON validation utility
 - `web/`: static multi-page read-only viewer over generated state
 
+## Remote AI Review
+
+For remote AI or web-only review environments, start with:
+
+- `docs/AI_CONTEXT.md`
+- `docs/EXTERNAL_REVIEW_PROMPT.md`
+- `generated/review_manifest.json`
+- `generated/context_pack.md`
+
 ## Validation
 
 Run:
