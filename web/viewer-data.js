@@ -4,6 +4,7 @@ export const DATA_FILES = {
   taskBacklog: "../generated/task_backlog.json",
   agentPrompts: "../generated/agent_prompts.json",
   slotsDb: "../generated/slots_db.json",
+  planningRunsIndex: "../generated/planning_runs_index.json",
 };
 
 export const CONTRACT_FILES = {
@@ -21,6 +22,7 @@ export const FILE_NAMES = {
   taskBacklog: "task_backlog.json",
   agentPrompts: "agent_prompts.json",
   slotsDb: "slots_db.json",
+  planningRunsIndex: "planning_runs_index.json",
 };
 
 export async function loadGeneratedState(requiredKeys) {
