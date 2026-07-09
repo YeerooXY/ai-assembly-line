@@ -15,7 +15,7 @@ The first response should be an intake session update:
 ```text
 rough idea
   -> intake_session update
-  -> focused questions
+  -> focused question
   -> project_intake.json
   -> planning artifacts
 ```
@@ -57,9 +57,9 @@ Instead, it must output:
 
 1. a short acknowledgement
 2. an `intake_session` state block
-3. the next high-impact questions
+3. the next high-impact question
 
-Then it must stop. If `readiness.can_generate_intake` is `false`, the response must not continue with guidelines, recommendations, architecture, repo layout, task rules, or suggested answers.
+Then it must stop. If `readiness.can_generate_intake` is `false`, the response must not continue with guidelines, recommendations, architecture, repo layout, task rules, suggested answers, or a checklist of future questions.
 
 ## Guidelines wording trap
 
@@ -76,8 +76,9 @@ It does not permit the Intake Interviewer to produce:
 - a target `.ai-assembly/` project layout
 - a definition of done
 - suggested answers to its own questions
+- a checklist of future intake questions
 
-The correct response is to say that guidelines can be produced after the high-risk intake questions are answered, then provide only the `intake_session` update and questions.
+The correct response is to say that guidelines can be produced after the high-risk intake questions are answered, then provide only the `intake_session` update and the single next question in guided mode.
 
 ## Session states
 
@@ -132,6 +133,18 @@ For a rough idea like `I want to build a multiplayer Tron game`, the first respo
     {
       "question": "What kind of multiplayer should the MVP support?",
       "risk_if_unanswered": "The architecture and stack cannot be chosen safely."
+    },
+    {
+      "question": "Which platform matters first?",
+      "risk_if_unanswered": "The target platform changes stack, deployment, input handling, and networking choices."
+    },
+    {
+      "question": "Is this a greenfield project or an existing repository?",
+      "risk_if_unanswered": "The workspace layout and file-boundary plan cannot be chosen safely."
+    },
+    {
+      "question": "How many humans or AI agents should work in parallel?",
+      "risk_if_unanswered": "The task split and prompt boundaries cannot be shaped correctly."
     }
   ],
   "readiness": {
@@ -147,19 +160,17 @@ For a rough idea like `I want to build a multiplayer Tron game`, the first respo
   "next_action": {
     "type": "ask_questions",
     "questions": [
-      "What kind of multiplayer should the first playable version support: local same-keyboard, LAN, private online rooms, or public matchmaking?",
-      "Which platform matters first: browser, desktop, mobile, or something else?",
-      "Do you already prefer a stack, or should I recommend one after platform and multiplayer scope are clear?",
-      "Is this a greenfield project or an existing repository?",
-      "How many humans or AI agents should work in parallel?"
+      "What kind of multiplayer should the first playable version support: local same-keyboard, LAN, private online rooms, or public matchmaking?"
     ]
   }
 }
 ```
 
-This is not a required exact output. It is the intended shape: visible session state plus focused questions.
+This is not a required exact output. It is the intended shape: visible session state plus the single next question.
 
-The first response should not include any sections after this shape except the same focused questions in user-readable form.
+In guided mode, `next_action.questions` should contain only the single next question. Other unanswered decisions belong in `open_questions`, not in the visible next-question list.
+
+The first response should not include any sections after this shape except the same focused question in user-readable form.
 
 ## Frontend rendering guidance
 
@@ -180,4 +191,4 @@ The frontend must not invent intake fields outside `contracts/intake_session.sch
 
 Only when `readiness.can_generate_intake` is `true` should the Intake Interviewer draft `project_intake.json`.
 
-If `can_generate_intake` is `false`, the next output should ask questions or suggest stack options instead of creating planning artifacts.
+If `can_generate_intake` is `false`, the next output should ask the next single question in guided mode or suggest stack options only when `next_action.type` is `suggest_stack`.
