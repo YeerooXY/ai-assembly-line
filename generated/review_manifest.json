@@ -58,7 +58,13 @@
     {
       "path": "docs/PROJECT_INTAKE_WORKFLOW.md",
       "category": "review-doc",
-      "purpose": "Interactive intake workflow for turning a rough idea into a structured project_intake.json record before planning.",
+      "purpose": "Interactive intake workflow for turning a rough idea into an intake_session.json state and then a structured project_intake.json record before planning.",
+      "required": true
+    },
+    {
+      "path": "docs/INTAKE_SESSION_FORMAT.md",
+      "category": "review-doc",
+      "purpose": "Interactive intake-session response format and first-turn hard-stop rules for rough project requests.",
       "required": true
     },
     {
@@ -131,6 +137,12 @@
       "path": "generated/review_manifest.json",
       "category": "generated-state",
       "purpose": "Remote review manifest listing the key files needed to inspect the repository without a full clone.",
+      "required": true
+    },
+    {
+      "path": "contracts/intake_session.schema.json",
+      "category": "contract",
+      "purpose": "Schema for interactive intake_session.json state produced before project_intake.json exists.",
       "required": true
     },
     {
