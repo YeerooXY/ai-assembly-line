@@ -34,14 +34,22 @@ Use fields that match the current task contract when generating machine-readable
 
 ```json
 {
-  "id": "T-001",
+  "id": "define-realtime-event-contract",
   "title": "Define shared realtime game event contract",
+  "owner_role": "Protocol Agent",
   "lane": "shared-contract",
-  "repo_target": "shared/contracts",
+  "repo_target": "car-game-protocol",
   "depends_on": [],
   "allowed_areas": [
     "docs/",
     "shared/contracts/"
+  ],
+  "inputs": [
+    "accepted project_intake.json",
+    "repo_plan.json"
+  ],
+  "outputs": [
+    "docs/network-events.md"
   ],
   "summary": "Define the minimal client/server events required for the first playable multiplayer game loop.",
   "acceptance_criteria": [

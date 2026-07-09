@@ -52,6 +52,7 @@
 - `agent_prompt.schema.json`
 - `slot.schema.json`
 - `task.schema.json`
+- `collaboration_state.schema.json`
 - `repo_plan.schema.json`
 
 ### API Contract

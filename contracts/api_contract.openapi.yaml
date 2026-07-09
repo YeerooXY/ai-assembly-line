@@ -56,6 +56,20 @@ paths:
                 type: array
                 items:
                   $ref: "./slot.schema.json"
+  /collaboration-state:
+    get:
+      summary: Get the current collaboration state draft
+      description: >
+        Future workflow surface for coordinating humans and web-based AI agents.
+        This is a contract draft only; it does not imply an implemented backend in the current Phase 0 repository.
+      operationId: getCollaborationState
+      responses:
+        "200":
+          description: Collaboration state document
+          content:
+            application/json:
+              schema:
+                $ref: "./collaboration_state.schema.json"
   /compile-spec:
     post:
       summary: Compile a rough idea into a structured project spec draft

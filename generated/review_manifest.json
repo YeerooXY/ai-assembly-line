@@ -200,6 +200,12 @@
       "required": true
     },
     {
+      "path": "contracts/collaboration_state.schema.json",
+      "category": "contract",
+      "purpose": "Draft schema for future coordination between humans, web-based AI agents, task claims, artifact submissions, reviews, and audit events.",
+      "required": true
+    },
+    {
       "path": "contracts/api_contract.openapi.yaml",
       "category": "contract",
       "purpose": "Future API and spec-compiler contract draft, not an implemented backend.",

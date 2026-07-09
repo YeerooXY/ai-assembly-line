@@ -27,6 +27,7 @@
         "contracts/task.schema.json",
         "contracts/slot.schema.json",
         "contracts/agent_prompt.schema.json",
+        "contracts/collaboration_state.schema.json",
         "contracts/api_contract.openapi.yaml"
       ],
       "depends_on": [
