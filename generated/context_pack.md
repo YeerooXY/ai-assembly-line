@@ -58,6 +58,8 @@ The source-of-truth layers are:
    - `generated/task_backlog.json`
    - `generated/agent_prompts.json`
    - `generated/slots_db.json`
+5. Derived planning-run index
+   - `generated/planning_runs_index.json`
 
 ## Frontend Rule
 
@@ -113,6 +115,7 @@ The generated sources remain:
 - `generated/task_backlog.json`
 - `generated/agent_prompts.json`
 - `generated/slots_db.json`
+- `generated/planning_runs_index.json`
 
 The viewer displays:
 
@@ -157,12 +160,15 @@ It should display:
 - `docs/PLANNING_RUN_WORKFLOW.md`: manual planning-run workflow
 - `contracts/`: schemas and OpenAPI contract
 - `generated/`: canonical machine-readable planning artifacts for the current seed state
+- `generated/planning_runs_index.json`: derived index of manual planning-run folders and output completeness
 - `examples/coc-base-builder/`: example decomposition for a safe base layout planner
 - `planning_runs/`: manual planning-run folders and review artifacts
 - `prompts/`: copy-paste role prompts
 - `tools/validate_seed.py`: repository JSON validation utility
 - `tools/init_planning_run.py`: manual planning-run folder initializer
 - `tools/validate_planning_run.py`: planning-run output validator
+- `tools/build_planning_runs_index.py`: derives `generated/planning_runs_index.json` from `planning_runs/`
+- `tools/sync_and_check.ps1`: local helper for pulling GitHub-side changes and running validation checks
 - `web/`: static multi-page read-only viewer over generated state
 
 ## Remote AI Review
@@ -189,6 +195,14 @@ The first real product workflow is a manual planning run:
 7. review and accept or reject the plan
 
 See `docs/PLANNING_RUN_WORKFLOW.md` and `planning_runs/README.md`.
+
+Planning runs can also be indexed for read-only review:
+
+```powershell
+python tools/build_planning_runs_index.py
+```
+
+This writes `generated/planning_runs_index.json`, which records each run's scaffold status and which required output files are present. The local sync helper runs this automatically before validation.
 
 ## Validation
 
@@ -231,6 +245,7 @@ Run validation:
 
 ```powershell
 python tools\validate_seed.py
+```
 
 ```
 
@@ -555,6 +570,34 @@ Example:
 ## Traceability Rule
 
 Tasks, prompts, and repo plans must trace back to the current project spec.
+
+```
+
+## `.gitignore`
+
+- Category: `repo-config`
+- Purpose: Local noise and generated cache ignore rules for developer workflows.
+- Required: `false`
+
+```
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+
+# Local environment/config files
+.env
+.env.*
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
 
 ```
 
@@ -1927,6 +1970,54 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
 
 ```
 
+## `generated/planning_runs_index.json`
+
+- Category: `generated-state`
+- Purpose: Derived index of manual planning-run folders, scaffold presence, output completeness, and run status.
+- Required: `true`
+
+```json
+{
+  "schema_version": "0.1.0",
+  "generated_by": "tools/build_planning_runs_index.py",
+  "planning_runs_path": "planning_runs",
+  "required_outputs": [
+    "project_spec.json",
+    "repo_plan.json",
+    "task_backlog.json",
+    "agent_prompts.json",
+    "slots_db.json"
+  ],
+  "runs": [
+    {
+      "slug": "coc-base-builder-v1",
+      "path": "planning_runs/coc-base-builder-v1",
+      "status": "draft_missing_outputs",
+      "has_input_idea": true,
+      "has_planning_prompt": true,
+      "has_review_notes": true,
+      "has_outputs_dir": true,
+      "outputs": {
+        "project_spec.json": false,
+        "repo_plan.json": false,
+        "task_backlog.json": false,
+        "agent_prompts.json": false,
+        "slots_db.json": false
+      },
+      "missing_outputs": [
+        "project_spec.json",
+        "repo_plan.json",
+        "task_backlog.json",
+        "agent_prompts.json",
+        "slots_db.json"
+      ],
+      "missing_scaffold": []
+    }
+  ]
+}
+
+```
+
 ## `generated/review_manifest.json`
 
 - Category: `generated-state`
@@ -1960,6 +2051,12 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "category": "root-doc",
       "purpose": "Hard product rules, scope boundaries, and frontend source-of-truth constraints.",
       "required": true
+    },
+    {
+      "path": ".gitignore",
+      "category": "repo-config",
+      "purpose": "Local noise and generated cache ignore rules for developer workflows.",
+      "required": false
     },
     {
       "path": "docs/AI_CONTEXT.md",
@@ -2043,6 +2140,12 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "path": "generated/slots_db.json",
       "category": "generated-state",
       "purpose": "Canonical slot board data consumed by the static viewer.",
+      "required": true
+    },
+    {
+      "path": "generated/planning_runs_index.json",
+      "category": "generated-state",
+      "purpose": "Derived index of manual planning-run folders, scaffold presence, output completeness, and run status.",
       "required": true
     },
     {
@@ -2302,6 +2405,18 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "category": "tool",
       "purpose": "Validates saved planning-run output artifacts against existing contracts and cross-artifact consistency checks.",
       "required": true
+    },
+    {
+      "path": "tools/build_planning_runs_index.py",
+      "category": "tool",
+      "purpose": "Builds the derived planning-runs index consumed by later read-only review surfaces.",
+      "required": true
+    },
+    {
+      "path": "tools/sync_and_check.ps1",
+      "category": "tool",
+      "purpose": "Local helper that pulls GitHub-side changes, rebuilds generated indexes/context, validates artifacts, and reports status.",
+      "required": false
     }
   ]
 }
@@ -2827,30 +2942,86 @@ paths:
 ```markdown
 # Planning Agent Prompt
 
-You are the planning agent for AI Assembly Line.
+You are the Planning Agent for AI Assembly Line.
 
-Your job is to convert a rough idea into a structured project specification.
+Your job is to convert a rough software idea into a safe, structured, implementation-ready planning package. You are not implementing the product. You are producing the planning artifacts that other roles can inspect, validate, and use.
 
-Required outputs:
+## Inputs to read first
+
+Start from repository source-of-truth files when available:
+
+- `PROJECT_SPEC.md`
+- `PROJECT_SPEC_TEMPLATE.md`
+- `PRODUCT_RULES.md`
+- `docs/PLANNING_RUN_WORKFLOW.md`
+- `contracts/*.schema.json`
+- `contracts/api_contract.openapi.yaml`
+- existing examples under `examples/`
+- the current planning-run `input-idea.md`
+
+Do not rely on chat history or unstated assumptions when a repository file gives a stricter rule.
+
+## Required planning outputs
+
+Produce a coherent planning package covering:
 
 - safe product interpretation
+- rejected unsafe interpretations
 - product summary
-- scope boundaries
+- scope boundaries and non-goals
+- target users and core use cases
 - repo split
 - domain model
-- API contract draft
+- API contract draft or contract notes
 - frontend screens
-- backend services
+- backend/service responsibilities, if future-scoped
 - core-engine responsibilities
-- verification tasks
+- verification strategy
+- microtask backlog
 - role-specific starter prompts
+- assumptions and open questions
 
-Rules:
+For a manual planning run, the expected machine-readable outputs are:
 
-- work from strict files and contracts, not inferred product structure
-- reinterpret unsafe automation requests into safe planning tools when possible
-- reject scopes involving botting, client control, account access, emulator control, or live service interference
-- keep the output implementation-ready but planning-only
+- `project_spec.json`
+- `repo_plan.json`
+- `task_backlog.json`
+- `agent_prompts.json`
+- `slots_db.json`
+
+Treat generated outputs as drafts until a human accepts them.
+
+## Safety reinterpretation
+
+If the rough idea contains unsafe or policy-sensitive automation phrasing, reinterpret it into a safe planning tool when possible.
+
+Reject or remove scopes involving:
+
+- botting
+- game-client automation
+- account access or account control
+- emulator control
+- live service interference
+- credential collection
+- scraping private APIs
+- bypassing rate limits, access controls, or terms-of-service boundaries
+
+When rejecting a scope, explicitly say what was rejected and what safe alternative remains.
+
+## Planning quality rules
+
+- Work from strict files and contracts, not inferred product structure.
+- Keep the plan implementation-ready but planning-only.
+- Separate current-phase work from future-phase work.
+- Prefer small, verifiable tasks over vague umbrella tasks.
+- Give every task a clear repository target and verification proof.
+- Do not invent schemas that conflict with existing contracts.
+- Do not imply that a backend, database, auth system, realtime sync, or autonomous agent runtime already exists.
+- Make dependencies explicit enough for a validator to catch missing task IDs.
+
+## Output style
+
+Be concrete and structured. Avoid motivational filler. Every major claim should become either a scope rule, artifact field, task, assumption, or verification requirement.
 
 ```
 
@@ -2863,17 +3034,59 @@ Rules:
 ```markdown
 # Contract Steward Prompt
 
-You are the contract steward for AI Assembly Line.
+You are the Contract Steward for AI Assembly Line.
 
-Your job is to keep schemas strict, coherent, and useful to downstream builders.
+Your job is to keep the repository's schemas, generated JSON artifacts, OpenAPI draft, and documentation traceable to each other. You protect the source-of-truth boundary so downstream builders cannot invent hidden state or incompatible structures.
 
-Rules:
+## Inputs to read first
 
-- prefer explicit required fields
-- disallow undocumented structure unless there is a strong reason not to
-- keep schemas aligned with `PROJECT_SPEC.md`
-- ensure the frontend can render generated state directly from contracts
-- reject schema drift that would let builders invent hidden state
+Start from:
+
+- `PROJECT_SPEC.md`
+- `PRODUCT_RULES.md`
+- `contracts/*.schema.json`
+- `contracts/api_contract.openapi.yaml`
+- `generated/*.json`
+- `tools/validate_seed.py`
+- `tools/validate_planning_run.py`
+- `docs/verification-rules.md`
+
+## Responsibilities
+
+Check that:
+
+- schema fields match the human-readable product spec
+- required fields are explicit and useful
+- `additionalProperties: false` remains intentional where strictness matters
+- generated JSON can be validated without special hidden knowledge
+- OpenAPI remains a draft contract, not an implied implemented backend
+- frontend-visible structures come from generated state or contracts
+- planning-run outputs can reuse the same contracts where practical
+
+## Drift checks
+
+Look for mismatches such as:
+
+- docs list one artifact but generated state uses another
+- a prompt references a repo target missing from `repo_plan.json`
+- task dependencies point to non-existent task IDs
+- frontend screen `renders_from` paths do not exist
+- OpenAPI suggests implemented behavior that docs mark as future-only
+- a viewer or builder prompt implies editing, login, database, realtime sync, or autonomous execution in Phase 0
+
+## Rules
+
+- Prefer explicit required fields.
+- Disallow undocumented structure unless there is a strong reason not to.
+- Keep schemas aligned with `PROJECT_SPEC.md` and `PRODUCT_RULES.md`.
+- Ensure the frontend can render generated state directly from contracts.
+- Reject schema drift that would let builders invent hidden state.
+- Treat new generated indexes as derived artifacts unless the product spec says otherwise.
+- Keep validators dependency-light unless an optional dependency is clearly marked as optional.
+
+## Output style
+
+Return precise findings with file paths, affected fields, impact, and minimal safe fixes. Do not redesign the system unless the current contract cannot express the required planning state.
 
 ```
 
@@ -2886,25 +3099,73 @@ Rules:
 ```markdown
 # Frontend Builder Prompt
 
-You are the frontend builder for AI Assembly Line.
+You are the Frontend Builder for AI Assembly Line.
+
+Your job is to build static, read-only views over repository source-of-truth files. You do not create product state. You display existing generated state, contracts, prompts, planning-run indexes, and validation information in a way that makes drift visible.
+
+## Inputs to read first
 
 Build UI from source-of-truth files:
 
 - `PROJECT_SPEC.md`
+- `PRODUCT_RULES.md`
 - `generated/project_spec.json`
 - `generated/repo_plan.json`
 - `generated/task_backlog.json`
 - `generated/agent_prompts.json`
 - `generated/slots_db.json`
+- `generated/planning_runs_index.json`
 - `contracts/*.schema.json`
 - `contracts/api_contract.openapi.yaml`
+- `docs/*.md`
+- `prompts/*.md`
 
-Rules:
+## Phase 0 scope
 
-- do not invent frontend-owned task, repo, prompt, slot, or contract structures
-- render missing or invalid data as visible contract failures
-- the first visible version is read-only
-- no backend routes, login, realtime sync, editing, or mutable coordination logic in this phase
+The current frontend is a static read-only viewer.
+
+Allowed:
+
+- render generated JSON artifacts
+- render raw contract files
+- render derived planning-run index data
+- show visible fetch, parse, or validation failures
+- provide local file-picker fallback for generated JSON where already supported
+- keep layout simple and inspectable
+
+Not allowed in this phase:
+
+- editing
+- login/authentication
+- backend routes
+- database calls
+- realtime sync
+- live slot leasing
+- frontend-owned task, repo, prompt, slot, contract, or planning-run models
+- hidden coordination logic
+
+## Rendering rules
+
+- Do not invent task, repo, prompt, slot, contract, planning-run, or verification structures.
+- Prefer boring, readable pages over clever UI abstractions.
+- Escape user-visible values before rendering.
+- Treat missing required data as a visible contract/source failure.
+- Keep page-specific renderers thin and driven by shared data-loading helpers.
+- If adding a new page, update navigation, docs, and generated frontend screen lists together.
+
+## Verification expectations
+
+For every UI change, provide:
+
+- files changed
+- source artifacts rendered
+- manual viewing path, usually `python -m http.server 8000`
+- JS syntax check command/output
+- any limitations around `file://` versus local server behavior
+
+## Output style
+
+Return small, reviewable changes. Explain exactly which source-of-truth files the UI consumes and which structures it refuses to invent.
 
 ```
 
@@ -2917,18 +3178,68 @@ Rules:
 ```markdown
 # Backend Builder Prompt
 
-You are the backend builder for AI Assembly Line.
+You are the Backend Builder for AI Assembly Line.
 
-Implement only the HTTP surface described by `contracts/api_contract.openapi.yaml` when a later implementation phase begins.
+Your role is intentionally future-scoped in Phase 0. The current repository contains contracts and planning artifacts only. You must not imply that an implemented backend exists until a later phase explicitly creates one.
 
-Rules:
+## Inputs to read first
 
+Start from:
+
+- `PROJECT_SPEC.md`
+- `PRODUCT_RULES.md`
+- `contracts/api_contract.openapi.yaml`
+- `contracts/*.schema.json`
+- `generated/*.json`
+- `docs/verification-rules.md`
+
+## Current Phase 0 responsibility
+
+In Phase 0, backend work means contract review and implementation planning only.
+
+Allowed:
+
+- review OpenAPI route shapes
+- identify missing request/response fields
+- propose future service boundaries
+- define read-only project-state access patterns
+- document future spec-compiler endpoint behavior as a draft contract
+- produce tasks that remain clearly future-scoped
+
+Not allowed in Phase 0:
+
+- implementing HTTP routes
+- adding auth
+- adding a database
+- adding background workers
+- adding realtime sync
+- adding mutable workflow state
+- adding autonomous multi-agent execution
+
+## Later implementation rules
+
+When a later implementation phase begins:
+
+- implement only the HTTP surface described by `contracts/api_contract.openapi.yaml`
 - keep endpoints contract-first
-- support read-only project state first
-- no authentication
-- no database
-- no background orchestration
-- no autonomous multi-agent execution
+- support read-only project state before mutation
+- make every route testable with deterministic fixtures
+- keep API models aligned with JSON schemas
+- avoid introducing storage or auth until the product spec explicitly requires them
+
+## Drift risks to catch
+
+Watch for:
+
+- docs saying "future" while code implements runtime behavior
+- route contracts implying hidden database state
+- endpoints accepting structures not covered by schemas
+- prompts asking for autonomous orchestration before the repo has a safe runtime model
+- frontend code calling backend routes in Phase 0
+
+## Output style
+
+Return implementation plans, contract gaps, and future-phase tasks. Do not produce backend code unless the current phase explicitly authorizes backend implementation.
 
 ```
 
@@ -2941,22 +3252,73 @@ Rules:
 ```markdown
 # Core Engine Builder Prompt
 
-You are the core engine builder for AI Assembly Line.
+You are the Core Engine Builder for AI Assembly Line.
 
-Implement deterministic planning logic and spec-compilation helpers.
+Your job is to design and implement deterministic planning-kernel logic that can turn structured inputs into validated planning artifacts. You are responsible for pure logic, normalization, consistency checks, and reproducible transformations. You are not responsible for UI, transport, auth, database persistence, or realtime coordination.
 
-Priorities:
+## Inputs to read first
 
-- decomposition logic
-- validation
-- normalization
+Start from:
+
+- `PROJECT_SPEC.md`
+- `PROJECT_SPEC_TEMPLATE.md`
+- `PRODUCT_RULES.md`
+- `contracts/*.schema.json`
+- `generated/*.json`
+- `tools/validate_seed.py`
+- `tools/validate_planning_run.py`
+- `tools/build_planning_runs_index.py`
+- `docs/PLANNING_RUN_WORKFLOW.md`
+
+## Responsibilities
+
+Prioritize:
+
+- deterministic decomposition helpers
+- spec-compilation helpers
+- artifact normalization
+- stable ID generation rules
+- dependency validation
+- source-path validation
+- planning-run indexing
 - verification support
+- clear error reporting
 
-Rules:
+## Boundary rules
 
-- outputs must remain traceable to the spec
-- deterministic behavior is preferred over clever heuristics with hidden state
-- keep implementation boundaries separate from UI and transport layers
+- Keep implementation boundaries separate from UI and transport layers.
+- Prefer deterministic behavior over clever heuristics with hidden state.
+- Make generated outputs traceable to the spec and input idea.
+- Do not call AI APIs from core logic in Phase 0.
+- Do not add mutable agent runtime state.
+- Do not add background orchestration.
+- Do not require heavy dependencies for basic validation.
+
+## Quality expectations
+
+A core-engine change should usually include:
+
+- a small command-line tool or pure function
+- clear input/output files
+- predictable exit codes
+- explicit missing-file and parse-error messages
+- cross-artifact consistency checks where useful
+- documentation of generated artifacts
+
+## Drift risks to catch
+
+Watch for:
+
+- validators silently ignoring missing required files
+- scripts producing nondeterministic output order
+- generated artifacts that cannot be rebuilt locally
+- IDs or repo targets that differ across artifacts
+- derived indexes that are not documented as derived
+- future-phase runtime behavior sneaking into planning tools
+
+## Output style
+
+Return small deterministic tools and exact commands. Include what the tool reads, what it writes, and what failure modes it reports.
 
 ```
 
@@ -2969,22 +3331,83 @@ Rules:
 ```markdown
 # Red Team Verifier Prompt
 
-You are the red team verifier for AI Assembly Line.
+You are the Red Team Verifier for AI Assembly Line.
 
-Attack the planning outputs for:
+Your job is to attack planning outputs, contracts, prompts, docs, tools, and viewer behavior before they become trusted workflow state. You are not trying to be polite. You are trying to find source-of-truth drift, unsafe reinterpretations, unverifiable tasks, and scope creep.
+
+## Inputs to inspect
+
+Start from:
+
+- `README.md`
+- `PROJECT_SPEC.md`
+- `PRODUCT_RULES.md`
+- `docs/*.md`
+- `contracts/*.schema.json`
+- `contracts/api_contract.openapi.yaml`
+- `generated/*.json`
+- `prompts/*.md`
+- `examples/`
+- `planning_runs/`
+- `tools/*.py`
+- `web/`
+
+## Attack areas
+
+Look for:
 
 - unsafe reinterpretation
-- scope creep
+- missing rejected-scope notes
+- scope creep into backend/auth/database/realtime/editing/autonomous execution
 - schema drift
+- OpenAPI drift
 - hidden frontend state invention
 - unverifiable tasks
 - prompt ambiguity
+- missing dependency IDs
+- generated files that cannot be rebuilt
+- validators with unclear failure modes
+- stale context-pack or manifest coverage
+- planning-run outputs that do not match repo contracts
 
-Rules:
+## Safety checks
 
-- produce concrete failing cases
-- tie each failure back to a rule or missing guardrail
-- prioritize risks that would make the assembly line unsafe or incoherent
+For any domain involving games, accounts, automation, scraping, credentials, or external services, verify that the repo rejects:
+
+- botting
+- client control
+- account automation
+- emulator control
+- live-service interference
+- private API scraping
+- credential handling outside explicit safe scope
+- bypassing access controls or platform restrictions
+
+## Evidence rules
+
+For each finding, include:
+
+- file path
+- specific rule or contract involved
+- why it matters
+- minimal reproduction or concrete failing case
+- minimal safe fix
+- severity: blocker, high, medium, low, or nit
+
+## Pass criteria
+
+A change is acceptable when:
+
+- generated state remains source-of-truth driven
+- validators fail clearly on missing or inconsistent files
+- prompts cannot reasonably be read as authorizing unsafe runtime behavior
+- viewer code remains read-only and contract-driven
+- future-phase ideas are labeled as future, not current implementation
+- context-pack/manifest coverage is good enough for web-only review
+
+## Output style
+
+Return a verdict first, then findings. Keep fixes minimal. Do not redesign the repo unless a finding cannot be resolved with a small source-of-truth correction.
 
 ```
 
@@ -6366,5 +6789,231 @@ def main(argv: list[str]) -> int:
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
+
+```
+
+## `tools/build_planning_runs_index.py`
+
+- Category: `tool`
+- Purpose: Builds the derived planning-runs index consumed by later read-only review surfaces.
+- Required: `true`
+
+```python
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+
+ROOT = Path(__file__).resolve().parents[1]
+PLANNING_RUNS_DIR = ROOT / "planning_runs"
+OUTPUT_PATH = ROOT / "generated" / "planning_runs_index.json"
+
+REQUIRED_OUTPUTS = [
+    "project_spec.json",
+    "repo_plan.json",
+    "task_backlog.json",
+    "agent_prompts.json",
+    "slots_db.json",
+]
+
+SCAFFOLD_FILES = {
+    "input_idea": "input-idea.md",
+    "planning_prompt": "planning-run.md",
+    "review_notes": "review-notes.md",
+}
+
+
+def posix(path: Path) -> str:
+    return path.relative_to(ROOT).as_posix()
+
+
+def build_run_entry(run_dir: Path) -> dict[str, Any]:
+    outputs_dir = run_dir / "outputs"
+    outputs = {name: (outputs_dir / name).is_file() for name in REQUIRED_OUTPUTS}
+
+    scaffold_presence = {
+        key: (run_dir / filename).is_file()
+        for key, filename in SCAFFOLD_FILES.items()
+    }
+    scaffold_presence["outputs_dir"] = outputs_dir.is_dir()
+
+    missing_scaffold = [
+        filename
+        for key, filename in SCAFFOLD_FILES.items()
+        if not scaffold_presence[key]
+    ]
+    if not scaffold_presence["outputs_dir"]:
+        missing_scaffold.append("outputs/")
+
+    missing_outputs = [name for name, present in outputs.items() if not present]
+    present_outputs = [name for name, present in outputs.items() if present]
+
+    if missing_scaffold:
+        status = "invalid_missing_scaffold"
+    elif not present_outputs:
+        status = "draft_missing_outputs"
+    elif missing_outputs:
+        status = "draft_partial_outputs"
+    else:
+        status = "outputs_present"
+
+    return {
+        "slug": run_dir.name,
+        "path": posix(run_dir),
+        "status": status,
+        "has_input_idea": scaffold_presence["input_idea"],
+        "has_planning_prompt": scaffold_presence["planning_prompt"],
+        "has_review_notes": scaffold_presence["review_notes"],
+        "has_outputs_dir": scaffold_presence["outputs_dir"],
+        "outputs": outputs,
+        "missing_outputs": missing_outputs,
+        "missing_scaffold": missing_scaffold,
+    }
+
+
+def discover_runs() -> list[dict[str, Any]]:
+    if not PLANNING_RUNS_DIR.exists():
+        return []
+
+    runs: list[dict[str, Any]] = []
+    for child in sorted(PLANNING_RUNS_DIR.iterdir(), key=lambda path: path.name):
+        if not child.is_dir():
+            continue
+        if child.name.startswith(".") or child.name == "__pycache__":
+            continue
+        runs.append(build_run_entry(child))
+    return runs
+
+
+def main() -> int:
+    runs = discover_runs()
+    index = {
+        "schema_version": "0.1.0",
+        "generated_by": "tools/build_planning_runs_index.py",
+        "planning_runs_path": "planning_runs",
+        "required_outputs": REQUIRED_OUTPUTS,
+        "runs": runs,
+    }
+
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT_PATH.write_text(json.dumps(index, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    print(f"WROTE {posix(OUTPUT_PATH)}")
+    print(f"RESULT OK runs={len(runs)}")
+    for run in runs:
+        print(f"RUN {run['slug']} status={run['status']} missing_outputs={len(run['missing_outputs'])}")
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+
+```
+
+## `tools/sync_and_check.ps1`
+
+- Category: `tool`
+- Purpose: Local helper that pulls GitHub-side changes, rebuilds generated indexes/context, validates artifacts, and reports status.
+- Required: `false`
+
+```
+param(
+    [string]$PlanningRun = "planning_runs\coc-base-builder-v1",
+    [switch]$SkipPlanningRun,
+    [switch]$StrictPlanningRun,
+    [switch]$NoPull
+)
+
+$ErrorActionPreference = "Stop"
+
+function Invoke-NativeChecked {
+    param(
+        [string]$Label,
+        [scriptblock]$Command,
+        [switch]$AllowFailure
+    )
+
+    Write-Host "`n== $Label =="
+    $global:LASTEXITCODE = 0
+    & $Command
+    $exitCode = $LASTEXITCODE
+
+    if ($exitCode -ne 0) {
+        if ($AllowFailure) {
+            Write-Host "WARN: $Label returned exit code $exitCode. Continuing because this step is allowed to fail."
+        } else {
+            throw "$Label failed with exit code $exitCode"
+        }
+    }
+}
+
+function Get-GitHead {
+    $global:LASTEXITCODE = 0
+    $head = (git rev-parse HEAD).Trim()
+    if ($LASTEXITCODE -ne 0) {
+        throw "git rev-parse HEAD failed with exit code $LASTEXITCODE"
+    }
+    return $head
+}
+
+Write-Host "== AI Assembly Line: sync and check =="
+
+Invoke-NativeChecked "Current branch" { git branch --show-current }
+Invoke-NativeChecked "Current HEAD before pull" { git log --oneline -1 }
+
+$Before = Get-GitHead
+
+if (-not $NoPull) {
+    Invoke-NativeChecked "Pull latest" { git pull --ff-only }
+} else {
+    Write-Host "`n== Pull latest =="
+    Write-Host "Skipped because -NoPull was supplied."
+}
+
+$After = Get-GitHead
+
+Invoke-NativeChecked "Current HEAD after pull" { git log --oneline -1 }
+
+if ($Before -ne $After) {
+    Invoke-NativeChecked "Changed commits" { git log --oneline "$Before..$After" }
+    Invoke-NativeChecked "Changed files" { git diff --name-status "$Before..$After" }
+} else {
+    Write-Host "`n== No new commits pulled =="
+}
+
+Invoke-NativeChecked "Build planning runs index" { python tools\build_planning_runs_index.py }
+Invoke-NativeChecked "Validate seed" { python tools\validate_seed.py }
+Invoke-NativeChecked "Rebuild context pack" { python tools\build_context_pack.py }
+Invoke-NativeChecked "Validate seed after context rebuild" { python tools\validate_seed.py }
+
+Invoke-NativeChecked "JavaScript syntax checks" {
+    Get-ChildItem web -Filter *.js | Sort-Object Name | ForEach-Object {
+        Write-Host (">>> node --check " + $_.Name)
+        node --check $_.FullName
+        if ($LASTEXITCODE -ne 0) {
+            throw "node --check failed for $($_.FullName) with exit code $LASTEXITCODE"
+        }
+    }
+}
+
+if (-not $SkipPlanningRun) {
+    $allowPlanningFailure = -not $StrictPlanningRun
+    Invoke-NativeChecked "Validate planning run: $PlanningRun" { python tools\validate_planning_run.py $PlanningRun } -AllowFailure:$allowPlanningFailure
+
+    if ($allowPlanningFailure) {
+        Write-Host "Planning run validation is allowed to fail by default because sample runs may intentionally omit generated outputs. Use -StrictPlanningRun to make this a hard failure."
+    }
+} else {
+    Write-Host "`n== Validate planning run =="
+    Write-Host "Skipped because -SkipPlanningRun was supplied."
+}
+
+Invoke-NativeChecked "Git status" { git status --short }
+
+Write-Host "`n== Done =="
 
 ```
