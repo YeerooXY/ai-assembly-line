@@ -4,7 +4,8 @@
 
 Its first job is not autonomous execution. Its first job is project decomposition:
 
-- rough idea -> structured project specification
+- rough idea -> guided project intake
+- guided project intake -> structured project specification
 - structured project specification -> repo split
 - repo split -> microtask backlog
 - microtask backlog -> role-specific prompt pack
@@ -16,7 +17,7 @@ Build the planning kernel and the first "spec compiler":
 
 `rough idea -> safe, structured project specification`
 
-This repository is intentionally limited to planning, contracts, prompts, and read-only presentation scaffolding.
+This repository is intentionally limited to intake, planning, contracts, prompts, and read-only presentation scaffolding.
 
 It does not include:
 
@@ -37,7 +38,8 @@ The source-of-truth layers are:
    - human-readable: `PROJECT_SPEC.md`
    - reusable template: `PROJECT_SPEC_TEMPLATE.md`
    - machine-readable: `generated/project_spec.json`
-2. Data schemas
+2. Intake and data schemas
+   - `contracts/project_intake.schema.json`
    - `contracts/*.schema.json`
 3. API contract
    - `contracts/api_contract.openapi.yaml`
@@ -55,6 +57,7 @@ Any frontend built from this repository must render the current product spec and
 
 It must not invent:
 
+- intake structure
 - task structure
 - repo structure
 - prompt structure
@@ -71,7 +74,7 @@ The future frontend is allowed to consume only source-of-truth material from:
 - `docs/*.md`
 - `prompts/*.md`
 
-Rule: the frontend must render generated state and must not invent task, repo, prompt, slot, or contract structure.
+Rule: the frontend must render generated state and must not invent intake, task, repo, prompt, slot, or contract structure.
 
 ## Read-Only Viewer
 
@@ -123,7 +126,7 @@ The viewer intentionally does not do the following yet:
 - authentication
 - realtime sync
 - mutable workflow state
-- frontend-owned task, repo, prompt, slot, planning-run, or contract models
+- frontend-owned intake, task, repo, prompt, slot, planning-run, or contract models
 
 ## Initial Public Surface
 
@@ -146,15 +149,17 @@ It should display:
 - `PROJECT_SPEC.md`: current repo-level phase-0 specification
 - `PROJECT_SPEC_TEMPLATE.md`: reusable template for future planning runs
 - `PRODUCT_RULES.md`: hard rules and safety boundaries
-- `docs/`: public overview, workflow, roles, task format, verification rules
+- `docs/`: public overview, workflow, intake workflow, roles, task format, verification rules
+- `docs/PROJECT_INTAKE_WORKFLOW.md`: interactive intake workflow for turning rough ideas into structured intake records
 - `docs/EXTERNAL_REVIEW_PROMPT.md`: fresh-clone external reviewer prompt
 - `docs/PLANNING_RUN_WORKFLOW.md`: manual planning-run workflow
 - `contracts/`: schemas and OpenAPI contract
+- `contracts/project_intake.schema.json`: schema for guided project intake records
 - `generated/`: canonical machine-readable planning artifacts for the current seed state
 - `generated/planning_runs_index.json`: derived index of manual planning-run folders and output completeness
 - `examples/coc-base-builder/`: example decomposition for a safe base layout planner
 - `planning_runs/`: manual planning-run folders and review artifacts
-- `prompts/`: copy-paste role prompts
+- `prompts/`: copy-paste role prompts, including the intake interviewer
 - `tools/validate_seed.py`: repository JSON validation utility
 - `tools/init_planning_run.py`: manual planning-run folder initializer
 - `tools/validate_planning_run.py`: planning-run output validator
@@ -173,12 +178,32 @@ For remote AI or web-only review environments, start with:
 
 These files provide broad review context for the current repository state. They are intended to reduce setup friction for web-only review environments, not to imply that one file permanently contains the entire repository.
 
+## Project Intake
+
+Project intake is the first real user-facing workflow.
+
+The Intake Interviewer asks focused questions about:
+
+- project goal
+- MVP boundary
+- target users
+- stack preference or stack recommendation
+- local tools, paths, SDKs, and configuration
+- existing repository state
+- humans/AI agents working in parallel
+- working style and proof expectations
+- safety boundaries and non-goals
+
+The intake output is a `project_intake.json` record conforming to `contracts/project_intake.schema.json`.
+
+See `docs/PROJECT_INTAKE_WORKFLOW.md` and `prompts/00-intake-interviewer.md`.
+
 ## Planning Runs
 
-The first real product workflow is a manual planning run:
+The first planning workflow after intake is a manual planning run:
 
 1. initialize a run folder with `python tools/init_planning_run.py <run-slug>`
-2. write the rough idea into `planning_runs/<run-slug>/input-idea.md`
+2. write the rough idea or intake summary into `planning_runs/<run-slug>/input-idea.md`
 3. refresh and copy the generated prompt from `planning_runs/<run-slug>/planning-run.md`
 4. paste it into a web AI or Codex-style tool
 5. save the returned JSON artifacts into `planning_runs/<run-slug>/outputs/`
@@ -224,9 +249,11 @@ The static viewer reads contract files directly for the Verification page, but t
 
 ## Current Use
 
-This repository is currently a Phase 0 planning kernel and static viewer.
+This repository is currently a Phase 0 intake and planning kernel with a static viewer.
 
 Start here:
+- `docs/PROJECT_INTAKE_WORKFLOW.md`
+- `prompts/00-intake-interviewer.md`
 - `PROJECT_SPEC.md`
 - `PRODUCT_RULES.md`
 - `generated/`
