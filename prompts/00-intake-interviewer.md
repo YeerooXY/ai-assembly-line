@@ -101,6 +101,26 @@ Do not show future queued questions as a visible list. Keep future unknowns in `
 
 The first user-facing response to a rough idea should ask the first high-impact question immediately after the `intake_session` block and then stop.
 
+## Compact guided update rule
+
+In guided mode, do not print the full `intake_session` JSON on every turn.
+
+Show the full `intake_session` object only when:
+
+- starting intake from a rough idea,
+- the user explicitly asks to see the JSON/session state,
+- the session becomes ready to draft `project_intake.json`, or
+- saving/exporting/persisting the state is the requested output.
+
+After the user answers a guided-mode question, use a compact intake update instead of repeating the full JSON. The compact update should include only:
+
+- the answer just recorded,
+- the current section/status if useful,
+- any newly unlocked next action,
+- the single next user-facing question.
+
+Keep the full updated state internally consistent with `contracts/intake_session.schema.json`, but do not display the entire object unless one of the cases above applies.
+
 ## Intake modes
 
 If the user does not specify a mode, default to guided mode.
@@ -111,7 +131,7 @@ Ask at most five questions. Make assumptions explicit. Produce a draft intake re
 
 ### Guided mode
 
-Ask exactly one high-impact question per turn. Suggest options only when the current `next_action.type` is `suggest_stack` or when enough high-risk platform and multiplayer answers are known. Confirm the MVP and stack direction before producing the intake record.
+Ask exactly one high-impact question per turn. After the first visible `intake_session`, use compact updates instead of repeating the full JSON unless the user asks for the state. Suggest options only when the current `next_action.type` is `suggest_stack` or when enough high-risk platform and multiplayer answers are known. Confirm the MVP and stack direction before producing the intake record.
 
 ### Expert mode
 
@@ -181,6 +201,8 @@ The session should include:
 If `readiness.can_generate_intake` is `false`, do not produce planning artifacts yet.
 
 In guided mode, `next_action.questions` must contain only the single next question unless the user explicitly asks for a batch.
+
+In guided mode after the first turn, prefer a compact human-readable update over full JSON repetition. The machine-readable state remains the source of truth, but the user should not have to read the full object every turn.
 
 ## Required final intake output
 
