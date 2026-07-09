@@ -68,7 +68,8 @@
         "prompts/02-frontend-builder.md",
         "prompts/03-backend-builder.md",
         "prompts/04-core-engine-builder.md",
-        "prompts/05-red-team-verifier.md"
+        "prompts/05-red-team-verifier.md",
+        "prompts/06-task-splitter.md"
       ],
       "depends_on": [
         "seed-docs-and-rules",

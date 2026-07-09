@@ -86,6 +86,12 @@
       "required": true
     },
     {
+      "path": "docs/TASK_CREATION_GUIDE.md",
+      "category": "review-doc",
+      "purpose": "Generic schema-aligned guide for creating implementation-ready tasks with ownership, status, priority, proof, edge cases, and non-goals.",
+      "required": true
+    },
+    {
       "path": "docs/TASK_CARD_FORMAT.md",
       "category": "review-doc",
       "purpose": "Task-card format guidance for small, owned, bounded, dependency-aware, verifiable, parallel-safe tasks.",
@@ -251,6 +257,12 @@
       "path": "prompts/05-red-team-verifier.md",
       "category": "prompt-source",
       "purpose": "Prompt source file for the red-team verifier role.",
+      "required": true
+    },
+    {
+      "path": "prompts/06-task-splitter.md",
+      "category": "prompt-source",
+      "purpose": "Copy-paste prompt template for converting an accepted generated plan into schema-valid task_backlog.json.",
       "required": true
     },
     {

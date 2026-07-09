@@ -153,6 +153,7 @@ It should display:
 - `docs/PROJECT_INTAKE_WORKFLOW.md`: interactive intake workflow for turning rough ideas into structured intake records
 - `docs/EXTERNAL_REVIEW_PROMPT.md`: fresh-clone external reviewer prompt
 - `docs/PLANNING_RUN_WORKFLOW.md`: manual planning-run workflow
+- `docs/TASK_CREATION_GUIDE.md`: generic schema-aligned guide for creating implementation-ready task records
 - `contracts/`: schemas and OpenAPI contract
 - `contracts/project_intake.schema.json`: schema for guided project intake records
 - `contracts/collaboration_state.schema.json`: draft schema for future human and web-AI coordination state
@@ -160,7 +161,7 @@ It should display:
 - `generated/planning_runs_index.json`: derived index of manual planning-run folders and output completeness
 - `examples/coc-base-builder/`: example decomposition for a safe base layout planner
 - `planning_runs/`: manual planning-run folders and review artifacts
-- `prompts/`: copy-paste role prompts, including the intake interviewer
+- `prompts/`: copy-paste role prompts and task-splitting prompts, including the intake interviewer
 - `tools/validate_seed.py`: repository JSON validation utility
 - `tools/init_planning_run.py`: manual planning-run folder initializer
 - `tools/validate_planning_run.py`: planning-run output validator
