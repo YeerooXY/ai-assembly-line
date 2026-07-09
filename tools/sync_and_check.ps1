@@ -1,5 +1,5 @@
 param(
-    [string]$PlanningRun = "planning_runs\coc-base-builder-v1",
+    [string]$PlanningRun = "",
     [switch]$SkipPlanningRun,
     [switch]$StrictPlanningRun,
     [switch]$NoPull
@@ -77,16 +77,21 @@ Invoke-NativeChecked "JavaScript syntax checks" {
     }
 }
 
-if (-not $SkipPlanningRun) {
+if (-not $SkipPlanningRun -and $PlanningRun) {
     $allowPlanningFailure = -not $StrictPlanningRun
     Invoke-NativeChecked "Validate planning run: $PlanningRun" { python tools\validate_planning_run.py $PlanningRun } -AllowFailure:$allowPlanningFailure
 
     if ($allowPlanningFailure) {
-        Write-Host "Planning run validation is allowed to fail by default because sample runs may intentionally omit generated outputs. Use -StrictPlanningRun to make this a hard failure."
+        Write-Host "Planning run validation is allowed to fail by default because draft runs may intentionally omit generated outputs. Use -StrictPlanningRun to make this a hard failure."
     }
 } else {
     Write-Host "`n== Validate planning run =="
-    Write-Host "Skipped because -SkipPlanningRun was supplied."
+    if ($SkipPlanningRun) {
+        Write-Host "Skipped because -SkipPlanningRun was supplied."
+    } else {
+        Write-Host "Skipped because no -PlanningRun path was supplied."
+        Write-Host "To validate one run, pass -PlanningRun planning_runs\<run-slug>."
+    }
 }
 
 Invoke-NativeChecked "Git status" { git status --short }

@@ -165,6 +165,7 @@ It should display:
 - `docs/PROJECT_INTAKE_WORKFLOW.md`: interactive intake workflow for turning rough ideas into structured intake records
 - `docs/EXTERNAL_REVIEW_PROMPT.md`: fresh-clone external reviewer prompt
 - `docs/PLANNING_RUN_WORKFLOW.md`: manual planning-run workflow
+- `docs/TASK_CREATION_GUIDE.md`: generic schema-aligned guide for creating implementation-ready task records
 - `contracts/`: schemas and OpenAPI contract
 - `contracts/project_intake.schema.json`: schema for guided project intake records
 - `contracts/collaboration_state.schema.json`: draft schema for future human and web-AI coordination state
@@ -172,7 +173,7 @@ It should display:
 - `generated/planning_runs_index.json`: derived index of manual planning-run folders and output completeness
 - `examples/coc-base-builder/`: example decomposition for a safe base layout planner
 - `planning_runs/`: manual planning-run folders and review artifacts
-- `prompts/`: copy-paste role prompts, including the intake interviewer
+- `prompts/`: copy-paste role prompts and task-splitting prompts, including the intake interviewer
 - `tools/validate_seed.py`: repository JSON validation utility
 - `tools/init_planning_run.py`: manual planning-run folder initializer
 - `tools/validate_planning_run.py`: planning-run output validator
@@ -1649,6 +1650,7 @@ Task generation should read:
 - `PROJECT_SPEC.md` / `PROJECT_SPEC_TEMPLATE.md`
 - `PRODUCT_RULES.md`
 - `docs/PLANNING_RUN_WORKFLOW.md`
+- `docs/TASK_CREATION_GUIDE.md`
 - `docs/TASK_CARD_FORMAT.md`
 - existing contracts under `contracts/`
 - generated repo plan, if already drafted
@@ -1828,6 +1830,225 @@ A generated task backlog is ready when:
 
 ```
 
+## `docs/TASK_CREATION_GUIDE.md`
+
+- Category: `review-doc`
+- Purpose: Generic schema-aligned guide for creating implementation-ready tasks with ownership, status, priority, proof, edge cases, and non-goals.
+- Required: `true`
+
+```markdown
+# Task Creation Guide
+
+This guide defines how to create implementation-ready tasks for any project planned through AI Assembly Line.
+
+Use the accepted intake, project spec, repo plan, and task schema as the source of truth. Project-specific examples may use concrete repo names and prefixes, but the canonical task format must stay reusable.
+
+## Core Rule
+
+Every task must answer:
+
+```text
+What repo or area owns this?
+What role owns this?
+What exactly changes?
+What does it depend on?
+What downstream work does it unblock?
+How do we prove it works?
+What edge cases and non-goals must not drift?
+```
+
+If a task cannot answer those questions, it is not ready.
+
+## Task Size
+
+A task should usually fit in one focused work session.
+
+Use:
+
+- `S`: small, usually 30-90 minutes
+- `M`: medium, usually 2-4 hours
+- `L`: too large for direct execution; split before assignment
+
+Milestones are not tasks. Phrases like `build the backend`, `create the client`, or `implement multiplayer` should be decomposed into smaller work packets.
+
+## Task Hierarchy
+
+Use this hierarchy:
+
+```text
+Milestone
+  -> feature group or lane
+    -> task
+      -> verification evidence
+```
+
+Prefer shared contract/interface tasks before implementation tasks when multiple people or AI agents will work in parallel.
+
+## Task IDs
+
+Use stable IDs. Two good styles are:
+
+- Project-agnostic lowercase IDs, such as `define-room-event-contract`
+- Project-specific prefix IDs, such as `CONTRACT-001` or `UI-003`
+
+Dependencies and blocked-work references must use task IDs, not task titles.
+
+## Canonical Fields
+
+Tasks in `task_backlog.json` must conform to `contracts/task.schema.json`.
+
+Required fields:
+
+```yaml
+id:
+title:
+summary:
+owner_role:
+repo_target:
+depends_on:
+inputs:
+outputs:
+acceptance_criteria:
+verification:
+```
+
+Recommended optional fields:
+
+```yaml
+status:
+priority:
+milestone:
+lane:
+allowed_areas:
+blocks:
+objective:
+context:
+implementation_notes:
+proof_required:
+edge_cases:
+non_goals:
+estimated_size:
+risk_tags:
+handoff_notes:
+notes:
+```
+
+Do not use `repo` in canonical task JSON. Use `repo_target`, because it should match a repo or ownership target from `repo_plan.json`.
+
+## Field Guidance
+
+`status` should be one of:
+
+```text
+draft
+ready
+in_progress
+blocked
+review
+done
+rejected
+```
+
+`priority` should be one of:
+
+```text
+P0: blocks many other tasks
+P1: needed for MVP
+P2: useful but not blocking
+P3: later or nice-to-have
+```
+
+`blocks` should list task IDs or stable work IDs that depend on this task.
+
+`objective` should state the purpose in one short paragraph.
+
+`context` should capture decisions or constraints the task must preserve.
+
+`implementation_notes` may guide execution, but should not become a full implementation script.
+
+`proof_required` should list evidence expected from the executor, such as test output, build output, logs, screenshots, fixtures, or manual test notes.
+
+`edge_cases` should list behavior that must be tested or explicitly documented.
+
+`non_goals` should list scope the task must not expand into.
+
+`estimated_size` should be `S`, `M`, or `L`. A task marked `L` should normally be split before execution.
+
+## Standard Template
+
+```yaml
+id:
+title:
+summary:
+owner_role:
+repo_target:
+status: draft
+priority:
+milestone:
+lane:
+allowed_areas: []
+depends_on: []
+blocks: []
+
+objective: >
+  Describe the task in one short paragraph.
+
+context: >
+  Include the project decisions this task must respect.
+
+inputs:
+  - 
+
+outputs:
+  - 
+
+implementation_notes:
+  - 
+
+acceptance_criteria:
+  - Code builds or the non-code artifact is complete.
+  - Required files, contracts, or docs exist.
+  - Relevant tests or checks pass where practical.
+
+verification:
+  - Reviewer can validate the outputs against the acceptance criteria.
+
+proof_required:
+  - Build, test, validation, log, screenshot, fixture, or manual test evidence.
+  - Short change summary.
+
+edge_cases:
+  - 
+
+non_goals:
+  - 
+
+estimated_size:
+```
+
+## Dependency Rules
+
+Create shared contracts before consumers.
+
+Do not create implementation tasks that require undefined APIs, event contracts, schemas, package boundaries, or file ownership rules.
+
+A task should normally belong to one `repo_target`. If it touches multiple repos, mark it as integration or QA work and make the cross-repo proof explicit.
+
+## Review Checklist
+
+Before marking a task `ready`, check:
+
+- The repo or ownership target is clear.
+- The owner role is clear.
+- The objective is narrow.
+- Dependencies and blocked work are listed.
+- Acceptance criteria are pass/fail.
+- Proof requirements are specific.
+- Edge cases and non-goals are explicit.
+- Another person or AI agent can verify the task without guessing intent.
+
+```
+
 ## `docs/TASK_CARD_FORMAT.md`
 
 - Category: `review-doc`
@@ -1871,35 +2092,61 @@ Use fields that match the current task contract when generating machine-readable
 
 ```json
 {
-  "id": "define-realtime-event-contract",
-  "title": "Define shared realtime game event contract",
-  "owner_role": "Protocol Agent",
+  "id": "define-shared-event-contract",
+  "title": "Define shared event contract",
+  "summary": "Define the minimal producer/consumer events required for the first end-to-end MVP flow.",
+  "owner_role": "Contract Agent",
+  "status": "ready",
+  "priority": "P0",
+  "milestone": "Shared Contract Foundations",
   "lane": "shared-contract",
-  "repo_target": "car-game-protocol",
+  "repo_target": "shared-contracts",
   "depends_on": [],
+  "blocks": [
+    "implement-producer-flow",
+    "implement-consumer-flow"
+  ],
   "allowed_areas": [
     "docs/",
     "shared/contracts/"
   ],
+  "objective": "Define the initial event contract so downstream workers can implement compatible behavior.",
+  "context": "The task must preserve the accepted architecture and avoid inventing implementation details outside the contract.",
   "inputs": [
     "accepted project_intake.json",
     "repo_plan.json"
   ],
   "outputs": [
-    "docs/network-events.md"
+    "docs/events.md"
   ],
-  "summary": "Define the minimal client/server events required for the first playable multiplayer game loop.",
+  "implementation_notes": [
+    "Keep the contract implementation-agnostic.",
+    "List sender, receiver, payload, and expected behavior for each event."
+  ],
   "acceptance_criteria": [
-    "Room lifecycle events are listed.",
-    "Guess submission and result events are listed.",
-    "Timer/final-chance events are listed.",
+    "MVP lifecycle events are listed.",
+    "Primary command and result events are listed.",
     "Each event includes sender, payload, and expected receiver behavior."
   ],
   "verification": [
-    "Contract document exists and is referenced by both client and backend tasks.",
+    "Contract document exists and is referenced by downstream implementation tasks.",
     "No implementation task invents events outside the contract without updating it."
   ],
-  "handoff_notes": "Backend and client tasks should start from this contract before implementation."
+  "proof_required": [
+    "Path to the contract document.",
+    "Short summary of event coverage."
+  ],
+  "edge_cases": [
+    "Unknown event type",
+    "Missing payload",
+    "Version mismatch"
+  ],
+  "non_goals": [
+    "Do not implement producer behavior.",
+    "Do not implement consumer behavior."
+  ],
+  "estimated_size": "S",
+  "handoff_notes": "Downstream implementation tasks should start from this contract."
 }
 ```
 
@@ -2049,8 +2296,19 @@ Each generated task should be small, testable, and traceable.
 
 ## Optional Fields
 
+- `status`
+- `priority`
+- `milestone`
 - `lane`
 - `allowed_areas`
+- `blocks`
+- `objective`
+- `context`
+- `implementation_notes`
+- `proof_required`
+- `edge_cases`
+- `non_goals`
+- `estimated_size`
 - `risk_tags`
 - `notes`
 - `handoff_notes`
@@ -2061,7 +2319,7 @@ Each generated task should be small, testable, and traceable.
 - Keep tasks implementation-sized.
 - Make acceptance criteria externally checkable.
 - Reference the source spec or contract context where possible.
-- Use `lane`, `allowed_areas`, and `handoff_notes` when they make parallel work safer.
+- Use `status`, `priority`, `milestone`, `lane`, `allowed_areas`, `blocks`, `proof_required`, `edge_cases`, `non_goals`, and `handoff_notes` when they make parallel work safer.
 
 ```
 
@@ -2535,7 +2793,8 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "prompts/02-frontend-builder.md",
         "prompts/03-backend-builder.md",
         "prompts/04-core-engine-builder.md",
-        "prompts/05-red-team-verifier.md"
+        "prompts/05-red-team-verifier.md",
+        "prompts/06-task-splitter.md"
       ],
       "depends_on": [
         "seed-docs-and-rules",
@@ -3026,6 +3285,59 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       ]
     },
     {
+      "prompt_id": "task-splitter-phase0",
+      "role": "Task Splitter",
+      "target_repo": "seed-prompts",
+      "allowed_files": [
+        "prompts/06-task-splitter.md",
+        "docs/TASK_CREATION_GUIDE.md",
+        "docs/TASK_GENERATION_WORKFLOW.md",
+        "docs/TASK_CARD_FORMAT.md",
+        "docs/task-format.md",
+        "contracts/task.schema.json",
+        "generated_plan.md",
+        "generated/task_backlog.json"
+      ],
+      "forbidden_files": [
+        "auth/",
+        "db/",
+        "workers/",
+        "agents/runtime/"
+      ],
+      "input_context_required": [
+        "Accepted generated plan",
+        "Task creation guide",
+        "Task generation workflow",
+        "Task card format",
+        "Task schema",
+        "Repository split or ownership targets from the plan"
+      ],
+      "task_boundaries": [
+        "Convert an accepted generated plan into schema-valid task_backlog.json only.",
+        "Do not implement project code.",
+        "Do not invent architecture, repositories, features, or scope beyond the accepted plan.",
+        "Preserve high-risk open questions as blocking tasks or explicit context instead of silently deciding them.",
+        "Create shared contract, protocol, schema, API, data model, or interface tasks before implementation tasks that consume them.",
+        "Keep tasks small, verifiable, parallel-safe, and traceable to the accepted plan."
+      ],
+      "output_required": [
+        "Valid JSON array of task objects",
+        "Task records conforming to contracts/task.schema.json",
+        "Dependencies by stable task ID",
+        "Repo targets from the accepted plan",
+        "Acceptance criteria and verification for every task",
+        "Proof requirements, edge cases, non-goals, and estimated size when useful"
+      ],
+      "verification_required": [
+        "Output parses as JSON.",
+        "Top-level output is an array.",
+        "Every task conforms to contracts/task.schema.json.",
+        "Every dependency refers to a generated task ID.",
+        "Every task has concrete acceptance criteria and verification.",
+        "No task expands beyond the accepted MVP or contradicts explicit non-goals."
+      ]
+    },
+    {
       "prompt_id": "red-team-verifier-phase0",
       "role": "Red Team Verifier",
       "target_repo": "seed-docs-and-rules",
@@ -3364,6 +3676,12 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "required": true
     },
     {
+      "path": "docs/TASK_CREATION_GUIDE.md",
+      "category": "review-doc",
+      "purpose": "Generic schema-aligned guide for creating implementation-ready tasks with ownership, status, priority, proof, edge cases, and non-goals.",
+      "required": true
+    },
+    {
       "path": "docs/TASK_CARD_FORMAT.md",
       "category": "review-doc",
       "purpose": "Task-card format guidance for small, owned, bounded, dependency-aware, verifiable, parallel-safe tasks.",
@@ -3529,6 +3847,12 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "path": "prompts/05-red-team-verifier.md",
       "category": "prompt-source",
       "purpose": "Prompt source file for the red-team verifier role.",
+      "required": true
+    },
+    {
+      "path": "prompts/06-task-splitter.md",
+      "category": "prompt-source",
+      "purpose": "Copy-paste prompt template for converting an accepted generated plan into schema-valid task_backlog.json.",
       "required": true
     },
     {
@@ -4418,16 +4742,32 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     "verification"
   ],
   "properties": {
-    "id": { "type": "string", "pattern": "^[a-z0-9\\-]+$" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9\\-]*$" },
     "title": { "type": "string", "minLength": 1 },
     "summary": { "type": "string", "minLength": 1 },
+    "objective": { "type": "string", "minLength": 1 },
+    "context": { "type": "string", "minLength": 1 },
     "owner_role": { "type": "string", "minLength": 1 },
     "lane": { "type": "string", "minLength": 1 },
     "repo_target": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "ready", "in_progress", "blocked", "review", "done", "rejected"]
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["P0", "P1", "P2", "P3"]
+    },
+    "milestone": { "type": "string", "minLength": 1 },
     "allowed_areas": { "type": "array", "items": { "type": "string", "minLength": 1 } },
     "depends_on": { "type": "array", "items": { "type": "string" } },
+    "blocks": { "type": "array", "items": { "type": "string" } },
     "inputs": { "type": "array", "items": { "type": "string" } },
     "outputs": { "type": "array", "items": { "type": "string" } },
+    "implementation_notes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
     "acceptance_criteria": {
       "type": "array",
       "items": { "type": "string" },
@@ -4437,6 +4777,22 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "type": "array",
       "items": { "type": "string" },
       "minItems": 1
+    },
+    "proof_required": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "edge_cases": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "non_goals": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "estimated_size": {
+      "type": "string",
+      "enum": ["S", "M", "L"]
     },
     "risk_tags": {
       "type": "array",
@@ -5825,6 +6181,133 @@ A change is acceptable when:
 ## Output style
 
 Return a verdict first, then findings. Keep fixes minimal. Do not redesign the repo unless a finding cannot be resolved with a small source-of-truth correction.
+
+```
+
+## `prompts/06-task-splitter.md`
+
+- Category: `prompt-source`
+- Purpose: Copy-paste prompt template for converting an accepted generated plan into schema-valid task_backlog.json.
+- Required: `true`
+
+```markdown
+# Task Splitter Prompt
+
+You are the Task Splitter for an AI Assembly Line planning run.
+
+Your job is to convert an accepted generated plan into a schema-valid `task_backlog.json` array that can be pasted back into the AI Assembly Line frontend and validated against `contracts/task.schema.json`.
+
+You are not implementing the project. You are decomposing the plan into small, verifiable, parallel-safe task records.
+
+## Source-of-truth rules
+
+Follow these repository guides:
+
+- `docs/TASK_CREATION_GUIDE.md`
+- `docs/TASK_GENERATION_WORKFLOW.md`
+- `docs/TASK_CARD_FORMAT.md`
+- `docs/task-format.md`
+- `contracts/task.schema.json`
+
+Use the pasted generated plan as the accepted project source of truth.
+
+Do not invent architecture, repositories, features, or scope that are not in the plan.
+
+If the plan contains high-risk open questions, preserve them as blocking tasks or explicit task context instead of silently deciding them.
+
+## Output format
+
+Return only valid JSON.
+
+The top-level value must be an array of task objects.
+
+Every task must include the required fields from `contracts/task.schema.json`:
+
+```json
+[
+  {
+    "id": "TASK-001",
+    "title": "Short action-oriented title",
+    "summary": "One-sentence task summary.",
+    "owner_role": "Role responsible for the task",
+    "repo_target": "repo-or-ownership-target-from-the-plan",
+    "depends_on": [],
+    "inputs": [],
+    "outputs": [],
+    "acceptance_criteria": [],
+    "verification": []
+  }
+]
+```
+
+Use these optional fields when useful:
+
+- `status`
+- `priority`
+- `milestone`
+- `lane`
+- `allowed_areas`
+- `blocks`
+- `objective`
+- `context`
+- `implementation_notes`
+- `proof_required`
+- `edge_cases`
+- `non_goals`
+- `estimated_size`
+- `risk_tags`
+- `handoff_notes`
+- `notes`
+
+## Decomposition rules
+
+- Keep tasks small enough for one focused execution session.
+- Use `estimated_size: "S"` or `estimated_size: "M"` for executable tasks.
+- Mark tasks as `estimated_size: "L"` only when they should be split before execution.
+- Prefer `status: "draft"` unless the task is fully specified and dependency-ready.
+- Use `priority: "P0"` for work that blocks many other tasks.
+- Use `priority: "P1"` for MVP-critical work.
+- Use `priority: "P2"` for useful non-blocking work.
+- Use `priority: "P3"` for post-MVP or nice-to-have work.
+- Use `repo_target` values that match the repository split or ownership targets in the plan.
+- Use `lane` values that help parallel work, such as `shared-contract`, `frontend-ui`, `backend-service`, `core-domain`, `deploy-ops`, `tests-verification`, or project-specific equivalents from the plan.
+- Create shared contract, protocol, schema, API, data model, or interface tasks before implementation tasks that consume them.
+- Use `depends_on` to reference task IDs that must be completed first.
+- Use `blocks` to list downstream task IDs that this task unlocks when obvious.
+- Include concrete `acceptance_criteria` for every task.
+- Include concrete `verification` steps for every task.
+- Include `proof_required` when the executor should return build output, test output, screenshots, logs, fixtures, manual test notes, or deployment command output.
+- Include `edge_cases` for behavior that should not drift silently.
+- Include `non_goals` to prevent scope creep.
+- Do not create broad tasks like `build the backend`, `create the frontend`, or `implement multiplayer`.
+
+## Suggested ordering
+
+Order tasks roughly like this when the plan supports it:
+
+1. Planning/source-of-truth setup
+2. Shared contracts, protocols, schemas, API boundaries, data models
+3. Core domain logic
+4. Backend/service skeletons
+5. Frontend/client skeletons
+6. First end-to-end integration path
+7. MVP feature slices
+8. Deployment/devex
+9. QA, verification, regression coverage
+10. Post-MVP tasks, if the plan explicitly asks for them
+
+## Final instruction
+
+Read the generated plan below and return a schema-valid `task_backlog.json` array.
+
+Do not include markdown fences.
+
+Do not include explanation before or after the JSON.
+
+## Generated Plan
+
+Paste the accepted generated plan below this line:
+
 
 ```
 
@@ -8372,23 +8855,68 @@ def validate_task(value: Any, label: str) -> None:
             "acceptance_criteria",
             "verification",
         },
-        {"risk_tags", "notes", "lane", "allowed_areas", "handoff_notes"},
+        {
+            "risk_tags",
+            "notes",
+            "lane",
+            "allowed_areas",
+            "handoff_notes",
+            "status",
+            "priority",
+            "milestone",
+            "blocks",
+            "objective",
+            "context",
+            "implementation_notes",
+            "proof_required",
+            "edge_cases",
+            "non_goals",
+            "estimated_size",
+        },
     )
     expect_non_empty_string(value["id"], f"{label}.id")
-    expect(re.fullmatch(r"[a-z0-9\-]+", value["id"]) is not None, f"{label}.id must match ^[a-z0-9\\-]+$")
+    expect(
+        re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9\-]*", value["id"]) is not None,
+        f"{label}.id must match ^[A-Za-z0-9][A-Za-z0-9\\-]*$",
+    )
     expect_non_empty_string(value["title"], f"{label}.title")
     expect_non_empty_string(value["summary"], f"{label}.summary")
+    if "objective" in value:
+        expect_non_empty_string(value["objective"], f"{label}.objective")
+    if "context" in value:
+        expect_non_empty_string(value["context"], f"{label}.context")
     expect_non_empty_string(value["owner_role"], f"{label}.owner_role")
     if "lane" in value:
         expect_non_empty_string(value["lane"], f"{label}.lane")
     expect_non_empty_string(value["repo_target"], f"{label}.repo_target")
+    if "status" in value:
+        expect(
+            value["status"] in {"draft", "ready", "in_progress", "blocked", "review", "done", "rejected"},
+            f"{label}.status must be one of the allowed task states",
+        )
+    if "priority" in value:
+        expect(value["priority"] in {"P0", "P1", "P2", "P3"}, f"{label}.priority must be P0, P1, P2, or P3")
+    if "milestone" in value:
+        expect_non_empty_string(value["milestone"], f"{label}.milestone")
     if "allowed_areas" in value:
         expect_string_array(value["allowed_areas"], f"{label}.allowed_areas")
     expect_string_array(value["depends_on"], f"{label}.depends_on")
+    if "blocks" in value:
+        expect_string_array(value["blocks"], f"{label}.blocks")
     expect_string_array(value["inputs"], f"{label}.inputs")
     expect_string_array(value["outputs"], f"{label}.outputs")
+    if "implementation_notes" in value:
+        expect_string_array(value["implementation_notes"], f"{label}.implementation_notes")
     expect_string_array(value["acceptance_criteria"], f"{label}.acceptance_criteria", min_items=1)
     expect_string_array(value["verification"], f"{label}.verification", min_items=1)
+    if "proof_required" in value:
+        expect_string_array(value["proof_required"], f"{label}.proof_required")
+    if "edge_cases" in value:
+        expect_string_array(value["edge_cases"], f"{label}.edge_cases")
+    if "non_goals" in value:
+        expect_string_array(value["non_goals"], f"{label}.non_goals")
+    if "estimated_size" in value:
+        expect(value["estimated_size"] in {"S", "M", "L"}, f"{label}.estimated_size must be S, M, or L")
     if "risk_tags" in value:
         expect_string_array(value["risk_tags"], f"{label}.risk_tags")
     if "notes" in value:
@@ -9505,7 +10033,7 @@ if __name__ == "__main__":
 
 ```
 param(
-    [string]$PlanningRun = "planning_runs\coc-base-builder-v1",
+    [string]$PlanningRun = "",
     [switch]$SkipPlanningRun,
     [switch]$StrictPlanningRun,
     [switch]$NoPull
@@ -9583,16 +10111,21 @@ Invoke-NativeChecked "JavaScript syntax checks" {
     }
 }
 
-if (-not $SkipPlanningRun) {
+if (-not $SkipPlanningRun -and $PlanningRun) {
     $allowPlanningFailure = -not $StrictPlanningRun
     Invoke-NativeChecked "Validate planning run: $PlanningRun" { python tools\validate_planning_run.py $PlanningRun } -AllowFailure:$allowPlanningFailure
 
     if ($allowPlanningFailure) {
-        Write-Host "Planning run validation is allowed to fail by default because sample runs may intentionally omit generated outputs. Use -StrictPlanningRun to make this a hard failure."
+        Write-Host "Planning run validation is allowed to fail by default because draft runs may intentionally omit generated outputs. Use -StrictPlanningRun to make this a hard failure."
     }
 } else {
     Write-Host "`n== Validate planning run =="
-    Write-Host "Skipped because -SkipPlanningRun was supplied."
+    if ($SkipPlanningRun) {
+        Write-Host "Skipped because -SkipPlanningRun was supplied."
+    } else {
+        Write-Host "Skipped because no -PlanningRun path was supplied."
+        Write-Host "To validate one run, pass -PlanningRun planning_runs\<run-slug>."
+    }
 }
 
 Invoke-NativeChecked "Git status" { git status --short }

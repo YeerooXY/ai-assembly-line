@@ -281,6 +281,59 @@
       ]
     },
     {
+      "prompt_id": "task-splitter-phase0",
+      "role": "Task Splitter",
+      "target_repo": "seed-prompts",
+      "allowed_files": [
+        "prompts/06-task-splitter.md",
+        "docs/TASK_CREATION_GUIDE.md",
+        "docs/TASK_GENERATION_WORKFLOW.md",
+        "docs/TASK_CARD_FORMAT.md",
+        "docs/task-format.md",
+        "contracts/task.schema.json",
+        "generated_plan.md",
+        "generated/task_backlog.json"
+      ],
+      "forbidden_files": [
+        "auth/",
+        "db/",
+        "workers/",
+        "agents/runtime/"
+      ],
+      "input_context_required": [
+        "Accepted generated plan",
+        "Task creation guide",
+        "Task generation workflow",
+        "Task card format",
+        "Task schema",
+        "Repository split or ownership targets from the plan"
+      ],
+      "task_boundaries": [
+        "Convert an accepted generated plan into schema-valid task_backlog.json only.",
+        "Do not implement project code.",
+        "Do not invent architecture, repositories, features, or scope beyond the accepted plan.",
+        "Preserve high-risk open questions as blocking tasks or explicit context instead of silently deciding them.",
+        "Create shared contract, protocol, schema, API, data model, or interface tasks before implementation tasks that consume them.",
+        "Keep tasks small, verifiable, parallel-safe, and traceable to the accepted plan."
+      ],
+      "output_required": [
+        "Valid JSON array of task objects",
+        "Task records conforming to contracts/task.schema.json",
+        "Dependencies by stable task ID",
+        "Repo targets from the accepted plan",
+        "Acceptance criteria and verification for every task",
+        "Proof requirements, edge cases, non-goals, and estimated size when useful"
+      ],
+      "verification_required": [
+        "Output parses as JSON.",
+        "Top-level output is an array.",
+        "Every task conforms to contracts/task.schema.json.",
+        "Every dependency refers to a generated task ID.",
+        "Every task has concrete acceptance criteria and verification.",
+        "No task expands beyond the accepted MVP or contradicts explicit non-goals."
+      ]
+    },
+    {
       "prompt_id": "red-team-verifier-phase0",
       "role": "Red Team Verifier",
       "target_repo": "seed-docs-and-rules",

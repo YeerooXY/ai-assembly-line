@@ -219,23 +219,68 @@ def validate_task(value: Any, label: str) -> None:
             "acceptance_criteria",
             "verification",
         },
-        {"risk_tags", "notes", "lane", "allowed_areas", "handoff_notes"},
+        {
+            "risk_tags",
+            "notes",
+            "lane",
+            "allowed_areas",
+            "handoff_notes",
+            "status",
+            "priority",
+            "milestone",
+            "blocks",
+            "objective",
+            "context",
+            "implementation_notes",
+            "proof_required",
+            "edge_cases",
+            "non_goals",
+            "estimated_size",
+        },
     )
     expect_non_empty_string(value["id"], f"{label}.id")
-    expect(re.fullmatch(r"[a-z0-9\-]+", value["id"]) is not None, f"{label}.id must match ^[a-z0-9\\-]+$")
+    expect(
+        re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9\-]*", value["id"]) is not None,
+        f"{label}.id must match ^[A-Za-z0-9][A-Za-z0-9\\-]*$",
+    )
     expect_non_empty_string(value["title"], f"{label}.title")
     expect_non_empty_string(value["summary"], f"{label}.summary")
+    if "objective" in value:
+        expect_non_empty_string(value["objective"], f"{label}.objective")
+    if "context" in value:
+        expect_non_empty_string(value["context"], f"{label}.context")
     expect_non_empty_string(value["owner_role"], f"{label}.owner_role")
     if "lane" in value:
         expect_non_empty_string(value["lane"], f"{label}.lane")
     expect_non_empty_string(value["repo_target"], f"{label}.repo_target")
+    if "status" in value:
+        expect(
+            value["status"] in {"draft", "ready", "in_progress", "blocked", "review", "done", "rejected"},
+            f"{label}.status must be one of the allowed task states",
+        )
+    if "priority" in value:
+        expect(value["priority"] in {"P0", "P1", "P2", "P3"}, f"{label}.priority must be P0, P1, P2, or P3")
+    if "milestone" in value:
+        expect_non_empty_string(value["milestone"], f"{label}.milestone")
     if "allowed_areas" in value:
         expect_string_array(value["allowed_areas"], f"{label}.allowed_areas")
     expect_string_array(value["depends_on"], f"{label}.depends_on")
+    if "blocks" in value:
+        expect_string_array(value["blocks"], f"{label}.blocks")
     expect_string_array(value["inputs"], f"{label}.inputs")
     expect_string_array(value["outputs"], f"{label}.outputs")
+    if "implementation_notes" in value:
+        expect_string_array(value["implementation_notes"], f"{label}.implementation_notes")
     expect_string_array(value["acceptance_criteria"], f"{label}.acceptance_criteria", min_items=1)
     expect_string_array(value["verification"], f"{label}.verification", min_items=1)
+    if "proof_required" in value:
+        expect_string_array(value["proof_required"], f"{label}.proof_required")
+    if "edge_cases" in value:
+        expect_string_array(value["edge_cases"], f"{label}.edge_cases")
+    if "non_goals" in value:
+        expect_string_array(value["non_goals"], f"{label}.non_goals")
+    if "estimated_size" in value:
+        expect(value["estimated_size"] in {"S", "M", "L"}, f"{label}.estimated_size must be S, M, or L")
     if "risk_tags" in value:
         expect_string_array(value["risk_tags"], f"{label}.risk_tags")
     if "notes" in value:

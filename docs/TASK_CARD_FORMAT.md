@@ -34,35 +34,61 @@ Use fields that match the current task contract when generating machine-readable
 
 ```json
 {
-  "id": "define-realtime-event-contract",
-  "title": "Define shared realtime game event contract",
-  "owner_role": "Protocol Agent",
+  "id": "define-shared-event-contract",
+  "title": "Define shared event contract",
+  "summary": "Define the minimal producer/consumer events required for the first end-to-end MVP flow.",
+  "owner_role": "Contract Agent",
+  "status": "ready",
+  "priority": "P0",
+  "milestone": "Shared Contract Foundations",
   "lane": "shared-contract",
-  "repo_target": "car-game-protocol",
+  "repo_target": "shared-contracts",
   "depends_on": [],
+  "blocks": [
+    "implement-producer-flow",
+    "implement-consumer-flow"
+  ],
   "allowed_areas": [
     "docs/",
     "shared/contracts/"
   ],
+  "objective": "Define the initial event contract so downstream workers can implement compatible behavior.",
+  "context": "The task must preserve the accepted architecture and avoid inventing implementation details outside the contract.",
   "inputs": [
     "accepted project_intake.json",
     "repo_plan.json"
   ],
   "outputs": [
-    "docs/network-events.md"
+    "docs/events.md"
   ],
-  "summary": "Define the minimal client/server events required for the first playable multiplayer game loop.",
+  "implementation_notes": [
+    "Keep the contract implementation-agnostic.",
+    "List sender, receiver, payload, and expected behavior for each event."
+  ],
   "acceptance_criteria": [
-    "Room lifecycle events are listed.",
-    "Guess submission and result events are listed.",
-    "Timer/final-chance events are listed.",
+    "MVP lifecycle events are listed.",
+    "Primary command and result events are listed.",
     "Each event includes sender, payload, and expected receiver behavior."
   ],
   "verification": [
-    "Contract document exists and is referenced by both client and backend tasks.",
+    "Contract document exists and is referenced by downstream implementation tasks.",
     "No implementation task invents events outside the contract without updating it."
   ],
-  "handoff_notes": "Backend and client tasks should start from this contract before implementation."
+  "proof_required": [
+    "Path to the contract document.",
+    "Short summary of event coverage."
+  ],
+  "edge_cases": [
+    "Unknown event type",
+    "Missing payload",
+    "Version mismatch"
+  ],
+  "non_goals": [
+    "Do not implement producer behavior.",
+    "Do not implement consumer behavior."
+  ],
+  "estimated_size": "S",
+  "handoff_notes": "Downstream implementation tasks should start from this contract."
 }
 ```
 

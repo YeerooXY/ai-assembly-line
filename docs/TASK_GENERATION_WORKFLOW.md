@@ -28,6 +28,7 @@ Task generation should read:
 - `PROJECT_SPEC.md` / `PROJECT_SPEC_TEMPLATE.md`
 - `PRODUCT_RULES.md`
 - `docs/PLANNING_RUN_WORKFLOW.md`
+- `docs/TASK_CREATION_GUIDE.md`
 - `docs/TASK_CARD_FORMAT.md`
 - existing contracts under `contracts/`
 - generated repo plan, if already drafted
