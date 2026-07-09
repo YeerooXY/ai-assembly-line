@@ -35,11 +35,13 @@
       ],
       "task_boundaries": [
         "Treat rough ideas plus requests for help, guidelines, steering, architecture, or setup as requests to start intake.",
-        "On the first response without a complete intake record, output only a short acknowledgement, intake_session update, and one high-impact guided-mode question, then stop.",
+        "On the first response without a complete intake record, output only a short acknowledgement, compact human-readable intake status, and one high-impact guided-mode question, then stop.",
+        "Do not print raw intake_session JSON by default; maintain schema-aligned state internally and show JSON only when requested, ready for project_intake, state review is needed, or saving/exporting/persisting.",
         "In guided mode, next_action.questions may contain only the single next question unless the user explicitly asks for a batch.",
         "For hard guided-mode choices, ask the single question as an A/B/C decision card with pros, cons, MVP risk, scaling/refactor risk, and one explicit agent recommendation.",
+        "For the first high-impact MVP-boundary question of a rough idea, prefer a decision card when sensible options can be inferred.",
         "Allow the user to answer A, B, C, recommended, or custom; do not silently apply the recommendation.",
-        "After the first visible intake_session, use compact human-readable updates instead of repeating full JSON unless the user asks to see the full state.",
+        "Use compact human-readable updates instead of repeating full JSON unless the user asks to see the full state.",
         "Keep future unanswered decisions in open_questions, not as a visible checklist in next_action.questions.",
         "Do not append starter guidelines, technical steering, repo/package split, definition of done, stack recommendation, suggested answers, task backlog, or agent assignments while readiness.can_generate_intake is false.",
         "Ask only questions that materially change the plan.",
@@ -48,9 +50,9 @@
         "Do not produce implementation tasks until the intake record is complete enough."
       ],
       "output_required": [
-        "Full intake_session update on the first guided intake turn or when explicitly requested",
+        "Compact human-readable intake status on the first guided intake turn",
         "Compact intake update after subsequent guided-mode answers",
-        "Decision card for hard guided-mode choices when useful",
+        "Decision card for hard guided-mode choices when useful, including first MVP-boundary choice when applicable",
         "Explicit assumptions",
         "High-risk open questions",
         "Single next high-impact question in guided mode",
@@ -58,11 +60,12 @@
         "Planning Agent hand-off summary only after project_intake.json is drafted"
       ],
       "verification_required": [
-        "In-progress intake session matches contracts/intake_session.schema.json.",
+        "Internal intake session matches contracts/intake_session.schema.json.",
         "Guided-mode next_action.questions contains exactly one visible question unless the user explicitly asks for a batch.",
+        "First rough-idea response does not dump raw intake_session JSON by default.",
         "Hard guided-mode choices include clear options with tradeoffs and an explicit recommendation when a decision card would help.",
         "Recommendation is not treated as accepted unless the user chooses it or answers recommended.",
-        "Subsequent guided-mode turns do not repeat the full intake_session JSON unless requested, ready for project_intake, or saving/exporting.",
+        "Subsequent guided-mode turns do not repeat the full intake_session JSON unless requested, ready for project_intake, state review, or saving/exporting.",
         "No project_intake.json or planning artifacts are produced while readiness.can_generate_intake is false.",
         "First response to a rough idea does not include starter guidelines, technical steering, repo/package split, definition of done, stack recommendation, suggested answers, backlog, agent assignments, or a checklist of future questions.",
         "Final intake record matches contracts/project_intake.schema.json.",

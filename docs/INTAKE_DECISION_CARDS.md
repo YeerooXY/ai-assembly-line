@@ -2,7 +2,7 @@
 
 Guided intake asks one question per assistant turn.
 
-A question may still be rich enough to help the user make a good decision. For difficult architecture, MVP, stack, scaling, or team-split choices, present the one question as a decision card.
+A question may still be rich enough to help the user make a good decision. For difficult architecture, MVP, stack, scaling, sync, persistence, or team-split choices, present the one question as a decision card.
 
 ## Purpose
 
@@ -50,6 +50,7 @@ This still counts as one guided intake question.
 - If the user gives a custom answer, record it and update open questions if the custom answer introduces risk.
 - Keep future decisions in `open_questions`; do not turn the card into a checklist of multiple questions.
 - Do not use decision cards for trivial low-risk choices.
+- For the first high-impact MVP-boundary question of a rough idea, prefer a decision card when sensible options can be inferred from the idea.
 
 ## When to use decision cards
 
@@ -60,13 +61,53 @@ Use decision cards for choices that materially affect:
 - stack or engine
 - backend architecture
 - realtime versus asynchronous behavior
+- sync/storage model
 - persistence/auth/accounts
 - deployment model
 - team/agent split
 - proof required for done
 - choices that may create later scaling or refactor pain
 
-## Example
+## Example: MVP boundary
+
+```text
+Intake status: started
+Project: shared-grocery-list
+Known: tiny shared grocery list app for two people
+Still needed: MVP boundary
+
+Decision: What is the smallest useful MVP for the two of you?
+
+A) One-device local list
+What it means: One list on one device, no sharing between devices.
+Pros: fastest to build and easiest to test.
+Cons: not truly shared.
+MVP risk: low.
+Scaling/refactor risk: high — adding real sharing later may require rethinking storage and state.
+Best when: You only want to validate the list UI first.
+
+B) Manual share/export list
+What it means: One person can copy/export the list and send it to the other.
+Pros: simple, with some sharing behavior.
+Cons: clunky and not live.
+MVP risk: low-medium.
+Scaling/refactor risk: medium.
+Best when: Sharing matters, but live collaboration is not required yet.
+
+C) Real shared list with sync
+What it means: Both people can edit the same list from separate devices.
+Pros: matches the actual product idea.
+Cons: needs backend/sync/conflict decisions.
+MVP risk: medium-high.
+Scaling/refactor risk: low-medium — avoids fake-sharing rework later.
+Best when: The core value is truly shared usage.
+
+Agent recommendation: C — if “shared” is the point of the product; A only if you want the fastest throwaway prototype.
+
+Question: Choose A, B, C, recommended, or custom.
+```
+
+## Example: stack direction
 
 ```text
 Recorded: team mode = 2 people working in parallel.

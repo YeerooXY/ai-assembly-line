@@ -22,7 +22,7 @@ rough idea
   -> human review
 ```
 
-The intake session is the interactive state while questions are still being asked.
+The intake session is the internal interactive state while questions are still being asked.
 
 The intake record is not an implementation plan. It is the structured input that keeps the implementation plan grounded.
 
@@ -49,12 +49,14 @@ The Intake Interviewer must not immediately output:
 Instead, it should output:
 
 1. a short acknowledgement
-2. an `intake_session` update following `contracts/intake_session.schema.json`
-3. the next high-impact question
+2. a compact human-readable intake status summary
+3. the next high-impact question, preferably as a decision card when the choice affects MVP difficulty or later scaling/refactor risk
 
 This is true even if the user asks for guidelines or says they want to bring the idea to life. Those requests still start intake unless a complete intake record already exists.
 
 If `readiness.can_generate_intake` is `false`, the first response must stop after the single next question in guided mode. It must not continue with project guidelines, technical steering, repository layout, default answers, stack choices, definition-of-done rules, or a checklist of future questions.
+
+Do not print raw `intake_session` JSON by default. Keep it internally and show JSON only when the user asks for it, the session becomes ready for `project_intake.json`, state review is needed, or saving/exporting/persisting is requested.
 
 See `docs/INTAKE_SESSION_FORMAT.md` and `docs/INTAKE_DECISION_CARDS.md`.
 
@@ -71,11 +73,11 @@ That is still a request to start intake, not a request to produce guidelines.
 The correct first response is:
 
 1. short acknowledgement
-2. `intake_session` state
-3. one high-impact question
+2. compact intake status
+3. one high-impact question or decision card
 4. stop
 
-The incorrect response is anything that continues with starter steering rules, a recommended stack, repo/package split, project layout, definition of done, suggested answers, planning-run guidelines, or a batch checklist of future questions.
+The incorrect response is anything that continues with starter steering rules, a recommended stack, repo/package split, project layout, definition of done, suggested answers, planning-run guidelines, raw JSON dump by default, or a batch checklist of future questions.
 
 ## Recommended target-project layout
 
@@ -138,13 +140,14 @@ Rules:
 - Ask exactly one high-impact question per assistant turn unless the user explicitly asks for a batch.
 - The one question should be the next unanswered decision that most changes architecture, stack, MVP, safety, or parallelization.
 - Do not include a checklist of future questions in the same turn.
-- After the first visible `intake_session`, use compact updates instead of repeating the full JSON unless the user asks to see the state.
+- Use compact human-readable updates instead of repeating raw JSON unless the user asks to see the state.
 - For hard choices, present the one question as an A/B/C decision card with pros, cons, MVP risk, later scaling/refactor risk, and one explicit agent recommendation.
+- The first MVP-boundary question for a rough idea should normally be a decision card when sensible options can be inferred.
 - The user may answer `A`, `B`, `C`, `recommended`, or a custom answer.
 - Do not silently apply the recommendation; record it only if the user chooses it.
-- After the user answers, update `intake_session` and ask the next one-question step.
+- After the user answers, update `intake_session` internally and ask the next one-question step.
 - Only produce `project_intake.json` after the session is ready.
-- Suggest reasonable stack options only after platform, multiplayer mode, and project state are known.
+- Suggest reasonable stack options only after platform, multiplayer/sync mode, and project state are known.
 - Confirm the MVP before planning.
 - Confirm team/agent working style before task decomposition.
 
@@ -216,7 +219,7 @@ The Intake Interviewer should cover these sections, but not necessarily all in o
 
 When suggesting a stack, provide options with tradeoffs and a recommendation. Do not force a stack silently.
 
-Do not suggest concrete stack options on the first response to a rough idea when high-risk answers such as platform, multiplayer mode, existing project state, and team/agent layout are still unknown.
+Do not suggest concrete stack options on the first response to a rough idea when high-risk answers such as platform, multiplayer/sync mode, existing project state, and team/agent layout are still unknown.
 
 When enough context exists, prefer a decision card for stack/platform choices so the user can compare MVP speed against later scaling/refactor pain.
 
@@ -256,6 +259,7 @@ Assume when the missing detail is low-risk and easy to revise later.
 Stop and ask when the missing detail is high-risk, such as:
 
 - real-time multiplayer versus turn-based multiplayer
+- local-only versus real shared sync
 - browser-first versus desktop-first
 - existing repository versus greenfield
 - required engine/framework
@@ -265,7 +269,7 @@ Stop and ask when the missing detail is high-risk, such as:
 
 ## Intake session output
 
-While questions are still open, the intake interview should produce `intake_session.json`-shaped updates conforming to `contracts/intake_session.schema.json`.
+While questions are still open, maintain an internal `intake_session` state conforming to `contracts/intake_session.schema.json`.
 
 The session should include:
 
@@ -282,8 +286,6 @@ The session should include:
 If `readiness.can_generate_intake` is `false`, the output is not allowed to continue into guidelines or planning artifacts.
 
 In guided mode, `next_action.questions` should contain only the single next question. Other unanswered decisions belong in `open_questions`, not in the visible next-question list.
-
-In guided mode, the full JSON object should be visible on the first intake turn, when the user asks for it, when the session becomes ready for `project_intake.json`, or when saving/exporting is requested. Otherwise, use a compact update that records the latest answer, current status, and single next question.
 
 Decision-card options are human-facing guidance. Record only the user's selected answer as the intake answer; do not treat unchosen options as project decisions.
 
