@@ -94,6 +94,7 @@ The viewer pages are:
 - `web/backlog.html`
 - `web/prompts.html`
 - `web/slots.html`
+- `web/planning-runs.html`
 - `web/verification.html`
 
 The generated sources remain:
@@ -112,6 +113,7 @@ The viewer displays:
 - task backlog grouped by repo target
 - agent prompts
 - slot board
+- planning-run scaffold and output completeness
 - verification rules, source-of-truth notes, proof requirements, and raw contract files
 
 The viewer intentionally does not do the following yet:
@@ -121,7 +123,7 @@ The viewer intentionally does not do the following yet:
 - authentication
 - realtime sync
 - mutable workflow state
-- frontend-owned task, repo, prompt, slot, or contract models
+- frontend-owned task, repo, prompt, slot, planning-run, or contract models
 
 ## Initial Public Surface
 
@@ -136,6 +138,7 @@ It should display:
 - task backlog
 - contract files
 - prompt pack
+- planning-run index
 - verification rules
 
 ## Repository Map
@@ -190,7 +193,7 @@ Planning runs can also be indexed for read-only review:
 python tools/build_planning_runs_index.py
 ```
 
-This writes `generated/planning_runs_index.json`, which records each run's scaffold status and which required output files are present. The local sync helper runs this automatically before validation.
+This writes `generated/planning_runs_index.json`, which records each run's scaffold status and which required output files are present. The local sync helper runs this automatically before validation. The static viewer renders this index on `web/planning-runs.html` without editing or inventing planning-run state.
 
 ## Validation
 
