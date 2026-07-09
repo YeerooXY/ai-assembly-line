@@ -1,0 +1,38 @@
+{
+  "schema_version": "0.1.0",
+  "generated_by": "tools/build_planning_runs_index.py",
+  "planning_runs_path": "planning_runs",
+  "required_outputs": [
+    "project_spec.json",
+    "repo_plan.json",
+    "task_backlog.json",
+    "agent_prompts.json",
+    "slots_db.json"
+  ],
+  "runs": [
+    {
+      "slug": "coc-base-builder-v1",
+      "path": "planning_runs/coc-base-builder-v1",
+      "status": "draft_missing_outputs",
+      "has_input_idea": true,
+      "has_planning_prompt": true,
+      "has_review_notes": true,
+      "has_outputs_dir": true,
+      "outputs": {
+        "project_spec.json": false,
+        "repo_plan.json": false,
+        "task_backlog.json": false,
+        "agent_prompts.json": false,
+        "slots_db.json": false
+      },
+      "missing_outputs": [
+        "project_spec.json",
+        "repo_plan.json",
+        "task_backlog.json",
+        "agent_prompts.json",
+        "slots_db.json"
+      ],
+      "missing_scaffold": []
+    }
+  ]
+}
