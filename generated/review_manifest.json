@@ -68,6 +68,12 @@
       "required": true
     },
     {
+      "path": "docs/INTAKE_DECISION_CARDS.md",
+      "category": "review-doc",
+      "purpose": "Decision-card guidance for one-question guided intake choices with A/B/C options, tradeoffs, MVP risk, scaling risk, and explicit recommendations.",
+      "required": true
+    },
+    {
       "path": "docs/PLANNING_RUN_WORKFLOW.md",
       "category": "review-doc",
       "purpose": "Manual planning-run workflow for turning a rough idea or intake record into saved planning artifacts and human-reviewed outputs.",
