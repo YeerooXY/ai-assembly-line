@@ -7,7 +7,12 @@ import {
   sourceFileForExtra,
   sourceFilesForKeys,
 } from "./viewer-data.js";
-import { buildProjectSelectionUrl, projectUrlForPage, renderProjectLabel } from "./project-workspace.js";
+import {
+  buildProjectSelectionUrl,
+  isWorkspaceContext,
+  projectUrlForPage,
+  renderProjectLabel,
+} from "./project-workspace.js";
 
 const NAV_ITEMS = [
   { id: "overview", label: "Overview", href: "index.html" },
@@ -84,15 +89,16 @@ async function initializeAsync(app, config) {
         <p class="source-note">
           Project mode:
           <strong>${escapeHtml(renderProjectLabel(projectContext))}</strong>
-          ${projectContext.mode === "project" ? `from <code>${escapeHtml(projectContext.workspaceRootPath)}</code>` : "from root generated files"}.
+          ${renderProjectSource(projectContext)}.
         </p>
         <p class="source-note">
           Source of truth for this page:
           ${sourceFiles.map((path) => `<code>${escapeHtml(path)}</code>`).join(", ")}.
         </p>
         <p class="helper">
-          Serve the repo root with <code>python -m http.server 8000</code> and open <code>http://localhost:8000/web/</code>.
-          Project URLs use <code>?project=&lt;project-id&gt;</code>, for example <code>dispatch.html?project=snake-game</code>.
+          Serve the repository root with <code>python -m http.server 8000</code>.
+          Standalone product repositories may place this viewer under <code>assembly/web/</code> with a repository-root <code>project_workspace.json</code>.
+          Registry URLs use <code>?project=&lt;project-id&gt;</code>; explicit standalone manifests may use <code>?workspace=&lt;relative-json-path&gt;</code>.
           If the page is opened with <code>file://</code> and fetch is blocked, load the required JSON files with the button above.
         </p>
         ${helperNote ? `<p class="helper">${helperNote}</p>` : ""}
@@ -168,7 +174,10 @@ function renderInitializationFailure(app, config, error) {
         <div class="card error-card">
           <h2>Unable to load project workspace</h2>
           <p>${escapeHtml(formatError(error))}</p>
-          <p class="helper">Check <code>projects/index.json</code>, the requested <code>?project=...</code> value, and the selected project's <code>project_workspace.json</code>.</p>
+          <p class="helper">
+            Check the standalone <code>project_workspace.json</code>, an explicit <code>?workspace=...</code> value,
+            or <code>projects/index.json</code> and the requested <code>?project=...</code> value.
+          </p>
         </div>
       </section>
     </main>
@@ -181,9 +190,9 @@ function renderFailure(pageContent, statusMessage, error, requiredKeys, projectC
     .join(", ");
 
   const hint = isFileProtocol()
-    ? 'Fetch is likely blocked under <code>file://</code>. Use <code>python -m http.server 8000</code> from the repo root or load the required files manually.'
-    : projectContext?.mode === "project"
-      ? 'Check that the selected project workspace exists and its project-scoped generated JSON files exist.'
+    ? 'Fetch is likely blocked under <code>file://</code>. Use <code>python -m http.server 8000</code> from the repository root or load the required files manually.'
+    : isWorkspaceContext(projectContext)
+      ? 'Check that the selected project workspace exists and its configured generated JSON files exist.'
       : 'Check that the generated JSON files exist and contain valid JSON.';
 
   setStatus(statusMessage, formatError(error), "error");
@@ -197,7 +206,28 @@ function renderFailure(pageContent, statusMessage, error, requiredKeys, projectC
   `;
 }
 
+function renderProjectSource(projectContext) {
+  if (projectContext.mode === "project") {
+    return `from registry workspace <code>${escapeHtml(projectContext.workspaceRootPath)}</code>`;
+  }
+
+  if (projectContext.mode === "standalone") {
+    return `from standalone manifest <code>${escapeHtml(projectContext.workspacePath)}</code>`;
+  }
+
+  return "from root generated files";
+}
+
 function renderProjectSelector(projectContext) {
+  if (projectContext.mode === "standalone") {
+    return `
+      <div class="project-switcher" aria-label="Project selection">
+        <span class="project-switcher-label">Project</span>
+        <strong>${escapeHtml(renderProjectLabel(projectContext))}</strong>
+      </div>
+    `;
+  }
+
   const projects = projectContext.projects ?? [];
   const selected = projectContext.mode === "project" ? projectContext.projectId : "";
 
