@@ -1,16 +1,17 @@
 # Outputs
 
-This sample planning run intentionally does not include final generated output JSON yet.
+This sample planning run intentionally does not include final planning JSON yet.
 
-The five required output files are expected to appear here only after a planning agent produces them:
+The four planning output files are expected here only after a Planning Agent produces them:
 
 - `project_spec.json`
 - `repo_plan.json`
-- `task_backlog.json`
 - `agent_prompts.json`
 - `slots_db.json`
 
-Until then, their absence is intentional for this draft sample folder.
+`task_backlog.json` is intentionally deferred to the Task Splitter after the planning PR is merged.
+
+Until then, the missing files are intentional for this draft sample.
 
 When outputs are added, validate them with:
 

@@ -10,7 +10,6 @@ PLANNING_RUNS_DIR = ROOT / "planning_runs"
 REQUIRED_OUTPUTS = [
     "project_spec.json",
     "repo_plan.json",
-    "task_backlog.json",
     "agent_prompts.json",
     "slots_db.json",
 ]
@@ -22,15 +21,16 @@ def usage() -> int:
 
 
 def validate_slug(run_slug: str) -> None:
-    if re.fullmatch(r"[a-z0-9][a-z0-9\\-]*", run_slug) is None:
+    if re.fullmatch(r"[a-z0-9][a-z0-9\-]*", run_slug) is None:
         raise ValueError("run-slug must match ^[a-z0-9][a-z0-9\\-]*$")
 
 
 def default_input_idea() -> str:
     return (
-        "# Input Idea\n\n"
-        "Replace this text with the rough software idea for the planning run.\n"
-        "Describe the product, target users, constraints, and any known safety concerns.\n"
+        "# Accepted Requirements Input\n\n"
+        "Replace this text with repository paths and a concise summary of the merged requirements.\n"
+        "Planning should read the accepted project intake and requirements from the repository.\n"
+        "Do not use this file to override merged requirements.\n"
     ).strip()
 
 
@@ -38,36 +38,52 @@ def planning_prompt(run_slug: str, input_idea: str) -> str:
     output_list = "\n".join(f"- `{name}`" for name in REQUIRED_OUTPUTS)
     return f"""# Planning Run Prompt
 
-You are producing a manual planning run for the `ai-assembly-line` workflow.
+You are producing a repository-first planning run for the `ai-assembly-line` workflow.
 
 ## Run Slug
 
 `{run_slug}`
 
+## Preconditions
+
+- The product repository is initialized.
+- The requirements/bootstrap PR is merged.
+- `project_workspace.json` and accepted intake/requirements files exist.
+- Repository files, not chat history, are the source of truth.
+
 ## Goal
 
-Convert the rough software idea below into a safe, structured planning artifact set.
+Convert the merged requirements into a safe, structured planning package and proposed planning PR.
 
-Generated outputs are drafts until a human accepts them.
-If the idea implies unsafe automation, botting, account control, live-service interference, or other unsafe behavior, safely reinterpret it into the nearest safe planning-only scope or explicitly reject the unsafe parts.
+Generated outputs are drafts until the planning PR is reviewed and merged.
 
-## Rough Idea
+## Accepted Requirements Reference
 
 {input_idea}
 
 ## Required Output Files
 
-Return exactly these artifact types:
+Return exactly these planning artifact types:
 
 {output_list}
 
+## Deliberate Separation
+
+Do not produce:
+
+- `task_batch_index.json`
+- task batch files
+- `task_backlog.json`
+- task assignments or task claims
+
+Final task decomposition belongs to a fresh Task Splitter context after the planning PR is merged.
+
 ## Output Requirements
 
-- `project_spec.json` must describe the product summary, boundaries, repo split, domain model, frontend screens, backend services, core engine responsibilities, verification tasks, and starter prompts.
-- `repo_plan.json` must define the repo ownership split.
-- `task_backlog.json` must define tasks with owners, dependencies, acceptance criteria, and verification.
-- `agent_prompts.json` must define prompt boundaries tied to the repo split.
-- `slots_db.json` must define role slots and verification requirements.
+- `project_spec.json` describes the accepted product, boundaries, domain model, screens, responsibilities, interfaces, and verification strategy.
+- `repo_plan.json` defines repository/module ownership and allowed areas.
+- `agent_prompts.json` defines role-level boundaries tied to the repo plan.
+- `slots_db.json` defines planned role/lane slots and verification expectations; task readiness may be updated later by Task Splitter.
 
 ## Constraints
 
@@ -75,18 +91,16 @@ Return exactly these artifact types:
 - Do not implement software.
 - Do not add hidden workflow state.
 - Keep outputs human-reviewable and machine-readable.
-- Keep repo targets, task dependencies, prompts, and slots internally consistent.
+- Keep project names, repo targets, role prompts, and slots internally consistent.
+- Preserve unresolved questions rather than inventing answers.
 
 ## Response Format
 
-Return each file in its own fenced code block with the filename immediately above the fence, for example:
+When repository write access is available, write the files to the paths declared by `project_workspace.json`, validate them, and open a planning PR.
 
-`project_spec.json`
-```json
-{{ ... }}
-```
+When repository write access is unavailable, return each file in its own fenced code block with the exact repository-root-relative path immediately above it.
 
-Use valid JSON for all five files.
+Use valid JSON for all four files.
 """
 
 
@@ -101,9 +115,12 @@ def review_template() -> str:
 
 ## Review Notes
 
-- Safety interpretation:
-- Structural validity:
-- Repo/task/prompt/slot coherence:
+- Requirements alignment:
+- Architecture and module boundaries:
+- Repo/prompt/slot coherence:
+- Verification strategy:
+- Open questions:
+- Task decomposition correctly deferred:
 - Reviewer decision rationale:
 """
 
@@ -112,13 +129,15 @@ def outputs_readme() -> str:
     expected = "\n".join(f"- `{name}`" for name in REQUIRED_OUTPUTS)
     return f"""# Outputs
 
-Save the AI-returned planning artifacts for this run in this folder.
+Save the planning artifacts for this run in this folder.
 
 Expected files:
 
 {expected}
 
-Validate them with:
+The final `task_backlog.json` is intentionally not a planning-run output in the normal repository-first workflow.
+
+Validate with:
 
 ```powershell
 python tools\\validate_planning_run.py <path-to-this-folder>
@@ -149,22 +168,22 @@ def main(argv: list[str]) -> int:
     run_dir.mkdir(parents=True, exist_ok=True)
     outputs_dir.mkdir(parents=True, exist_ok=True)
 
-    input_idea_path = run_dir / "input-idea.md"
-    input_status = write_if_missing(input_idea_path, default_input_idea())
-    input_idea = input_idea_path.read_text(encoding="utf-8").strip()
+    input_path = run_dir / "input-idea.md"
+    input_status = write_if_missing(input_path, default_input_idea())
+    accepted_input = input_path.read_text(encoding="utf-8").strip()
 
     planning_prompt_path = run_dir / "planning-run.md"
-    planning_prompt_path.write_text(planning_prompt(run_slug, input_idea).rstrip() + "\n", encoding="utf-8")
+    planning_prompt_path.write_text(planning_prompt(run_slug, accepted_input).rstrip() + "\n", encoding="utf-8")
 
     review_status = write_if_missing(run_dir / "review-notes.md", review_template())
     outputs_status = write_if_missing(outputs_dir / "README.md", outputs_readme())
 
     print(f"RUN DIR   {run_dir.relative_to(ROOT).as_posix()}")
-    print(f"INPUT     {input_status} {input_idea_path.relative_to(ROOT).as_posix()}")
+    print(f"INPUT     {input_status} {input_path.relative_to(ROOT).as_posix()}")
     print(f"PROMPT    updated {planning_prompt_path.relative_to(ROOT).as_posix()}")
     print(f"REVIEW    {review_status} {run_dir.joinpath('review-notes.md').relative_to(ROOT).as_posix()}")
     print(f"OUTPUTS   {outputs_status} {outputs_dir.joinpath('README.md').relative_to(ROOT).as_posix()}")
-    print("NEXT      edit input-idea.md, rerun this script, paste planning-run.md into a web AI, save outputs/, validate, and review")
+    print("NEXT      reference merged requirements, rerun, create planning artifacts, validate, and open a planning PR")
     return 0
 
 
