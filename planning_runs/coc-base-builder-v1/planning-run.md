@@ -1,21 +1,18 @@
 # Planning Run Prompt
 
-You are producing a manual planning run for the `ai-assembly-line` workflow.
+You are producing a repository-first planning run for the `ai-assembly-line` workflow.
 
 ## Run Slug
 
 `coc-base-builder-v1`
 
-## Goal
+## Preconditions
 
-Convert the rough software idea below into a safe, structured planning artifact set.
+- The product repository is initialized.
+- Accepted requirements are the source of truth.
+- Task decomposition is deliberately deferred to a later Task Splitter run.
 
-Generated outputs are drafts until a human accepts them.
-If the idea implies unsafe automation, botting, account control, live-service interference, or other unsafe behavior, safely reinterpret it into the nearest safe planning-only scope or explicitly reject the unsafe parts.
-
-## Rough Idea
-
-# Input Idea
+## Accepted Requirements Reference
 
 Create a safe offline strategy-game base layout planner for players who want to compare and organize defensive layouts outside the game.
 
@@ -24,7 +21,7 @@ The tool should help users:
 - sketch layout ideas on a grid
 - compare tradeoffs between layouts
 - record notes about strengths and weaknesses
-- review planning outputs before any later implementation work
+- review planning outputs before later implementation work
 
 Safety and scope requirements:
 
@@ -38,37 +35,34 @@ Safety and scope requirements:
 
 ## Required Output Files
 
-Return exactly these artifact types:
-
 - `project_spec.json`
 - `repo_plan.json`
-- `task_backlog.json`
 - `agent_prompts.json`
 - `slots_db.json`
 
+## Deliberate Separation
+
+Do not produce `task_batch_index.json`, task batch files, or `task_backlog.json`.
+
+After the planning package is reviewed and merged, a fresh Task Splitter context should create the implementation tasks in a separate PR.
+
 ## Output Requirements
 
-- `project_spec.json` must describe the product summary, boundaries, repo split, domain model, frontend screens, backend services, core engine responsibilities, verification tasks, and starter prompts.
-- `repo_plan.json` must define the repo ownership split.
-- `task_backlog.json` must define tasks with owners, dependencies, acceptance criteria, and verification.
-- `agent_prompts.json` must define prompt boundaries tied to the repo split.
-- `slots_db.json` must define role slots and verification requirements.
+- `project_spec.json` defines the accepted product, boundaries, domain model, screens, responsibilities, interfaces, and verification.
+- `repo_plan.json` defines repository/module ownership.
+- `agent_prompts.json` defines role-level prompt boundaries tied to the repo plan.
+- `slots_db.json` defines planned role/lane slots and verification expectations.
 
 ## Constraints
 
 - Produce planning artifacts only.
 - Do not implement software.
 - Do not add hidden workflow state.
-- Keep outputs human-reviewable and machine-readable.
-- Keep repo targets, task dependencies, prompts, and slots internally consistent.
+- Keep project names, repo targets, prompts, and slots internally consistent.
+- Preserve unresolved questions rather than inventing answers.
 
 ## Response Format
 
-Return each file in its own fenced code block with the filename immediately above the fence, for example:
+Return each file in its own fenced JSON block with the filename immediately above it.
 
-`project_spec.json`
-```json
-{ ... }
-```
-
-Use valid JSON for all five files.
+Use valid JSON for all four files.
