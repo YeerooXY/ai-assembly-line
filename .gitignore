@@ -11,6 +11,11 @@ venv/
 .env
 .env.*
 
+# Local scratch/generated experiments
+# Canonical task state lives under generated/task_backlog.json,
+# generated/collaboration_state.json, and generated/task_runs/.
+tasks_created.json
+
 # OS/editor noise
 .DS_Store
 Thumbs.db
