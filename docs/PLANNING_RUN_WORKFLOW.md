@@ -1,71 +1,88 @@
 # Planning Run Workflow
 
-This repository supports a repeatable manual planning-run workflow for turning a rough software idea into structured planning artifacts.
+A planning run converts merged project requirements into a reviewable planning package inside the product repository.
 
-## Workflow
+It does not start from a rough idea and it does not own the final executable task backlog in the normal guided workflow.
 
-1. Create a planning run folder:
+## Preconditions
 
-   ```powershell
-   python tools\init_planning_run.py <run-slug>
-   ```
+Planning may start when:
 
-2. Open `planning_runs/<run-slug>/input-idea.md` and write or paste the rough idea.
-3. Run the initializer again to refresh `planning_runs/<run-slug>/planning-run.md` with the current idea embedded in the prompt:
+- the product repository exists and is initialized
+- the requirements/bootstrap PR is merged
+- `project_workspace.json` is present
+- the accepted intake and requirements files are present
+- blocking high-risk questions have been resolved or explicitly preserved
 
-   ```powershell
-   python tools\init_planning_run.py <run-slug>
-   ```
-
-4. Copy the generated prompt from `planning_runs/<run-slug>/planning-run.md`.
-5. Paste that prompt into a web AI or Codex-style tool.
-6. Save the returned planning artifacts into `planning_runs/<run-slug>/outputs/`.
-7. Validate the saved outputs:
-
-   ```powershell
-   python tools\validate_planning_run.py planning_runs\<run-slug>
-   ```
-
-8. Review the artifacts and mark them accepted or rejected in `planning_runs/<run-slug>/review-notes.md`.
-
-## Human-In-The-Loop Rules
-
-- Generated outputs are drafts until a human accepts them.
-- Unsafe automation-oriented ideas must be safely reinterpreted into the nearest safe planning-only scope or explicitly rejected.
-- This workflow does not call AI APIs, run autonomous agents, or implement the planned software.
-- The workflow is file-based and intended for manual review and acceptance.
-
-## Required Planning Artifacts
-
-Every planning run must produce the same artifact types:
-
-- `project_spec.json`
-- `repo_plan.json`
-- `task_backlog.json`
-- `agent_prompts.json`
-- `slots_db.json`
-
-## Expected Run Folder Layout
+## Repository-first flow
 
 ```text
-planning_runs/<run-slug>/
-  input-idea.md
-  planning-run.md
-  review-notes.md
-  outputs/
-    project_spec.json
-    repo_plan.json
-    task_backlog.json
-    agent_prompts.json
-    slots_db.json
+merged requirements
+  -> fresh planning context
+  -> inspect repository and accepted intake
+  -> generate planning package
+  -> planning PR
+  -> human review and merge
+  -> task splitting in a fresh context
 ```
 
-## Review Outcome
+The planning agent reads merged files rather than relying on the intake conversation.
+
+## Planning outputs
+
+The normal planning PR should produce:
+
+```text
+assembly/generated/project_spec.json
+assembly/generated/repo_plan.json
+assembly/generated/agent_prompts.json
+assembly/generated/slots_db.json
+assembly/generated/planning_runs_index.json
+assembly/planning_runs/<run-id>/...
+```
+
+The planning package should define:
+
+- accepted product interpretation
+- MVP and non-goals
+- architecture and module boundaries
+- repository/file ownership
+- shared contracts and interfaces
+- screens and user flows
+- verification strategy
+- implementation lanes and roles
+- assumptions and open questions
+
+## Deliberate task-backlog separation
+
+For the default guided flow, planning does not generate the final `task_backlog.json`.
+
+Large plans may exceed a comfortable web-AI context or response size. After the planning PR is merged, a fresh Task Splitter conversation reads the accepted planning package and creates task batches plus the canonical backlog in a separate PR.
+
+A small project may explicitly choose a combined planning-and-task PR, but that is an optimization, not the default.
+
+## Planning PR
+
+The planning stage should create a branch and open a PR in the selected product repository.
+
+The PR description should include:
+
+- accepted requirements source
+- architecture summary
+- major repository/module boundaries
+- unresolved questions or blockers
+- verification strategy
+- confirmation that task decomposition is intentionally deferred
+
+Generated planning artifacts remain drafts until this PR is reviewed and merged.
+
+## Review outcome
 
 Reviewers should confirm:
 
-- the rough idea was interpreted safely
-- the artifact set is structurally valid
-- repo targets and task dependencies are coherent
-- prompts and slots align with the proposed repo split
-- the plan is useful enough to accept, revise, or reject
+- the plan matches merged requirements
+- architecture and repository ownership are coherent
+- shared interfaces are defined before parallel implementation
+- verification is concrete
+- open questions are visible
+- the plan is sufficient for a separate task-splitting run

@@ -22,7 +22,7 @@ GENERATED_KEYS = {
     "slots_db",
     "task_runs_dir",
 }
-ACTIVE_GENERATED_FILES = {
+GENERATED_FILE_KEYS = {
     "project_spec",
     "repo_plan",
     "task_backlog",
@@ -31,6 +31,10 @@ ACTIVE_GENERATED_FILES = {
     "agent_prompts",
     "slots_db",
 }
+WORKFLOW_MODES = {"repository_first", "central_registry", "planning_only"}
+STATE_SOURCES = {"merged_artifacts_and_pull_requests", "local_files", "manual"}
+CHANGE_BOUNDARIES = {"pull_request", "direct_commit", "manual"}
+REPO_PROVIDERS = {"github", "gitlab", "local_git", "other"}
 
 
 def rel(path: Path) -> str:
@@ -104,43 +108,120 @@ def validate_registry(payload: Any) -> list[dict[str, Any]]:
     return registry["projects"]
 
 
-def validate_workspace(project_root: Path, payload: Any, registry_entry: dict[str, Any]) -> list[str]:
+def validate_repository(repository: Any, label: str) -> None:
+    item = require_keys(
+        repository,
+        label,
+        {"provider", "full_name", "default_branch", "initialized"},
+        {"visibility", "web_url", "implementation_root"},
+    )
+    require(item["provider"] in REPO_PROVIDERS, f"{label}.provider is invalid")
+    require(isinstance(item["full_name"], str) and item["full_name"], f"{label}.full_name must be non-empty")
+    require(isinstance(item["default_branch"], str) and item["default_branch"], f"{label}.default_branch must be non-empty")
+    require(isinstance(item["initialized"], bool), f"{label}.initialized must be boolean")
+    if "implementation_root" in item:
+        require_rel_path(item["implementation_root"], f"{label}.implementation_root")
+
+
+def validate_workflow(workflow: Any, label: str) -> None:
+    item = require_keys(
+        workflow,
+        label,
+        {"mode", "state_source", "change_boundary"},
+        {"requirements_pr", "planning_pr", "task_split_pr"},
+    )
+    require(item["mode"] in WORKFLOW_MODES, f"{label}.mode is invalid")
+    require(item["state_source"] in STATE_SOURCES, f"{label}.state_source is invalid")
+    require(item["change_boundary"] in CHANGE_BOUNDARIES, f"{label}.change_boundary is invalid")
+    for key in ("requirements_pr", "planning_pr", "task_split_pr"):
+        if key in item:
+            require(item[key] in {"separate", "combined", "optional"}, f"{label}.{key} is invalid")
+
+
+def infer_artifact_phase(project_root: Path, generated: dict[str, str], intake: dict[str, str]) -> str:
+    has_intake = (project_root / intake["project_intake"]).is_file()
+    has_plan = all((project_root / generated[key]).is_file() for key in ("project_spec", "repo_plan"))
+    has_tasks = all((project_root / generated[key]).is_file() for key in ("task_batch_index", "task_backlog", "collaboration_state"))
+    if has_tasks:
+        return "execution_ready"
+    if has_plan:
+        return "task_splitting"
+    if has_intake:
+        return "planning"
+    return "requirements"
+
+
+def validate_workspace(project_root: Path, payload: Any, registry_entry: dict[str, Any]) -> tuple[list[str], str]:
     label = registry_entry["workspace_path"]
-    workspace = require_keys(payload, label, {"schema_version", "project_id", "name", "status", "default_view", "paths"}, {"description", "implementation_repos", "ai_guidance"})
+    workspace = require_keys(
+        payload,
+        label,
+        {"schema_version", "project_id", "name", "status", "default_view", "paths"},
+        {"description", "repository", "workflow", "implementation_repos", "ai_guidance"},
+    )
     require(workspace["project_id"] == registry_entry["project_id"], f"{label}.project_id must match registry")
     require(workspace["status"] == registry_entry["status"], f"{label}.status must match registry")
     require(workspace["default_view"] in VIEWS, f"{label}.default_view must be one of {sorted(VIEWS)}")
 
-    paths = require_keys(workspace["paths"], f"{label}.paths", {"generated", "intake", "planning_runs", "context", "prompts", "repos"})
+    if "repository" in workspace:
+        validate_repository(workspace["repository"], f"{label}.repository")
+    if "workflow" in workspace:
+        validate_workflow(workspace["workflow"], f"{label}.workflow")
+
+    paths = require_keys(
+        workspace["paths"],
+        f"{label}.paths",
+        {"generated", "intake", "planning_runs", "context", "prompts"},
+        {"requirements", "contracts", "viewer", "tools", "repos"},
+    )
     generated = require_keys(paths["generated"], f"{label}.paths.generated", GENERATED_KEYS, {"planning_runs_index"})
     for key, value in generated.items():
         require_rel_path(value, f"{label}.paths.generated.{key}")
 
     intake = require_keys(paths["intake"], f"{label}.paths.intake", {"dir", "project_intake"}, {"intake_session"})
     context = require_keys(paths["context"], f"{label}.paths.context", {"dir", "handoff"}, {"repo_notes", "local_setup"})
-    for key, value in {**intake, **context, "planning_runs": paths["planning_runs"], "prompts": paths["prompts"], "repos": paths["repos"]}.items():
+    path_values: dict[str, str] = {**intake, **context, "planning_runs": paths["planning_runs"], "prompts": paths["prompts"]}
+
+    if "requirements" in paths:
+        requirements = require_keys(paths["requirements"], f"{label}.paths.requirements", {"dir", "requirements_doc"})
+        path_values.update(requirements)
+
+    for optional_key in ("contracts", "viewer", "tools", "repos"):
+        if optional_key in paths:
+            path_values[optional_key] = paths[optional_key]
+
+    for key, value in path_values.items():
         require_rel_path(value, f"{label}.paths.{key}")
 
-    warnings: list[str] = []
-    required_dirs = [
-        project_root / "intake",
-        project_root / "planning_runs",
-        project_root / "generated",
+    required_dirs = {
+        project_root / intake["dir"],
+        project_root / paths["planning_runs"],
+        project_root / Path(generated["task_batches_dir"]).parent,
         project_root / generated["task_batches_dir"],
         project_root / generated["task_runs_dir"],
-        project_root / "context",
-        project_root / "prompts",
-        project_root / "repos",
-    ]
+        project_root / context["dir"],
+        project_root / paths["prompts"],
+    }
+    for optional_key in ("requirements", "contracts", "viewer", "tools", "repos"):
+        if optional_key == "requirements" and optional_key in paths:
+            required_dirs.add(project_root / paths[optional_key]["dir"])
+        elif optional_key in paths:
+            required_dirs.add(project_root / paths[optional_key])
+
     for directory in required_dirs:
         require(directory.is_dir(), f"missing workspace directory: {rel(directory)}")
 
-    for key in ACTIVE_GENERATED_FILES:
+    warnings: list[str] = []
+    for key in GENERATED_FILE_KEYS:
         path = project_root / generated[key]
-        if workspace["status"] == "active":
-            require(path.is_file(), f"active workspace missing generated file: {rel(path)}")
-        elif not path.exists():
-            warnings.append(f"WORKSPACE WARN draft workspace missing generated file: {rel(path)}")
+        if not path.exists():
+            warnings.append(f"WORKSPACE WARN artifact not created yet: {rel(path)}")
+
+    if (project_root / generated["task_backlog"]).is_file():
+        for prerequisite in ("project_spec", "repo_plan"):
+            require((project_root / generated[prerequisite]).is_file(), f"task backlog exists before prerequisite: {rel(project_root / generated[prerequisite])}")
+    if (project_root / generated["collaboration_state"]).is_file():
+        require((project_root / generated["task_backlog"]).is_file(), "collaboration state exists before task backlog")
 
     for index, repo in enumerate(workspace.get("implementation_repos", [])):
         repo_label = f"{label}.implementation_repos[{index}]"
@@ -149,7 +230,7 @@ def validate_workspace(project_root: Path, payload: Any, registry_entry: dict[st
         require_rel_path(item["path"], f"{repo_label}.path")
         require(item["kind"] in {"local", "submodule", "external", "monorepo_path"}, f"{repo_label}.kind is invalid")
 
-    return warnings
+    return warnings, infer_artifact_phase(project_root, generated, intake)
 
 
 def main() -> int:
@@ -168,11 +249,12 @@ def main() -> int:
         if not workspace_path.is_file():
             return fail(f"missing workspace manifest: {entry['workspace_path']}")
         try:
-            warnings.extend(validate_workspace(workspace_path.parent, load_json(workspace_path), entry))
+            workspace_warnings, phase = validate_workspace(workspace_path.parent, load_json(workspace_path), entry)
+            warnings.extend(workspace_warnings)
         except Exception as exc:
             return fail(f"workspace_invalid {entry['workspace_path']}: {exc}")
         active += 1 if entry["status"] == "active" else 0
-        print(f"WORKSPACE OK {entry['project_id']} ({entry['status']}) -> {entry['workspace_path']}")
+        print(f"WORKSPACE OK {entry['project_id']} ({entry['status']}, phase={phase}) -> {entry['workspace_path']}")
 
     for warning in warnings:
         print(warning)

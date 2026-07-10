@@ -1,80 +1,75 @@
 # Project Workspaces
 
-The AI Assembly Line supports two project-storage models.
+The recommended workflow for a real product is repository-first.
 
-## Recommended: standalone product repository
-
-Real products should normally keep their own plan and execution state beside their implementation code.
-
-Example:
+## Recommended: product repository owns the project
 
 ```text
-snake--game/
+product-repository/
   project_workspace.json
-
-  assembly/
-    web/
-    contracts/
-    prompts/
-    tools/
-
-    intake/
-    planning_runs/
-    context/
-
-    generated/
-      project_spec.json
-      repo_plan.json
-      task_batch_index.json
-      task_backlog.json
-      collaboration_state.json
-      agent_prompts.json
-      slots_db.json
-      planning_runs_index.json
-
-      task_batches/
-      task_runs/
-
+  README.md
   src/
   tests/
-  assets/
+
+  assembly/
+    intake/
+    requirements/
+    planning_runs/
+    generated/
+    context/
+    prompts/
+    contracts/
+    tools/
+    web/
 ```
 
-The product repository becomes self-contained:
+The product repository owns its accepted requirements, planning artifacts, task decomposition, execution state, implementation, and proof.
+
+The normal lifecycle is:
 
 ```text
-idea
-  -> guided intake
-  -> accepted project files
-  -> task splitting
+create/select repository
+  -> requirements PR
+  -> planning PR
+  -> task-split PR
   -> Dispatch
-  -> implementation changes
-  -> task-run proof
+  -> implementation PRs
 ```
 
-The AI Assembly Line repository remains the reusable factory: schemas, prompts, viewer source, validators, templates, and export/sync tools.
+Merged repository files are the handoff between web-AI tabs and agents. Users should not be asked to copy JSON into arbitrary folders.
+
+See `docs/REPOSITORY_FIRST_LIFECYCLE.md`.
+
+## What `ai-assembly-line` owns
+
+This repository remains the reusable factory:
+
+- prompts and workflow contracts
+- schemas
+- viewer source
+- validation tools
+- project-kit templates
+- future export/sync tooling
+
+It should not gain a new real-project folder every time somebody starts a product.
 
 ## Optional: central registry mode
 
-`projects/` remains available for:
+`projects/` and `projects/index.json` remain supported for:
 
+- framework development and tests
 - seed/demo workspaces
 - monorepos
 - local multi-project dashboards
-- framework development and testing
+- deliberately centralized planning-only work
 
-The registry lives at:
-
-```text
-projects/index.json
-```
-
-A registry workspace looks like:
+A central workspace may still look like:
 
 ```text
 projects/<project-id>/
   project_workspace.json
   intake/
+  requirements/
   planning_runs/
   generated/
   context/
@@ -82,24 +77,15 @@ projects/<project-id>/
   repos/
 ```
 
-Use:
-
-```powershell
-python tools\init_project_workspace.py snake-game --name "Snake Game"
-```
-
-only when a central registry workspace is actually desired.
-
-Do not use the central registry as the default home for every real product. Future guided export tooling should install a versioned `assembly/` kit into the product repository instead.
+Use `tools/init_project_workspace.py` only when central registry mode is actually desired.
 
 ## Core rule
 
 ```text
 humans describe intent
-AI creates structured workspace files
-validators verify them
-the static UI loads them
+AI creates reviewable repository changes
+validators verify artifacts
+pull requests approve durable state
+the static UI reads merged state
 Dispatch launches one task at a time
 ```
-
-Users should not be asked to manually invent paths or move JSON files around.
