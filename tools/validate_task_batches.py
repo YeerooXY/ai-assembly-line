@@ -7,11 +7,15 @@ from pathlib import Path
 from typing import Any
 
 import validate_seed
+from workspace_paths import WorkspacePaths, discover_workspace_paths
 
 
 ROOT = Path(__file__).resolve().parents[1]
-INDEX_PATH = ROOT / "generated" / "task_batch_index.json"
-BATCHES_DIR = ROOT / "generated" / "task_batches"
+
+
+def usage() -> int:
+    print("Usage: python tools/validate_task_batches.py [project_workspace.json]")
+    return 1
 
 
 def load_json(path: Path) -> Any:
@@ -19,14 +23,14 @@ def load_json(path: Path) -> Any:
         return json.load(handle)
 
 
-def rel(path: Path) -> str:
-    return path.relative_to(ROOT).as_posix()
-
-
-def validate_batch_index(index: Any) -> list[str]:
+def validate_batch_index(
+    index: Any,
+    expected_batches_dir: str = "generated/task_batches",
+    label: str = "generated/task_batch_index.json",
+) -> list[str]:
     validate_seed.expect_object_keys(
         index,
-        "generated/task_batch_index.json",
+        label,
         {"schema_version", "source_plan_path", "batching_strategy", "batches"},
     )
     validate_seed.expect_non_empty_string(index["schema_version"], "task_batch_index.schema_version")
@@ -39,13 +43,13 @@ def validate_batch_index(index: Any) -> list[str]:
 
     batch_ids: set[str] = set()
     task_ids: set[str] = set()
-    messages = ["SCHEMA OK   generated/task_batch_index.json -> contracts/task_batch_index.schema.json (builtin)"]
+    messages = [f"SCHEMA OK   {label} -> contracts/task_batch_index.schema.json (builtin)"]
 
     for batch_index, batch in enumerate(index["batches"]):
-        label = f"task_batch_index.batches[{batch_index}]"
+        item_label = f"task_batch_index.batches[{batch_index}]"
         validate_seed.expect_object_keys(
             batch,
-            label,
+            item_label,
             {
                 "batch_id",
                 "owner_role",
@@ -60,38 +64,39 @@ def validate_batch_index(index: Any) -> list[str]:
             },
             {"notes"},
         )
-        validate_seed.expect_non_empty_string(batch["batch_id"], f"{label}.batch_id")
+        validate_seed.expect_non_empty_string(batch["batch_id"], f"{item_label}.batch_id")
         validate_seed.expect(
             batch["batch_id"] not in batch_ids,
-            f"{label}.batch_id must be unique: {batch['batch_id']}",
+            f"{item_label}.batch_id must be unique: {batch['batch_id']}",
         )
         batch_ids.add(batch["batch_id"])
-        validate_seed.expect_non_empty_string(batch["owner_role"], f"{label}.owner_role")
-        validate_seed.expect_string_array(batch["repo_targets"], f"{label}.repo_targets")
-        validate_seed.expect_string_array(batch["lanes"], f"{label}.lanes")
-        validate_seed.expect_string_array(batch["milestones"], f"{label}.milestones")
-        validate_seed.expect_type(batch["expected_task_count"], int, f"{label}.expected_task_count")
-        validate_seed.expect(batch["expected_task_count"] >= 0, f"{label}.expected_task_count must be >= 0")
-        validate_seed.expect_string_array(batch["expected_task_ids"], f"{label}.expected_task_ids")
+        validate_seed.expect_non_empty_string(batch["owner_role"], f"{item_label}.owner_role")
+        validate_seed.expect_string_array(batch["repo_targets"], f"{item_label}.repo_targets")
+        validate_seed.expect_string_array(batch["lanes"], f"{item_label}.lanes")
+        validate_seed.expect_string_array(batch["milestones"], f"{item_label}.milestones")
+        validate_seed.expect_type(batch["expected_task_count"], int, f"{item_label}.expected_task_count")
+        validate_seed.expect(batch["expected_task_count"] >= 0, f"{item_label}.expected_task_count must be >= 0")
+        validate_seed.expect_string_array(batch["expected_task_ids"], f"{item_label}.expected_task_ids")
         validate_seed.expect(
             len(batch["expected_task_ids"]) == batch["expected_task_count"],
-            f"{label}.expected_task_ids length must match expected_task_count",
+            f"{item_label}.expected_task_ids length must match expected_task_count",
         )
         for task_id in batch["expected_task_ids"]:
             validate_seed.expect(task_id not in task_ids, f"task id appears in multiple batches: {task_id}")
             task_ids.add(task_id)
-        validate_seed.expect_string_array(batch["depends_on_batches"], f"{label}.depends_on_batches")
-        validate_seed.expect_non_empty_string(batch["output_path"], f"{label}.output_path")
+        validate_seed.expect_string_array(batch["depends_on_batches"], f"{item_label}.depends_on_batches")
+        validate_seed.expect_non_empty_string(batch["output_path"], f"{item_label}.output_path")
+        expected_output = f"{expected_batches_dir.rstrip('/')}/{batch['batch_id']}.json"
         validate_seed.expect(
-            batch["output_path"] == f"generated/task_batches/{batch['batch_id']}.json",
-            f"{label}.output_path must be generated/task_batches/{batch['batch_id']}.json",
+            batch["output_path"] == expected_output,
+            f"{item_label}.output_path must be {expected_output}",
         )
         validate_seed.expect(
             batch["status"] in {"planned", "generated", "validated", "accepted", "rejected"},
-            f"{label}.status must be an allowed status",
+            f"{item_label}.status must be an allowed status",
         )
         if "notes" in batch:
-            validate_seed.expect_non_empty_string(batch["notes"], f"{label}.notes")
+            validate_seed.expect_non_empty_string(batch["notes"], f"{item_label}.notes")
 
     for batch_index, batch in enumerate(index["batches"]):
         for dependency in batch["depends_on_batches"]:
@@ -103,8 +108,13 @@ def validate_batch_index(index: Any) -> list[str]:
     return messages
 
 
-def validate_task_batch(path: Path, payload: Any, expected_batch: dict[str, Any]) -> list[str]:
-    label = rel(path)
+def validate_task_batch(
+    path: Path,
+    payload: Any,
+    expected_batch: dict[str, Any],
+    display_path: str | None = None,
+) -> list[str]:
+    label = display_path or path.as_posix()
     validate_seed.expect_object_keys(payload, label, {"schema_version", "batch_id", "source_plan_path", "tasks"})
     validate_seed.expect_non_empty_string(payload["schema_version"], f"{label}.schema_version")
     validate_seed.expect(
@@ -176,7 +186,7 @@ def topological_order(tasks: dict[str, dict[str, Any]]) -> list[str]:
 
 
 def validate_batch_order(index: dict[str, Any], task_to_batch: dict[str, str], tasks: dict[str, dict[str, Any]]) -> list[str]:
-    batch_order = {batch["batch_id"]: index for index, batch in enumerate(index["batches"])}
+    batch_order = {batch["batch_id"]: order for order, batch in enumerate(index["batches"])}
 
     for task_id, task in tasks.items():
         task_batch = task_to_batch[task_id]
@@ -190,64 +200,74 @@ def validate_batch_order(index: dict[str, Any], task_to_batch: dict[str, str], t
     return ["GRAPH OK    batch order respects task dependencies"]
 
 
-def main() -> int:
-    if not INDEX_PATH.is_file():
-        print(f"MISSING FAIL {rel(INDEX_PATH)}")
-        return 1
+def validate_workspace_batches(paths: WorkspacePaths) -> tuple[dict[str, Any], int]:
+    index_path = paths.task_batch_index
+    if not index_path.is_file():
+        raise ValueError(f"missing task batch index: {paths.display(index_path)}")
 
-    try:
-        index = load_json(INDEX_PATH)
-    except Exception as exc:
-        print(f"PARSE FAIL {rel(INDEX_PATH)}: {exc}")
-        return 1
+    index = load_json(index_path)
+    for message in validate_batch_index(
+        index,
+        expected_batches_dir=paths.task_batches_dir_rel,
+        label=paths.display(index_path),
+    ):
+        print(message)
 
-    failures = 0
+    expected_batches = {batch["batch_id"]: batch for batch in index["batches"]}
     all_tasks: dict[str, dict[str, Any]] = {}
     task_to_batch: dict[str, str] = {}
 
-    try:
-        for message in validate_batch_index(index):
+    for batch in index["batches"]:
+        path = paths.resolve_repo_path(batch["output_path"])
+        if batch["status"] == "planned" and not path.exists():
+            print(f"BATCH SKIP  {batch['batch_id']} status=planned output_missing_ok")
+            continue
+
+        validate_seed.expect(path.is_file(), f"missing task batch file: {batch['output_path']}")
+        payload = load_json(path)
+        for message in validate_task_batch(path, payload, batch, paths.display(path)):
             print(message)
 
-        expected_batches = {batch["batch_id"]: batch for batch in index["batches"]}
-        for batch in index["batches"]:
-            path = ROOT / batch["output_path"]
-            if batch["status"] == "planned" and not path.exists():
-                print(f"BATCH SKIP  {batch['batch_id']} status=planned output_missing_ok")
-                continue
+        for task in payload["tasks"]:
+            validate_seed.expect(task["id"] not in all_tasks, f"duplicate task id across batches: {task['id']}")
+            all_tasks[task["id"]] = task
+            task_to_batch[task["id"]] = batch["batch_id"]
 
-            validate_seed.expect(path.is_file(), f"missing task batch file: {batch['output_path']}")
-            payload = load_json(path)
-            for message in validate_task_batch(path, payload, batch):
-                print(message)
-
-            for task in payload["tasks"]:
-                validate_seed.expect(task["id"] not in all_tasks, f"duplicate task id across batches: {task['id']}")
-                all_tasks[task["id"]] = task
-                task_to_batch[task["id"]] = batch["batch_id"]
-
-        for path in sorted(BATCHES_DIR.glob("*.json")):
+    if paths.task_batches_dir.exists():
+        for path in sorted(paths.task_batches_dir.glob("*.json")):
             batch_id = path.stem
-            validate_seed.expect(batch_id in expected_batches, f"unexpected task batch file not in index: {rel(path)}")
+            validate_seed.expect(
+                batch_id in expected_batches,
+                f"unexpected task batch file not in index: {paths.display(path)}",
+            )
 
-        if all_tasks:
-            ordered = topological_order(all_tasks)
-            print(f"GRAPH OK    tasks_topologically_sorted={len(ordered)}")
-            for message in validate_batch_order(index, task_to_batch, all_tasks):
-                print(message)
-        else:
-            print("GRAPH OK    no generated task batches yet")
+    if all_tasks:
+        ordered = topological_order(all_tasks)
+        print(f"GRAPH OK    tasks_topologically_sorted={len(ordered)}")
+        for message in validate_batch_order(index, task_to_batch, all_tasks):
+            print(message)
+    else:
+        print("GRAPH OK    no generated task batches yet")
 
+    return index, len(all_tasks)
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) > 2:
+        return usage()
+
+    explicit_manifest = argv[1] if len(argv) == 2 else None
+    try:
+        paths = discover_workspace_paths(ROOT, explicit_manifest)
+        index, task_count = validate_workspace_batches(paths)
     except Exception as exc:
-        failures += 1
         print(f"RESULT FAIL {exc}")
-
-    if failures:
         return 1
 
-    print(f"RESULT OK   batches={len(index['batches'])} tasks={len(all_tasks)}")
+    mode = "workspace" if paths.manifest_path else "root-seed"
+    print(f"RESULT OK   mode={mode} batches={len(index['batches'])} tasks={task_count}")
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv))
