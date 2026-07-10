@@ -11,37 +11,51 @@ Planning may start when:
 - the product repository exists and is initialized
 - the requirements/bootstrap PR is merged
 - `project_workspace.json` is present
-- the accepted intake and requirements files are present
+- accepted intake and requirements files are present
 - blocking high-risk questions have been resolved or explicitly preserved
 
 ## Repository-first flow
 
 ```text
 merged requirements
-  -> fresh planning context
+  -> fresh Planning Agent context
   -> inspect repository and accepted intake
-  -> generate planning package
+  -> create planning artifacts on a branch
+  -> validate planning run
   -> planning PR
   -> human review and merge
-  -> task splitting in a fresh context
+  -> fresh Task Splitter context
 ```
 
-The planning agent reads merged files rather than relying on the intake conversation.
+The Planning Agent reads merged files rather than relying on the intake conversation.
+
+See:
+
+- `prompts/00-planning-agent.md`
+- `docs/AGENT_PR_WORKFLOW.md`
+- `docs/REPOSITORY_FIRST_LIFECYCLE.md`
 
 ## Planning outputs
 
-The normal planning PR should produce:
+The normal planning run produces:
 
 ```text
-assembly/generated/project_spec.json
-assembly/generated/repo_plan.json
-assembly/generated/agent_prompts.json
-assembly/generated/slots_db.json
-assembly/generated/planning_runs_index.json
-assembly/planning_runs/<run-id>/...
+project_spec.json
+repo_plan.json
+agent_prompts.json
+slots_db.json
 ```
 
-The planning package should define:
+These files are first saved under the planning-run `outputs/` directory for review/validation and then written to the configured workspace paths in the planning PR.
+
+The repository may also update:
+
+```text
+planning_runs_index.json
+planning_runs/<run-id>/...
+```
+
+The planning package defines:
 
 - accepted product interpretation
 - MVP and non-goals
@@ -52,29 +66,66 @@ The planning package should define:
 - verification strategy
 - implementation lanes and roles
 - assumptions and open questions
+- enough guidance for a fresh Task Splitter
 
 ## Deliberate task-backlog separation
 
-For the default guided flow, planning does not generate the final `task_backlog.json`.
+The normal planning run does not require or generate:
 
-Large plans may exceed a comfortable web-AI context or response size. After the planning PR is merged, a fresh Task Splitter conversation reads the accepted planning package and creates task batches plus the canonical backlog in a separate PR.
+```text
+task_batch_index.json
+task_batches/*.json
+task_backlog.json
+```
+
+Large plans may exceed a comfortable web-AI context or response size. After the planning PR is merged, a fresh Task Splitter reads the accepted planning package and creates task batches plus the canonical backlog in a separate PR.
 
 A small project may explicitly choose a combined planning-and-task PR, but that is an optimization, not the default.
 
+## Manual planning-run helper
+
+Create a run scaffold:
+
+```powershell
+python tools\init_planning_run.py <run-id>
+```
+
+Reference the merged requirements in:
+
+```text
+planning_runs/<run-id>/input-idea.md
+```
+
+Refresh the AI-ready prompt by running the initializer again, then use the Planning Agent.
+
+Validate outputs with:
+
+```powershell
+python tools\validate_planning_run.py planning_runs\<run-id>
+```
+
+The validator confirms the four planning artifacts and explicitly does not require `task_backlog.json`.
+
 ## Planning PR
 
-The planning stage should create a branch and open a PR in the selected product repository.
+When repository write access exists, the Planning Agent should create or reuse one branch:
+
+```text
+ai/planning-<run-id>
+```
 
 The PR description should include:
 
 - accepted requirements source
+- planning-run identifier
 - architecture summary
 - major repository/module boundaries
 - unresolved questions or blockers
 - verification strategy
+- validation performed
 - confirmation that task decomposition is intentionally deferred
 
-Generated planning artifacts remain drafts until this PR is reviewed and merged.
+Generated planning artifacts remain drafts until the PR is reviewed and merged.
 
 ## Review outcome
 
@@ -83,6 +134,7 @@ Reviewers should confirm:
 - the plan matches merged requirements
 - architecture and repository ownership are coherent
 - shared interfaces are defined before parallel implementation
+- role prompts and planned slots align with the repo plan
 - verification is concrete
 - open questions are visible
 - the plan is sufficient for a separate task-splitting run
