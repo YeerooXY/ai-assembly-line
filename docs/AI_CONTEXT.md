@@ -12,9 +12,9 @@ This repository exposes a deliberate remote-review context gateway for AI system
 
 ## Remote Review Entry Order
 
-1. Start from `generated/context_pack.md` if it is available.
-2. If `generated/context_pack.md` is unavailable, start from `generated/review_manifest.json`.
-3. Use the manifest to fetch the listed files directly from the repository.
+1. Start from `generated/review_manifest.json`.
+2. Use the manifest to fetch the listed files directly from the repository.
+3. Prefer a real clone whenever possible so generated state and validators can be inspected together.
 
 ## What To Understand First
 

@@ -128,12 +128,6 @@
       "required": true
     },
     {
-      "path": "generated/context_pack.md",
-      "category": "entry-point",
-      "purpose": "Single-file remote review context pack for web-only AI environments. Included as an entry point but skipped for self-embedding during context-pack generation.",
-      "required": false
-    },
-    {
       "path": "generated/project_spec.json",
       "category": "generated-state",
       "purpose": "Canonical machine-readable product spec and frontend screen list, including Dispatch, Assignments, CollaborationState, and TaskRun concepts.",
@@ -539,12 +533,6 @@
       "path": "tools/validate_seed.py",
       "category": "tool",
       "purpose": "Dependency-light validation script for generated JSON, contracts, and traceability consistency.",
-      "required": true
-    },
-    {
-      "path": "tools/build_context_pack.py",
-      "category": "tool",
-      "purpose": "Builds the remote-review context pack from this manifest.",
       "required": true
     },
     {

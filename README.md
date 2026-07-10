@@ -213,9 +213,8 @@ For remote AI or web-only review environments, start with:
 - `docs/AI_CONTEXT.md`
 - `docs/EXTERNAL_REVIEW_PROMPT.md`
 - `generated/review_manifest.json`
-- `generated/context_pack.md`
 
-These files provide broad review context for the current repository state. They are intended to reduce setup friction for web-only review environments, not to imply that one file permanently contains the entire repository.
+These files provide review entry points for the current repository state. The manifest lists the files to inspect directly; the repository no longer maintains a generated single-file context pack.
 
 ## Project Intake
 

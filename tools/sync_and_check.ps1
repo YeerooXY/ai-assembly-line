@@ -67,7 +67,6 @@ Invoke-NativeChecked "Validate seed" { python tools\validate_seed.py }
 Invoke-NativeChecked "Validate task batches" { python tools\validate_task_batches.py }
 Invoke-NativeChecked "Validate collaboration state" { python tools\validate_collaboration_state.py }
 Invoke-NativeChecked "Validate project workspaces" { python tools\validate_project_workspaces.py }
-Invoke-NativeChecked "Check context pack freshness" { python tools\build_context_pack.py --check }
 
 Invoke-NativeChecked "JavaScript syntax checks" {
     Get-ChildItem web -Filter *.js | Sort-Object Name | ForEach-Object {
