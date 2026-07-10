@@ -1,4 +1,9 @@
-import { loadProjectContext, workspaceDisplayPath, workspaceFetchPath } from "./project-workspace.js";
+import {
+  isWorkspaceContext,
+  loadProjectContext,
+  workspaceDisplayPath,
+  workspaceFetchPath,
+} from "./project-workspace.js";
 
 export const DATA_FILES = {
   projectSpec: "../generated/project_spec.json",
@@ -120,7 +125,7 @@ export function sourceFilesForKeys(requiredKeys, projectContext = null) {
 }
 
 export function sourceFileForExtra(path, projectContext = null) {
-  if (projectContext?.mode === "project" && path.startsWith("generated/")) {
+  if (isWorkspaceContext(projectContext) && path.startsWith("generated/")) {
     return workspaceDisplayPath(projectContext, path);
   }
 
@@ -128,7 +133,7 @@ export function sourceFileForExtra(path, projectContext = null) {
 }
 
 export function dataFileFetchPath(key, projectContext = null) {
-  if (projectContext?.mode === "project") {
+  if (isWorkspaceContext(projectContext)) {
     const workspacePath = workspaceGeneratedPath(key, projectContext);
     if (workspacePath) {
       return workspaceFetchPath(projectContext, workspacePath);
@@ -139,7 +144,7 @@ export function dataFileFetchPath(key, projectContext = null) {
 }
 
 export function dataFileDisplayPath(key, projectContext = null) {
-  if (projectContext?.mode === "project") {
+  if (isWorkspaceContext(projectContext)) {
     const workspacePath = workspaceGeneratedPath(key, projectContext);
     if (workspacePath) {
       return workspaceDisplayPath(projectContext, workspacePath);
