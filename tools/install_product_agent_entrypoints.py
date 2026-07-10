@@ -7,12 +7,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-ENTRYPOINT_PATHS = (
-    Path("AGENTS.md"),
-    Path(".github/copilot-instructions.md"),
-    Path("assembly/docs/AI_START_HERE.md"),
-)
-
 
 def load_json(path: Path) -> Any:
     with path.open("r", encoding="utf-8") as handle:
@@ -176,6 +170,24 @@ def install(target: Path, workspace: dict[str, Any], *, force: bool) -> list[str
 
 
 def check(target: Path, workspace: dict[str, Any]) -> list[str]:
+    markers_by_path = {
+        Path("AGENTS.md"): (
+            "ask exactly one",
+            "Then stop",
+            "Chat is temporary",
+        ),
+        Path(".github/copilot-instructions.md"): (
+            "ask exactly one question per turn",
+            "stop after the question",
+            "Do not invent the complete MVP",
+        ),
+        Path("assembly/docs/AI_START_HERE.md"): (
+            "ask exactly one high-impact question per turn",
+            "Stop immediately after the one question",
+            "A fresh tab reloads context",
+        ),
+    }
+
     errors: list[str] = []
     checked: list[str] = []
     for relative, expected in expected_files(workspace).items():
@@ -184,11 +196,7 @@ def check(target: Path, workspace: dict[str, Any]) -> list[str]:
             errors.append(f"missing product AI entrypoint: {relative.as_posix()}")
             continue
         actual = path.read_text(encoding="utf-8")
-        for marker in (
-            "ask exactly one",
-            "Then stop",
-            "Chat is temporary",
-        ):
+        for marker in markers_by_path[relative]:
             if marker not in actual:
                 errors.append(f"{relative.as_posix()} missing marker: {marker}")
         if relative == Path("AGENTS.md") and workspace["name"] not in actual:
