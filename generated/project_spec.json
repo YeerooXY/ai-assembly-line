@@ -21,13 +21,13 @@
     "The repository is planning-first and not an autonomous execution runtime.",
     "Human review is required before generated intake or planning artifacts are treated as approved.",
     "Unsafe requests must be rejected or safely reinterpreted into planning-only outputs.",
-    "The initial frontend may render generated state but must not invent intake, task, repo, prompt, slot, planning-run, or contract structure.",
+    "The initial frontend may render generated state but must not invent intake, task, repo, prompt, slot, planning-run, execution, or contract structure.",
     "The phase 0 seed must remain free of authentication, databases, realtime sync, and agent automation."
   ],
   "repo_split": [
     {
       "name": "seed-docs-and-rules",
-      "purpose": "Store the human-readable phase 0 specification, product rules, intake workflow notes, workflow notes, and reusable planning template.",
+      "purpose": "Store the human-readable phase 0 specification, product rules, intake workflow notes, workflow notes, execution workflow notes, and reusable planning template.",
       "contains": [
         "PROJECT_SPEC.md",
         "PROJECT_SPEC_TEMPLATE.md",
@@ -38,7 +38,7 @@
     },
     {
       "name": "seed-contracts",
-      "purpose": "Define machine-readable contracts for intake records, project specs, repo plans, tasks, slots, prompts, and future read-only APIs.",
+      "purpose": "Define machine-readable contracts for intake records, project specs, repo plans, tasks, task runs, slots, prompts, file-based collaboration state, and future read-only APIs.",
       "contains": [
         "contracts/project_intake.schema.json",
         "contracts/*.schema.json",
@@ -50,12 +50,14 @@
     },
     {
       "name": "seed-generated-state",
-      "purpose": "Provide canonical generated artifacts and derived planning-run indexes for the current seed repository state.",
+      "purpose": "Provide canonical generated artifacts, file-based execution coordination state, and derived planning-run indexes for the current seed repository state.",
       "contains": [
         "generated/project_spec.json",
         "generated/repo_plan.json",
         "generated/task_backlog.json",
         "generated/task_batch_index.json",
+        "generated/collaboration_state.json",
+        "generated/task_runs/",
         "generated/agent_prompts.json",
         "generated/slots_db.json",
         "generated/planning_runs_index.json"
@@ -67,7 +69,7 @@
     },
     {
       "name": "seed-prompts",
-      "purpose": "Store role-specific prompt source material aligned to the contracts, intake workflow, and current project spec.",
+      "purpose": "Store role-specific prompt source material aligned to the contracts, intake workflow, current project spec, task splitting, and task execution.",
       "contains": [
         "prompts/*.md"
       ],
@@ -83,6 +85,9 @@
         "web/index.html",
         "web/repos.html",
         "web/backlog.html",
+        "web/dispatch.html",
+        "web/assignments.html",
+        "web/task-batches.html",
         "web/prompts.html",
         "web/slots.html",
         "web/planning-runs.html",
@@ -140,7 +145,7 @@
         "starter_prompts"
       ],
       "relations": [
-        "ProjectSpec is produced after intake and drives RepoPlan, Task, AgentPrompt, AgentSlot, and read-only planning-run index artifacts."
+        "ProjectSpec is produced after intake and drives RepoPlan, Task, CollaborationState, TaskRun, AgentPrompt, AgentSlot, and read-only planning-run index artifacts."
       ]
     },
     {
@@ -169,6 +174,41 @@
       ],
       "relations": [
         "Tasks trace back to RepoPlan units and verification goals."
+      ]
+    },
+    {
+      "name": "CollaborationState",
+      "fields": [
+        "schema_version",
+        "workspace_id",
+        "actors",
+        "task_assignments",
+        "task_claims",
+        "artifact_submissions",
+        "reviews",
+        "audit_events"
+      ],
+      "relations": [
+        "CollaborationState overlays assignment, status, notes, and proof references onto the canonical task backlog without becoming frontend-owned mutable state."
+      ]
+    },
+    {
+      "name": "TaskRun",
+      "fields": [
+        "schema_version",
+        "task_id",
+        "run_id",
+        "actor_id",
+        "status",
+        "implementation_summary",
+        "files_changed",
+        "verification",
+        "proof",
+        "blockers",
+        "updated_at"
+      ],
+      "relations": [
+        "TaskRun records one executor completion or blocker report that can be referenced from CollaborationState proof."
       ]
     },
     {
@@ -241,12 +281,30 @@
       "notes": "Static backlog page that renders task cards directly from the generated backlog grouped by repo target."
     },
     {
+      "name": "Dispatch",
+      "renders_from": [
+        "generated/task_backlog.json",
+        "generated/collaboration_state.json",
+        "generated/task_runs/"
+      ],
+      "notes": "Primary static what-can-I-do-next page. Groups tasks by topological dependency wave, colors available/locked/waiting/blocked/done state, and copies one-task execution context for a fresh AI chat."
+    },
+    {
+      "name": "Task Assignments",
+      "renders_from": [
+        "generated/task_backlog.json",
+        "generated/collaboration_state.json",
+        "generated/task_runs/"
+      ],
+      "notes": "Static audit and status page for actors, assignment records, notes, and proof references. It may generate copy/download JSON but does not write state."
+    },
+    {
       "name": "Task Batches",
       "renders_from": [
         "generated/task_batch_index.json",
         "generated/task_batches/"
       ],
-      "notes": "Static task-batches page that renders batch index status, generated batch file readiness, task nodes, and dependency graph checks."
+      "notes": "Static generation and validation page that renders batch index status, generated batch file readiness, task nodes, and dependency graph checks before batch output is merged into the canonical backlog."
     },
     {
       "name": "Prompt Pack",
@@ -275,6 +333,7 @@
         "generated/project_spec.json",
         "generated/task_backlog.json",
         "generated/task_batch_index.json",
+        "generated/collaboration_state.json",
         "generated/agent_prompts.json",
         "generated/slots_db.json",
         "contracts/project_intake.schema.json",
@@ -283,6 +342,7 @@
         "contracts/task.schema.json",
         "contracts/task_batch_index.schema.json",
         "contracts/task_batch.schema.json",
+        "contracts/task_run.schema.json",
         "contracts/slot.schema.json",
         "contracts/agent_prompt.schema.json",
         "contracts/collaboration_state.schema.json",
@@ -322,6 +382,7 @@
     "Maintain contract-first generated artifacts for the seed repository.",
     "Derive planning-run indexes from file-based manual planning runs.",
     "Preserve traceability from product rules to intake, repo plan, tasks, prompts, slots, and planning-run readiness.",
+    "Render Dispatch as a static source-of-truth view that helps humans pick available tasks without adding backend claiming, auth, realtime, or mutable frontend state.",
     "Reject or reinterpret unsafe scope expansion into planning-only outputs.",
     "Support deterministic validation of machine-readable seed artifacts."
   ],
@@ -331,6 +392,7 @@
     "Verify that project intake records conform to contracts/project_intake.schema.json when present.",
     "Verify that the generated artifacts stay aligned with the current phase 0 scope limits.",
     "Verify that future frontend work renders generated state and does not invent hidden models.",
+    "Verify that the Dispatch page derives available, locked, waiting, blocked, and done states from task backlog plus collaboration state only.",
     "Verify that the planning-runs page renders only generated/planning_runs_index.json and does not mutate planning-run folders.",
     "Red-team prompt drift toward automation, auth, persistence, or realtime scope."
   ],

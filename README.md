@@ -2,7 +2,7 @@
 
 `ai-assembly-line` is the seed repository for a human-in-the-loop multi-agent software assembly line.
 
-Its first job is not autonomous execution. Its first job is project decomposition:
+Its first job is not autonomous execution. Its first job is project decomposition and static, file-based coordination:
 
 - rough idea -> guided project intake
 - guided project intake -> structured project specification
@@ -10,6 +10,7 @@ Its first job is not autonomous execution. Its first job is project decompositio
 - repo split -> microtask backlog
 - microtask backlog -> role-specific prompt pack
 - planning artifacts -> verification rules
+- task backlog + collaboration state -> dispatchable one-task execution context
 
 ## Phase 0 Goal
 
@@ -17,7 +18,7 @@ Build the planning kernel and the first "spec compiler":
 
 `rough idea -> safe, structured project specification`
 
-This repository is intentionally limited to intake, planning, contracts, prompts, and read-only presentation scaffolding.
+This repository is intentionally limited to intake, planning, contracts, prompts, file-based execution coordination, and read-only presentation scaffolding.
 
 It does not include:
 
@@ -50,7 +51,10 @@ The source-of-truth layers are:
    - `generated/task_batches/*.json`
    - `generated/agent_prompts.json`
    - `generated/slots_db.json`
-5. Derived planning-run index
+5. File-based execution coordination state
+   - `generated/collaboration_state.json`
+   - `generated/task_runs/*.json`
+6. Derived planning-run index
    - `generated/planning_runs_index.json`
 
 ## Frontend Rule
@@ -76,7 +80,7 @@ The future frontend is allowed to consume only source-of-truth material from:
 - `docs/*.md`
 - `prompts/*.md`
 
-Rule: the frontend must render generated state and must not invent intake, task, repo, prompt, slot, or contract structure.
+Rule: the frontend must render generated state and must not invent intake, task, repo, prompt, slot, execution, or contract structure.
 
 ## Read-Only Viewer
 
@@ -97,11 +101,21 @@ The viewer pages are:
 - `web/index.html`
 - `web/repos.html`
 - `web/backlog.html`
+- `web/dispatch.html`
+- `web/assignments.html`
 - `web/task-batches.html`
 - `web/prompts.html`
 - `web/slots.html`
 - `web/planning-runs.html`
 - `web/verification.html`
+
+Page roles:
+
+- Dispatch is the primary "what can I do next?" page for selecting available tasks and copying one-task execution context.
+- Assignments is the audit/status page for collaboration state, actors, assignment records, and proof references.
+- Task Batches is the generation/validation page for batch-created tasks before they are merged into the canonical backlog.
+
+See `docs/VIEWER_PAGE_ROLES.md` for the detailed page split.
 
 The generated sources remain:
 
@@ -110,6 +124,8 @@ The generated sources remain:
 - `generated/task_backlog.json`
 - `generated/task_batch_index.json`
 - `generated/task_batches/*.json`
+- `generated/collaboration_state.json`
+- `generated/task_runs/*.json`
 - `generated/agent_prompts.json`
 - `generated/slots_db.json`
 - `generated/planning_runs_index.json`
@@ -119,6 +135,8 @@ The viewer displays:
 - project overview
 - repository split and repo ownership
 - task backlog grouped by repo target
+- task dispatch grouped by topological dependency wave, availability, and execution status
+- assignment/audit state for actors, task ownership, notes, and proof references
 - task batch files, copy-paste workflow readiness, task nodes, and dependency graph checks
 - agent prompts
 - slot board
@@ -132,7 +150,8 @@ The viewer intentionally does not do the following yet:
 - authentication
 - realtime sync
 - mutable workflow state
-- frontend-owned intake, task, repo, prompt, slot, planning-run, or contract models
+- direct task claiming or locking
+- frontend-owned intake, task, repo, prompt, slot, planning-run, execution, or contract models
 
 ## Initial Public Surface
 
@@ -145,6 +164,8 @@ It should display:
 - repo split
 - agent roles
 - task backlog
+- dispatchable available-task view
+- assignment/proof status
 - contract files
 - prompt pack
 - task batch index and generated batch files
@@ -159,21 +180,29 @@ It should display:
 - `docs/`: public overview, workflow, intake workflow, roles, task format, verification rules
 - `docs/PROJECT_INTAKE_WORKFLOW.md`: interactive intake workflow for turning rough ideas into structured intake records
 - `docs/EXTERNAL_REVIEW_PROMPT.md`: fresh-clone external reviewer prompt
+- `docs/EXECUTION_WORKFLOW.md`: static file-based task assignment, execution, proof, and review workflow
 - `docs/PLANNING_RUN_WORKFLOW.md`: manual planning-run workflow
 - `docs/TASK_CREATION_GUIDE.md`: generic schema-aligned guide for creating implementation-ready task records
+- `docs/TASK_GENERATION_WORKFLOW.md`: workflow for splitting accepted plans into task batches
+- `docs/VIEWER_PAGE_ROLES.md`: role split for Dispatch, Assignments, and Task Batches viewer pages
 - `contracts/`: schemas and OpenAPI contract
 - `contracts/project_intake.schema.json`: schema for guided project intake records
-- `contracts/collaboration_state.schema.json`: draft schema for future human and web-AI coordination state
+- `contracts/collaboration_state.schema.json`: schema for file-based actors, task assignment state, proof references, and audit events
+- `contracts/task_run.schema.json`: schema for one executor completion/proof report
 - `contracts/task_batch_index.schema.json` and `contracts/task_batch.schema.json`: schemas for copy-paste task generation batches
-- `generated/`: canonical machine-readable planning artifacts for the current seed state
+- `generated/`: canonical machine-readable planning and execution coordination artifacts for the current seed state
+- `generated/collaboration_state.json`: file-based execution ownership, status, notes, and proof overlay for the canonical backlog
+- `generated/task_runs/`: optional detailed per-task executor proof reports
 - `generated/planning_runs_index.json`: derived index of manual planning-run folders and output completeness
 - `examples/coc-base-builder/`: example decomposition for a safe base layout planner
 - `planning_runs/`: manual planning-run folders and review artifacts
 - `prompts/`: copy-paste role prompts and task-splitting prompts, including the intake interviewer
 - `tools/validate_seed.py`: repository JSON validation utility
+- `tools/validate_collaboration_state.py`: validates file-based execution coordination state and task-run references
 - `tools/init_planning_run.py`: manual planning-run folder initializer
 - `tools/validate_planning_run.py`: planning-run output validator
 - `tools/build_planning_runs_index.py`: derives `generated/planning_runs_index.json` from `planning_runs/`
+- `tools/build_task_backlog_from_batches.py`: merges validated task batches into the canonical task backlog
 - `tools/sync_and_check.ps1`: local helper for pulling GitHub-side changes and running validation checks
 - `web/`: static multi-page read-only viewer over generated state
 
@@ -236,6 +265,7 @@ Run:
 
 ```powershell
 python tools/validate_seed.py
+python tools/validate_collaboration_state.py
 ```
 
 Planning run outputs can be validated separately with:
@@ -267,7 +297,7 @@ The static viewer reads contract files directly for the Verification page, but t
 
 ## Current Use
 
-This repository is currently a Phase 0 intake and planning kernel with a static viewer.
+This repository is currently a Phase 0 intake and planning kernel with static file-based dispatch/coordination views.
 
 Start here:
 - `docs/PROJECT_INTAKE_WORKFLOW.md`
@@ -275,11 +305,12 @@ Start here:
 - `PROJECT_SPEC.md`
 - `PRODUCT_RULES.md`
 - `generated/`
-- `web/index.html`
+- `web/dispatch.html`
 
 Run validation:
 
 ```powershell
 python tools\validate_seed.py
 python tools\validate_task_batches.py
+python tools\validate_collaboration_state.py
 ```
