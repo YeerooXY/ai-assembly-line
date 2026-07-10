@@ -1,5 +1,30 @@
 # AI Assembly Line
 
+## AI agent entrypoint — mandatory
+
+When a user presents a rough product idea, **do not begin product design from this README**.
+
+Before replying, read:
+
+1. `AGENTS.md`
+2. `docs/AI_START_HERE.md`
+3. `prompts/08-project-workspace-initializer.md`
+4. `prompts/00-intake-interviewer.md`
+
+When repository state is not established, the first response must contain only:
+
+- a short acknowledgement
+- compact intake status
+- one A/B/C question asking whether the project is greenfield, already has a product repository, or is planning-only
+
+Then stop.
+
+Do not invent a title, MVP, game loop, feature list, stack, architecture, repository layout, or tasks before the corresponding guided answers are accepted.
+
+This first-turn rule takes precedence over all descriptive material below.
+
+## What this repository is
+
 `ai-assembly-line` is a human-in-the-loop framework for turning a software idea into reviewable requirements, a structured plan, parallel-safe tasks, and one-task execution context.
 
 It is the **factory**, not the permanent home of every project.
@@ -25,27 +50,43 @@ merged files are authoritative
 
 A real product keeps its accepted requirements, plans, tasks, execution state, proof, and implementation in its own repository.
 
-This repository keeps reusable:
+This framework keeps reusable:
 
 - schemas
-- guided prompts
+- guided role prompts
 - validators and builders
-- the static read-only viewer
 - repository bootstrap tooling
-- workflow documentation
+- the static read-only viewer
+- lifecycle documentation
+
+## Role routing
+
+Use repository artifacts and PR state to choose the active role:
+
+| State | Active role |
+|---|---|
+| Repository state unknown | Repository Bootstrap Agent |
+| Repository ready, intake incomplete | Intake Interviewer |
+| Requirements PR merged | Planning Agent |
+| Planning PR merged | Task Splitter |
+| Task backlog merged | Dispatch / Task Executor |
+| Framework maintenance request | Normal repository engineering |
+| Repository review request | Remote-review workflow |
+
+See `docs/AI_START_HERE.md` for the mandatory response envelopes and lifecycle gates.
 
 ## Current scope
 
-The framework currently supports:
+The framework supports:
 
-- guided repository selection/readiness
-- guided requirements intake
-- planning artifacts
-- task batching and canonical backlog creation
+- repository selection and readiness checks
+- one-question guided requirements intake
+- requirements/bootstrap PR handoff
+- planning artifacts in a separate planning PR
+- task batching and canonical backlog creation in a separate task-decomposition PR
 - file-based collaboration state
 - one-task Dispatch context
 - static read-only project views
-- repository-first PR handoffs
 
 It does not yet provide:
 
@@ -56,44 +97,45 @@ It does not yet provide:
 - autonomous task claiming
 - background agent orchestration
 
-## Greenfield start
+## Greenfield workflow
 
-### 1. Create or select the product repository
+### 1. Establish repository state
 
-The repository must have:
+The first guided question is:
+
+```text
+A. Greenfield — this project needs a new product repository
+B. Existing repository — a product repository already exists
+C. Planning-only — continue intake without creating a repository yet
+```
+
+The agent must stop after this question on the first turn.
+
+### 2. Verify the product repository
+
+For repository-first execution, the product repository must have:
 
 - an initial commit
 - a default branch
 - branch creation access
 - pull-request access
 
-When the connected agent cannot create repositories, it should guide the user through the exact owner/name/visibility settings and verify the resulting URL.
-
-### 2. Create a bootstrap branch
-
-Example:
-
-```powershell
-git -C ..\my-product checkout -b assembly/bootstrap-my-product
-```
+When the connected agent cannot create repositories, it should provide exact repository settings and then verify the resulting URL.
 
 ### 3. Install the reusable kit
 
-From this repository:
+The agent should perform repository writes itself when possible. When local execution is necessary, it must provide one fully resolved shell-specific copy-paste block with no placeholders, following `prompts/08-project-workspace-initializer.md`.
 
-```powershell
-python tools\bootstrap_product_repository.py `
-  --target ..\my-product `
-  --project-id my-product `
-  --name "My Product" `
-  --repository-full-name owner/my-product `
-  --visibility private
-```
-
-This installs a curated kit under:
+The local installer is:
 
 ```text
-my-product/
+tools/bootstrap_product_repository.py
+```
+
+It creates:
+
+```text
+product-repo/
   project_workspace.json
   assembly/
     kit_manifest.json
@@ -112,7 +154,9 @@ It does not create fake accepted plans or tasks.
 
 ### 4. Complete guided intake
 
-The Repository Bootstrap Agent and Intake Interviewer produce:
+In guided mode, the Intake Interviewer asks exactly one high-impact question per turn. It does not fill in the rest of the MVP automatically.
+
+When blocking questions are answered, the requirements/bootstrap PR contains the accepted requirement state, including:
 
 ```text
 assembly/intake/project_intake.json
@@ -120,18 +164,16 @@ assembly/requirements/REQUIREMENTS.md
 assembly/context/handoff.md
 ```
 
-Then they open the requirements/bootstrap PR.
-
 See:
 
 - `docs/GUIDED_REPOSITORY_BOOTSTRAP.md`
+- `docs/PROJECT_INTAKE_WORKFLOW.md`
 - `prompts/08-project-workspace-initializer.md`
-- `contracts/repository_bootstrap.schema.json`
-- `contracts/project_intake.schema.json`
+- `prompts/00-intake-interviewer.md`
 
 ## Planning stage
 
-After the requirements PR merges, start a fresh Planning Agent context from repository files.
+After the requirements PR merges, start a fresh Planning Agent context from merged repository files.
 
 The planning PR produces:
 
@@ -146,12 +188,7 @@ assembly/planning_runs/<run-id>/
 
 It deliberately does not produce the final task backlog.
 
-See:
-
-- `prompts/00-planning-agent.md`
-- `docs/PLANNING_RUN_WORKFLOW.md`
-- `tools/init_planning_run.py`
-- `tools/validate_planning_run.py`
+See `prompts/00-planning-agent.md` and `docs/PLANNING_RUN_WORKFLOW.md`.
 
 ## Task-decomposition stage
 
@@ -166,30 +203,13 @@ assembly/generated/task_backlog.json
 assembly/generated/collaboration_state.json
 ```
 
-See:
-
-- `prompts/06-task-splitter.md`
-- `docs/TASK_GENERATION_WORKFLOW.md`
-- `tools/validate_task_batches.py`
-- `tools/build_task_backlog_from_batches.py`
+See `prompts/06-task-splitter.md` and `docs/TASK_GENERATION_WORKFLOW.md`.
 
 ## Static viewer
 
-The viewer is read-only and renders repository artifacts rather than inventing workflow state.
+The viewer is read-only and renders committed repository artifacts rather than inventing workflow state.
 
-For this framework repository:
-
-```powershell
-python -m http.server 8000
-```
-
-Open:
-
-```text
-http://localhost:8000/web/
-```
-
-For a bootstrapped product repository:
+Serve a bootstrapped product repository from its root:
 
 ```powershell
 python -m http.server 8000
@@ -201,33 +221,23 @@ Open:
 http://localhost:8000/assembly/web/
 ```
 
-Useful pages include:
-
-- Overview
-- Repository Plan
-- Planning Runs
-- Task Batches
-- Backlog
-- Dispatch
-- Assignments
-- Verification
-
-Pages that require later-stage artifacts will remain incomplete until the corresponding PR is merged.
+Pages that require later-stage artifacts remain incomplete until their owning PR is merged.
 
 ## Repository map
 
 ```text
-contracts/       machine-readable artifact contracts
-docs/            lifecycle and role workflows
-prompts/         guided agent role prompts
-tools/           validators, builders, and bootstrap tooling
-web/             static read-only viewer
-generated/       framework dogfooding state
-planning_runs/   framework planning-run workspace
-projects/        optional registry mode for demos/monorepos only
+AGENTS.md       mandatory repository-aware AI contract
+docs/           lifecycle, routing, and role workflows
+prompts/        guided agent role prompts
+contracts/      machine-readable artifact contracts
+tools/          validators, builders, and bootstrap tooling
+web/            static read-only viewer
+generated/      framework dogfooding state
+planning_runs/  framework planning-run workspace
+projects/       optional demos/monorepo registry mode
 ```
 
-Central `projects/` registry mode remains available for framework development, demos, and monorepos. It is not the normal home for real products.
+Central `projects/` registry mode is not the normal home for real products.
 
 ## Validation
 
@@ -247,10 +257,9 @@ For a bootstrapped product repository, use the copied tools under `assembly/tool
 
 ## Remote review
 
-Start with:
+For explicit repository review, start with:
 
 - `docs/AI_CONTEXT.md`
-- `docs/EXTERNAL_REVIEW_PROMPT.md`
 - `generated/review_manifest.json`
 
-The review manifest is intentionally curated. It lists the workflow-defining files rather than every source file and no longer includes domain-specific demonstration projects.
+For a new product idea, start with `docs/AI_START_HERE.md` instead.
