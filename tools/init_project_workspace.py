@@ -93,6 +93,163 @@ def workspace_json(project_id: str, name: str, status: str, repo_kind: str | Non
     }
 
 
+def project_spec(project_id: str, name: str) -> dict[str, Any]:
+    return {
+        "project_name": name,
+        "product_summary": {
+            "goal": f"Draft workspace for {name}. Replace this placeholder after guided intake and planning.",
+            "users": ["Human coordinator", "Web AI task executor", "Local implementation agent"],
+            "non_goals": [
+                "This placeholder is not an accepted product specification.",
+                "Do not treat generated tasks as complete until planning output replaces this file.",
+            ],
+        },
+        "safety_boundaries": [
+            "Keep work inside this project workspace unless a task explicitly allows another path.",
+            "Do not mark execution work done without accepted proof.",
+        ],
+        "repo_split": [
+            {
+                "name": project_id,
+                "purpose": f"Implementation workspace for {name}.",
+                "contains": [f"projects/{project_id}/repos/{project_id}/"],
+                "depends_on": [],
+            }
+        ],
+        "domain_model": [
+            {
+                "name": "ProjectWorkspace",
+                "fields": ["project_id", "name", "status", "generated_paths"],
+                "relations": ["has task backlog", "has collaboration state", "has task runs"],
+            }
+        ],
+        "frontend_screens": [
+            {
+                "name": "Dispatch",
+                "renders_from": [
+                    f"projects/{project_id}/generated/task_backlog.json",
+                    f"projects/{project_id}/generated/collaboration_state.json",
+                ],
+                "notes": "Primary task pickup screen for this project.",
+            }
+        ],
+        "backend_services": [
+            {
+                "name": "Static project workspace",
+                "responsibility": "Serve project-scoped JSON files to the read-only viewer.",
+                "inputs": [f"projects/{project_id}/project_workspace.json"],
+                "outputs": [f"projects/{project_id}/generated/*.json"],
+            }
+        ],
+        "core_engine_responsibilities": [
+            "Use guided intake and planning to replace placeholder generated files.",
+            "Split accepted planning output into task batches and a canonical task backlog.",
+        ],
+        "verification_tasks": [
+            "Run python tools\\validate_project_workspaces.py.",
+            "Open web/dispatch.html?project=<project_id> from a local static server.",
+        ],
+        "starter_prompts": {
+            "intake_interviewer": "Guide the user from rough idea to a complete project intake record.",
+            "planning_agent": "Create accepted project planning outputs for this workspace.",
+            "contract_steward": "Validate generated JSON files against the project contracts.",
+            "frontend_builder": "Build UI tasks only when explicitly assigned.",
+            "backend_builder": "Build backend tasks only when explicitly assigned.",
+            "core_engine_builder": "Build core logic tasks only when explicitly assigned.",
+            "red_team_verifier": "Review outputs and proof before done status is accepted.",
+        },
+    }
+
+
+def repo_plan(project_id: str, name: str) -> dict[str, Any]:
+    return {
+        "project_name": name,
+        "repos": [
+            {
+                "name": project_id,
+                "purpose": f"Primary implementation workspace for {name}.",
+                "contains": [
+                    f"projects/{project_id}/repos/{project_id}/",
+                    f"projects/{project_id}/generated/",
+                    f"projects/{project_id}/context/",
+                ],
+                "depends_on": [],
+                "excludes": [
+                    "Root generated/ seed state unless a task explicitly targets it.",
+                    "Other projects under projects/.",
+                ],
+            }
+        ],
+    }
+
+
+def agent_prompts(project_id: str, name: str) -> dict[str, Any]:
+    return {
+        "project_name": name,
+        "prompts": [
+            {
+                "prompt_id": f"{project_id}-task-executor",
+                "role": "Task Executor",
+                "target_repo": project_id,
+                "allowed_files": [
+                    f"projects/{project_id}/generated/task_runs/*.json",
+                    f"projects/{project_id}/repos/{project_id}/**/*",
+                    f"projects/{project_id}/context/**/*",
+                ],
+                "forbidden_files": [
+                    "generated/",
+                    "projects/*/generated/",
+                    "contracts/",
+                    "tools/",
+                ],
+                "input_context_required": [
+                    "One selected task JSON",
+                    "Current collaboration_state assignment metadata",
+                    "Dependency proof summaries",
+                    "Expected task_run output path",
+                ],
+                "task_boundaries": [
+                    "Work only on the selected task.",
+                    "Do not broaden scope into other projects or root generated state.",
+                    "Return blocked if dependencies or required context are missing.",
+                ],
+                "output_required": [
+                    f"One JSON object saveable under projects/{project_id}/generated/task_runs/<task_id>.json"
+                ],
+                "verification_required": [
+                    "Returned JSON matches contracts/task_run.schema.json.",
+                    "Proof is included before any work is considered review-ready.",
+                ],
+            }
+        ],
+    }
+
+
+def slots_db(project_id: str) -> list[dict[str, Any]]:
+    return [
+        {
+            "slot_id": f"{project_id}-web-ai-executor",
+            "role": "Task Executor",
+            "status": "planned",
+            "inputs": [
+                "Selected task JSON",
+                "collaboration_state assignment metadata",
+                "dependency proof summaries",
+            ],
+            "outputs": [f"projects/{project_id}/generated/task_runs/<task_id>.json"],
+            "allowed_actions": [
+                "Read selected project workspace files",
+                "Return a task_run JSON report",
+            ],
+            "verification_requirements": [
+                "Task run JSON validates against contracts/task_run.schema.json.",
+                "No unrelated project files are changed.",
+            ],
+            "notes": "Placeholder slot created by the project workspace initializer.",
+        }
+    ]
+
+
 def collaboration_state(project_id: str) -> dict[str, Any]:
     return {
         "schema_version": "0.1.0",
@@ -135,6 +292,22 @@ def task_batch_index() -> dict[str, Any]:
         "source_plan_path": "planning_runs/<run-slug>/outputs/generated-plan.md",
         "batching_strategy": "mixed",
         "batches": [],
+    }
+
+
+def planning_runs_index() -> dict[str, Any]:
+    return {
+        "schema_version": "0.1.0",
+        "generated_by": "tools/init_project_workspace.py",
+        "planning_runs_path": "planning_runs",
+        "required_outputs": [
+            "project_spec.json",
+            "repo_plan.json",
+            "task_backlog.json",
+            "agent_prompts.json",
+            "slots_db.json",
+        ],
+        "runs": [],
     }
 
 
@@ -191,6 +364,11 @@ def create_workspace(args: argparse.Namespace) -> None:
         (root / path).mkdir(parents=True, exist_ok=True)
 
     write_json(root / "project_workspace.json", workspace_json(project_id, args.name, args.status, args.implementation_repo_kind), overwrite=args.force)
+    write_json(root / "generated" / "project_spec.json", project_spec(project_id, args.name), overwrite=args.force)
+    write_json(root / "generated" / "repo_plan.json", repo_plan(project_id, args.name), overwrite=args.force)
+    write_json(root / "generated" / "agent_prompts.json", agent_prompts(project_id, args.name), overwrite=args.force)
+    write_json(root / "generated" / "slots_db.json", slots_db(project_id), overwrite=args.force)
+    write_json(root / "generated" / "planning_runs_index.json", planning_runs_index(), overwrite=args.force)
     write_json(root / "generated" / "collaboration_state.json", collaboration_state(project_id), overwrite=args.force)
     write_json(root / "generated" / "task_batch_index.json", task_batch_index(), overwrite=args.force)
     write_json(root / "generated" / "task_backlog.json", [], overwrite=args.force)
@@ -206,6 +384,7 @@ def create_workspace(args: argparse.Namespace) -> None:
 
     update_registry(project_id, args.name, args.status, force=args.force)
     print(f"CREATED projects/{project_id}/project_workspace.json")
+    print("SEE generated placeholders under projects/{project_id}/generated/")
     print("UPDATED projects/index.json")
     print("NEXT run: python tools\\validate_project_workspaces.py")
 
