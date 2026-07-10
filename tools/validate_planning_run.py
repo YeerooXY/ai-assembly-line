@@ -12,7 +12,6 @@ ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_OUTPUTS = {
     "project_spec.json": "contracts/project_spec.schema.json",
     "repo_plan.json": "contracts/repo_plan.schema.json",
-    "task_backlog.json": "contracts/task.schema.json",
     "agent_prompts.json": "contracts/agent_prompt.schema.json",
     "slots_db.json": "contracts/slot.schema.json",
 }
@@ -26,6 +25,13 @@ def usage() -> int:
 def load_json(path: Path) -> Any:
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
+
+
+def display_path(path: Path) -> str:
+    try:
+        return path.relative_to(ROOT).as_posix()
+    except ValueError:
+        return path.as_posix()
 
 
 def resolve_outputs_dir(path_arg: str) -> Path:
@@ -45,7 +51,7 @@ def validate_required_outputs(outputs_dir: Path) -> int:
     for file_name in REQUIRED_OUTPUTS:
         path = outputs_dir / file_name
         if not path.exists():
-            print(f"MISSING FAIL {path.relative_to(ROOT).as_posix()}")
+            print(f"MISSING FAIL {display_path(path)}")
             missing_count += 1
     return missing_count
 
@@ -62,12 +68,6 @@ def validate_builtin_payloads(outputs_dir: Path, payloads: dict[str, Any]) -> li
     validate_seed.validate_agent_prompt_set(payloads["agent_prompts.json"], f"{outputs_dir.name}/agent_prompts.json")
     messages.append("SCHEMA OK   agent_prompts.json -> contracts/agent_prompt.schema.json (builtin)")
 
-    task_backlog = payloads["task_backlog.json"]
-    validate_seed.expect_type(task_backlog, list, f"{outputs_dir.name}/task_backlog.json")
-    for index, task in enumerate(task_backlog):
-        validate_seed.validate_task(task, f"{outputs_dir.name}/task_backlog.json[{index}]")
-        messages.append(f"SCHEMA OK   task_backlog.json[{index}] -> contracts/task.schema.json (builtin)")
-
     slots_db = payloads["slots_db.json"]
     validate_seed.expect_type(slots_db, list, f"{outputs_dir.name}/slots_db.json")
     for index, slot in enumerate(slots_db):
@@ -82,12 +82,12 @@ def validate_jsonschema_payloads(outputs_dir: Path, payloads: dict[str, Any]) ->
     if jsonschema_module is None:
         return validate_builtin_payloads(outputs_dir, payloads)
 
-    messages: list[str] = []
     schemas = {
         schema_path: load_json(ROOT / schema_path)
         for schema_path in REQUIRED_OUTPUTS.values()
     }
 
+    messages: list[str] = []
     jsonschema_module.validate(payloads["project_spec.json"], schemas["contracts/project_spec.schema.json"])
     messages.append("SCHEMA OK   project_spec.json -> contracts/project_spec.schema.json")
 
@@ -96,12 +96,6 @@ def validate_jsonschema_payloads(outputs_dir: Path, payloads: dict[str, Any]) ->
 
     jsonschema_module.validate(payloads["agent_prompts.json"], schemas["contracts/agent_prompt.schema.json"])
     messages.append("SCHEMA OK   agent_prompts.json -> contracts/agent_prompt.schema.json")
-
-    task_backlog = payloads["task_backlog.json"]
-    validate_seed.expect_type(task_backlog, list, f"{outputs_dir.name}/task_backlog.json")
-    for index, task in enumerate(task_backlog):
-        jsonschema_module.validate(task, schemas["contracts/task.schema.json"])
-        messages.append(f"SCHEMA OK   task_backlog.json[{index}] -> contracts/task.schema.json")
 
     slots_db = payloads["slots_db.json"]
     validate_seed.expect_type(slots_db, list, f"{outputs_dir.name}/slots_db.json")
@@ -115,28 +109,15 @@ def validate_jsonschema_payloads(outputs_dir: Path, payloads: dict[str, Any]) ->
 def run_consistency_checks(payloads: dict[str, Any]) -> list[str]:
     project_spec = payloads["project_spec.json"]
     repo_plan = payloads["repo_plan.json"]
-    task_backlog = payloads["task_backlog.json"]
     agent_prompts = payloads["agent_prompts.json"]
     slots_db = payloads["slots_db.json"]
 
     repo_names = {repo["name"] for repo in repo_plan["repos"]}
-    task_ids = {task["id"] for task in task_backlog}
 
     validate_seed.expect(
         project_spec["project_name"] == repo_plan["project_name"] == agent_prompts["project_name"],
         "project_name must match across project_spec.json, repo_plan.json, and agent_prompts.json",
     )
-
-    for index, task in enumerate(task_backlog):
-        validate_seed.expect(
-            task["repo_target"] in repo_names,
-            f"task_backlog.json[{index}].repo_target must exist in repo_plan.json",
-        )
-        for dependency in task["depends_on"]:
-            validate_seed.expect(
-                dependency in task_ids,
-                f"task_backlog.json[{index}].depends_on must refer to an existing task id: {dependency}",
-            )
 
     for index, prompt in enumerate(agent_prompts["prompts"]):
         validate_seed.expect(
@@ -151,10 +132,9 @@ def run_consistency_checks(payloads: dict[str, Any]) -> list[str]:
             warnings.append(f"CONSISTENCY WARN slot role has no matching prompt role: {slot['role']}")
 
     return [
-        "CONSISTENCY OK project_name aligns across primary artifacts",
-        "CONSISTENCY OK task repo_target values map to repo_plan.json",
-        "CONSISTENCY OK task depends_on values refer to existing task ids",
+        "CONSISTENCY OK project_name aligns across primary planning artifacts",
         "CONSISTENCY OK prompt target_repo values map to repo_plan.json",
+        "SEPARATION OK planning run does not require task_backlog.json",
         *warnings,
     ]
 
@@ -179,46 +159,37 @@ def main(argv: list[str]) -> int:
 
     for file_name in REQUIRED_OUTPUTS:
         path = outputs_dir / file_name
-        rel = path.relative_to(ROOT).as_posix()
         try:
             payloads[file_name] = load_json(path)
-            print(f"JSON OK     {rel}")
+            print(f"JSON OK     {display_path(path)}")
         except json.JSONDecodeError as exc:
             parse_failures += 1
-            print(f"PARSE FAIL {rel}: {exc.msg} (line {exc.lineno}, column {exc.colno})")
+            print(f"PARSE FAIL {display_path(path)}: {exc.msg} (line {exc.lineno}, column {exc.colno})")
         except OSError as exc:
             parse_failures += 1
-            print(f"PARSE FAIL {rel}: {exc}")
+            print(f"PARSE FAIL {display_path(path)}: {exc}")
 
     if parse_failures:
         print(f"RESULT FAIL parse_failures={parse_failures}")
         return 1
 
-    schema_failures = 0
     try:
         for message in validate_jsonschema_payloads(outputs_dir, payloads):
             print(message)
     except Exception as exc:
-        schema_failures += 1
-        print(f"SCHEMA FAIL {outputs_dir.relative_to(ROOT).as_posix()}: {exc}")
-
-    if schema_failures:
-        print(f"RESULT FAIL schema_failures={schema_failures}")
+        print(f"SCHEMA FAIL {display_path(outputs_dir)}: {exc}")
+        print("RESULT FAIL schema_failures=1")
         return 1
 
-    consistency_failures = 0
     try:
         for message in run_consistency_checks(payloads):
             print(message)
     except ValueError as exc:
-        consistency_failures += 1
         print(f"CONSISTENCY FAIL {exc}")
-
-    if consistency_failures:
-        print(f"RESULT FAIL consistency_failures={consistency_failures}")
+        print("RESULT FAIL consistency_failures=1")
         return 1
 
-    print("RESULT OK   planning_run_outputs_valid")
+    print("RESULT OK   planning_run_outputs_valid task_backlog_deferred=true")
     return 0
 
 
