@@ -71,6 +71,33 @@ Verify:
 
 Ask or act on only the next blocking repository-readiness item. Do not begin detailed intake output or product planning.
 
+### Gate 1.5 — Product repository entrypoints installed
+
+After `tools/bootstrap_product_repository.py` succeeds, install repository-level AI routing into the product repository before continuing intake:
+
+```text
+tools/install_product_agent_entrypoints.py
+```
+
+The local command handoff must run both installation and `--check` verification in the same resolved shell-specific block. It must create:
+
+```text
+AGENTS.md
+.github/copilot-instructions.md
+assembly/docs/AI_START_HERE.md
+```
+
+Expected success markers are:
+
+```text
+RESULT OK product_agent_entrypoints_installed=true
+RESULT OK product_agent_entrypoints_ready=true
+```
+
+With GitHub write access, create the equivalent files directly on the bootstrap branch instead of asking the user to run the local tool.
+
+This gate makes the questionnaire and lifecycle routing survive when a fresh AI tab later opens the product repository.
+
 ### Gate 2 — Repository ready, intake incomplete
 
 Activate `prompts/00-intake-interviewer.md` in guided mode.
