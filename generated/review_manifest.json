@@ -4,13 +4,13 @@
     {
       "path": "README.md",
       "category": "root-doc",
-      "purpose": "Repository overview, source-of-truth rules, intake workflow, viewer constraints, validation guidance, and remote AI review links.",
+      "purpose": "Repository overview, source-of-truth rules, intake workflow, Dispatch workflow, viewer constraints, validation guidance, and remote AI review links.",
       "required": true
     },
     {
       "path": "PROJECT_SPEC.md",
       "category": "root-doc",
-      "purpose": "Human-readable phase 0 product specification covering guided intake, planning, and current viewer scope.",
+      "purpose": "Human-readable phase 0 product specification covering guided intake, planning, execution-coordination artifacts, and current viewer scope.",
       "required": true
     },
     {
@@ -28,7 +28,7 @@
     {
       "path": ".gitignore",
       "category": "repo-config",
-      "purpose": "Local noise and generated cache ignore rules for developer workflows.",
+      "purpose": "Local noise and generated cache ignore rules, including local tasks_created.json scratch output.",
       "required": false
     },
     {
@@ -86,6 +86,18 @@
       "required": true
     },
     {
+      "path": "docs/EXECUTION_WORKFLOW.md",
+      "category": "review-doc",
+      "purpose": "File-based execution loop for task assignments, executor prompts, task_run reports, and proof review without backend persistence.",
+      "required": true
+    },
+    {
+      "path": "docs/VIEWER_PAGE_ROLES.md",
+      "category": "review-doc",
+      "purpose": "Dispatch/Assignments/Task Batches page-role split, making Dispatch the primary what-can-I-do-next surface.",
+      "required": true
+    },
+    {
       "path": "docs/TASK_CREATION_GUIDE.md",
       "category": "review-doc",
       "purpose": "Generic schema-aligned guide for creating implementation-ready tasks with ownership, status, priority, proof, edge cases, and non-goals.",
@@ -124,7 +136,7 @@
     {
       "path": "generated/project_spec.json",
       "category": "generated-state",
-      "purpose": "Canonical machine-readable product spec and frontend screen list.",
+      "purpose": "Canonical machine-readable product spec and frontend screen list, including Dispatch, Assignments, CollaborationState, and TaskRun concepts.",
       "required": true
     },
     {
@@ -136,13 +148,25 @@
     {
       "path": "generated/task_backlog.json",
       "category": "generated-state",
-      "purpose": "Canonical task backlog grouped by repo ownership targets.",
+      "purpose": "Canonical task backlog grouped by repo ownership targets and consumed by Dispatch.",
       "required": true
     },
     {
       "path": "generated/task_batch_index.json",
       "category": "generated-state",
       "purpose": "Canonical index for copy-paste task generation batches, including batch order and expected task IDs.",
+      "required": true
+    },
+    {
+      "path": "generated/collaboration_state.json",
+      "category": "generated-state",
+      "purpose": "File-based execution overlay for actors, task assignments, execution status, notes, and proof references.",
+      "required": true
+    },
+    {
+      "path": "generated/task_runs/README.md",
+      "category": "generated-state",
+      "purpose": "Directory note for per-task execution proof reports saved as generated/task_runs/<task_id>.json.",
       "required": true
     },
     {
@@ -212,6 +236,12 @@
       "required": true
     },
     {
+      "path": "contracts/task_run.schema.json",
+      "category": "contract",
+      "purpose": "Schema for one per-task executor completion/proof report saved under generated/task_runs/.",
+      "required": true
+    },
+    {
       "path": "contracts/slot.schema.json",
       "category": "contract",
       "purpose": "Schema for each generated slot board entry.",
@@ -226,7 +256,7 @@
     {
       "path": "contracts/collaboration_state.schema.json",
       "category": "contract",
-      "purpose": "Draft schema for future coordination between humans, web-based AI agents, task claims, artifact submissions, reviews, and audit events.",
+      "purpose": "Schema for file-based coordination state: actors, task assignments, claims, artifact submissions, reviews, proof references, and audit events.",
       "required": true
     },
     {
@@ -280,7 +310,13 @@
     {
       "path": "prompts/06-task-splitter.md",
       "category": "prompt-source",
-      "purpose": "Copy-paste prompt template for converting an accepted generated plan into schema-valid task_backlog.json.",
+      "purpose": "Copy-paste prompt template for converting an accepted generated plan into schema-valid task batches.",
+      "required": true
+    },
+    {
+      "path": "prompts/07-task-executor.md",
+      "category": "prompt-source",
+      "purpose": "Copy-paste prompt template for executing exactly one task and returning a task_run JSON proof report.",
       "required": true
     },
     {
@@ -346,7 +382,7 @@
     {
       "path": "web/README.md",
       "category": "viewer",
-      "purpose": "Static viewer documentation and file:// versus local server usage notes.",
+      "purpose": "Static viewer documentation, page-role split, Dispatch workflow notes, and file:// versus local server usage notes.",
       "required": true
     },
     {
@@ -365,6 +401,18 @@
       "path": "web/backlog.html",
       "category": "viewer",
       "purpose": "Backlog page entry point.",
+      "required": true
+    },
+    {
+      "path": "web/dispatch.html",
+      "category": "viewer",
+      "purpose": "Dispatch page entry point for topological what-can-I-do-next task pickup and execution-context copying.",
+      "required": true
+    },
+    {
+      "path": "web/assignments.html",
+      "category": "viewer",
+      "purpose": "Assignments page entry point for read-only execution ownership, status, notes, and proof review.",
       "required": true
     },
     {
@@ -406,7 +454,7 @@
     {
       "path": "web/viewer-layout.js",
       "category": "viewer",
-      "purpose": "Shared viewer shell, status handling, and reusable rendering helpers.",
+      "purpose": "Shared viewer shell, status handling, navigation, and reusable rendering helpers.",
       "required": true
     },
     {
@@ -425,6 +473,30 @@
       "path": "web/page-backlog.js",
       "category": "viewer",
       "purpose": "Backlog page rendering logic.",
+      "required": true
+    },
+    {
+      "path": "web/page-dispatch.js",
+      "category": "viewer",
+      "purpose": "Dispatch page rendering logic for topological task waves, availability state, task detail, and execution-context copying.",
+      "required": true
+    },
+    {
+      "path": "web/page-dispatch-keyboard.js",
+      "category": "viewer",
+      "purpose": "Keyboard helper that maps Enter/Space on focused dispatch nodes to click activation.",
+      "required": true
+    },
+    {
+      "path": "web/page-assignments.js",
+      "category": "viewer",
+      "purpose": "Assignments page rendering logic for task ownership, execution status, notes, and proof references.",
+      "required": true
+    },
+    {
+      "path": "web/page-assignment-tools.js",
+      "category": "viewer",
+      "purpose": "Static copy/download helper for generated collaboration state and executor prompts without writing files.",
       "required": true
     },
     {
@@ -460,7 +532,7 @@
     {
       "path": "web/viewer.css",
       "category": "viewer",
-      "purpose": "Shared static viewer styles.",
+      "purpose": "Shared static viewer styles, including dispatch state and focus/active styling.",
       "required": true
     },
     {
@@ -488,15 +560,27 @@
       "required": true
     },
     {
+      "path": "tools/build_planning_runs_index.py",
+      "category": "tool",
+      "purpose": "Builds the derived planning-runs index consumed by later read-only review surfaces.",
+      "required": true
+    },
+    {
       "path": "tools/validate_task_batches.py",
       "category": "tool",
       "purpose": "Validates task batch files, task dependency graph references, and topological batch order.",
       "required": true
     },
     {
-      "path": "tools/build_planning_runs_index.py",
+      "path": "tools/build_task_backlog_from_batches.py",
       "category": "tool",
-      "purpose": "Builds the derived planning-runs index consumed by later read-only review surfaces.",
+      "purpose": "Merges validated generated task batches into canonical generated/task_backlog.json while refusing empty-batch overwrites.",
+      "required": true
+    },
+    {
+      "path": "tools/validate_collaboration_state.py",
+      "category": "tool",
+      "purpose": "Validates file-based collaboration state, task assignments, and task run proof reports against the canonical backlog and actor list.",
       "required": true
     },
     {
