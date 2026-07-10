@@ -21,11 +21,19 @@
     },
     "batching_strategy": {
       "type": "string",
-      "enum": ["owner_role", "repo_target", "lane", "milestone", "mixed"]
+      "enum": [
+        "owner_role",
+        "repo_target",
+        "lane",
+        "milestone",
+        "mixed"
+      ]
     },
     "batches": {
       "type": "array",
-      "items": { "$ref": "#/$defs/batch" }
+      "items": {
+        "$ref": "#/$defs/batch"
+      }
     }
   },
   "$defs": {
@@ -55,15 +63,24 @@
         },
         "repo_targets": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 }
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         },
         "lanes": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 }
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         },
         "milestones": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 }
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         },
         "expected_task_count": {
           "type": "integer",
@@ -85,11 +102,17 @@
         },
         "output_path": {
           "type": "string",
-          "pattern": "^generated/task_batches/[a-z0-9][a-z0-9\\-]*\\.json$"
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?:[A-Za-z0-9._-]+/)*task_batches/[a-z0-9][a-z0-9\\-]*\\.json$"
         },
         "status": {
           "type": "string",
-          "enum": ["planned", "generated", "validated", "accepted", "rejected"]
+          "enum": [
+            "planned",
+            "generated",
+            "validated",
+            "accepted",
+            "rejected"
+          ]
         },
         "notes": {
           "type": "string"
