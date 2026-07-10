@@ -1,91 +1,153 @@
 # Task Generation Workflow
 
-Task generation starts only after intake is complete enough for planning.
+Task generation is a separate repository-first lifecycle stage that begins only after the planning PR is reviewed and merged.
 
-The Planning Agent turns an accepted `project_intake.json` into planning artifacts, including a parallel-safe `task_backlog.json`.
+The Planning Agent defines the accepted product, architecture, repository ownership, interfaces, roles, and verification strategy. The Task Splitter converts that merged package into executable task batches and the canonical backlog.
 
 ## Workflow position
 
 ```text
-rough idea
-  -> intake_session.json
-  -> project_intake.json
-  -> planning run
-  -> project_spec.json
-  -> repo_plan.json
-  -> task_backlog.json
-  -> agent_prompts.json
-  -> slots_db.json
+initialized repository
+  -> requirements/bootstrap PR merged
+  -> planning PR merged
+  -> fresh Task Splitter context
+  -> task batch index + batch files on one branch
+  -> validation + canonical task backlog
+  -> task-decomposition PR
+  -> human review and merge
+  -> Dispatch
 ```
 
-Do not generate implementation tasks before the intake record is ready. Open high-risk decisions must remain open questions or blocking tasks instead of being silently assumed.
+The Task Splitter must read merged repository files rather than relying on the planning conversation.
 
-## Inputs
+## Preconditions
 
-Task generation should read:
+Task generation may start when:
 
-- accepted `project_intake.json`, when available
-- `PROJECT_SPEC.md` / `PROJECT_SPEC_TEMPLATE.md`
-- `PRODUCT_RULES.md`
-- `docs/PLANNING_RUN_WORKFLOW.md`
-- `docs/TASK_CREATION_GUIDE.md`
-- `docs/TASK_CARD_FORMAT.md`
-- existing contracts under `contracts/`
-- generated repo plan, if already drafted
-- any existing planning-run notes
+- `project_workspace.json` exists
+- accepted intake and requirements files exist
+- `project_spec.json` exists
+- `repo_plan.json` exists
+- the planning PR is merged
+- repository targets, lanes, interfaces, and verification expectations are sufficiently defined
+
+If these gates are missing, return to the appropriate earlier lifecycle stage. Do not compensate by inventing architecture inside task records.
+
+## Source inputs
+
+Resolve paths through `project_workspace.json`.
+
+Read:
+
+- accepted intake and requirements
+- `project_spec.json`
+- `repo_plan.json`
+- `agent_prompts.json`
+- `slots_db.json`
+- planning-run trace and review notes
+- current repository tree
+- task, batch, collaboration-state, and slot contracts
+- task creation and card-format guidance
+
+Repository files are authoritative.
 
 ## Outputs
 
-A complete planning run should produce or update:
+The task-decomposition branch and PR should produce or update:
 
-- `project_spec.json`
-- `repo_plan.json`
-- `task_backlog.json`
-- `agent_prompts.json`
-- `slots_db.json`
+- configured `task_batch_index.json`
+- every indexed file under the configured task-batches directory
+- configured canonical `task_backlog.json`
+- configured `collaboration_state.json`
+- configured `slots_db.json` when task readiness changes
 
-The task backlog must be traceable to the project spec and repo plan.
+The Task Splitter must not modify accepted requirements or redesign `project_spec.json` / `repo_plan.json`.
 
-For large plans, generate task output in batches rather than one large `task_backlog.json` response. The preferred web AI flow is guided: paste `prompts/06-task-splitter.md` with `MODE: guided`, save the first response as `generated/task_batch_index.json`, then reply `continue` until each `generated/task_batches/<batch_id>.json` file has been emitted.
+## Repository branch workflow
+
+Use one branch for the whole split:
+
+```text
+ai/task-split-<planning-run-id>
+```
+
+For a large plan:
+
+1. create and commit the batch index
+2. generate exactly one next batch per guided continuation
+3. commit each batch to the same branch
+4. update batch statuses
+5. recover from fresh chats by inspecting the branch
+6. validate after all batches exist
+7. build the canonical backlog
+8. update collaboration state and slot readiness
+9. open one task-decomposition PR
+
+The branch is the durable in-progress state. Conversation memory is optional.
+
+## Workspace-relative paths
+
+`project_workspace.json` determines repository-root-relative locations.
+
+For every index entry:
+
+```text
+output_path = <paths.generated.task_batches_dir>/<batch_id>.json
+```
+
+Valid examples include:
+
+```text
+generated/task_batches/frontend.json
+assembly/generated/task_batches/frontend.json
+projects/example/generated/task_batches/frontend.json
+```
+
+The validator checks the configured directory rather than assuming root `generated/`.
 
 ## Generation phases
 
-### 1. Freeze the accepted intake
+### 1. Freeze accepted planning state
 
-Before generating tasks, summarize the accepted decisions:
+Record:
 
-- goal
+- accepted planning source paths
 - MVP boundary
-- platform target
-- stack / engine direction
-- project state: greenfield or existing repo
-- team/agent working style
-- safety boundaries
-- proof required for done
-- open questions
+- repo/module ownership
+- interface-first ordering
+- implementation lanes
+- verification expectations
+- unresolved blockers
 
-If any high-risk answer is still missing, do not pretend it is solved. Either ask intake to continue or create an explicit blocking task.
+If a high-risk product decision is absent from the accepted plan, do not decide it silently.
 
-### 2. Define shared contracts first
+### 2. Create the batch index
 
-For parallel work, generate contract/spec tasks before implementation tasks.
+Group work by owner role, repo target, lane, milestone, or a mixed strategy.
+
+The index should:
+
+- keep batches small enough for one focused web-AI response
+- allocate stable task IDs
+- declare cross-batch dependencies
+- point to exact repository-root-relative batch paths
+- order batches topologically
+
+### 3. Generate shared contracts first
+
+Contract/interface tasks should precede implementation tasks that consume them.
 
 Examples:
 
-- game rules spec
-- API contract
-- WebSocket event contract
-- data model sketch
-- file ownership map
+- game rules contract
+- API or event contract
+- data model
+- file ownership boundary
 - test scenario matrix
 
-This prevents client and backend workers from inventing incompatible assumptions.
+### 4. Generate parallel lanes
 
-### 3. Split work into lanes
-
-Use lanes that let people or agents work in parallel with minimal file overlap.
-
-Common lanes:
+Use lanes that reduce file overlap, such as:
 
 - `shared-contract`
 - `client-ui`
@@ -94,118 +156,95 @@ Common lanes:
 - `tests-verification`
 - `docs-devex`
 
-For a two-worker project, a good default is:
+Prefer a small contract-first layer followed by parallel feature or subsystem work.
 
-```text
-Worker A: client/UI tasks
-Worker B: backend/core-state tasks
-Shared first: contracts, interfaces, test scenarios
+### 5. Make dependencies explicit
+
+Every task must reference prerequisite task IDs.
+
+Dependencies may cross batches, but a task may depend only on a task in the same or an earlier batch.
+
+### 6. Add observable completion proof
+
+Every task needs:
+
+- acceptance criteria
+- verification steps
+- required proof when appropriate
+- explicit non-goals where scope could drift
+
+A task without observable verification is not ready.
+
+### 7. Build the canonical backlog
+
+After every batch validates:
+
+```powershell
+python tools\validate_task_batches.py
+python tools\build_task_backlog_from_batches.py
+python tools\validate_task_batches.py
 ```
 
-Do not split only by technology if the MVP needs vertical slices. Prefer a small number of contract-first tasks, followed by parallel implementation slices.
+In a standalone workspace, the copied tools auto-detect a nearby `project_workspace.json`. An explicit workspace-manifest path may also be supplied.
 
-### 4. Make dependencies explicit
+### 8. Update coordination state
 
-Every task should list its prerequisites by task ID.
+After backlog creation:
 
-Good dependency graph:
+- point collaboration state at the canonical backlog
+- preserve valid actors and history
+- flag stale references
+- do not auto-claim tasks
+- do not mark tasks complete without proof
+- update slot readiness only when justified by task coverage and dependencies
 
-```text
-T-001 Define realtime event contract
-T-002 Implement backend room creation     depends on T-001
-T-003 Implement client room join screen   depends on T-001
-T-004 Verify join-room flow               depends on T-002, T-003
-```
+### 9. Open the PR
 
-Bad dependency graph:
+The task-decomposition PR should summarize:
 
-```text
-T-001 Build backend
-T-002 Build frontend
-T-003 Test everything
-```
+- accepted planning source
+- batching strategy
+- batch and task counts
+- dependency/cycle validation
+- backlog and collaboration-state paths
+- slot changes
+- blockers and post-MVP separation
+- validation results
 
-### 5. Add acceptance criteria and verification
-
-Every task needs observable acceptance criteria and proof of done.
-
-Examples:
-
-- command output
-- passing tests
-- manual flow checklist
-- screenshot or recorded demo
-- contract reference
-- schema validation
-- no forbidden files touched
-
-A task without verification is not ready for assignment.
-
-### 6. Preserve scope boundaries
-
-The backlog must separate:
-
-- MVP tasks
-- post-MVP tasks
-- blocked tasks
-- research/spike tasks
-- explicit non-goals
-
-Do not let future scaling concerns explode the first backlog. Add future-proofing only when it prevents obvious near-term rework.
+The backlog becomes accepted only after merge.
 
 ## Parallel-safe task rules
 
-For each task, ask:
+For each task, confirm:
 
-1. Can one owner complete this without waiting for another unfinished implementation task?
-2. Are dependencies explicit?
-3. Are file/repo boundaries clear?
-4. Can the reviewer verify completion?
-5. Does it avoid silently deciding unresolved intake questions?
+1. one owner can complete it in one focused session
+2. dependencies are explicit
+3. allowed files or repository boundaries are clear
+4. acceptance criteria are observable
+5. verification is concrete
+6. unresolved product decisions are not silently decided
+7. the task does not overlap another task unnecessarily
 
-If the answer is no, split or rewrite the task.
-
-## MVP-first rule
-
-The first backlog should make the smallest playable or useful version real.
-
-For games and realtime apps, prefer this order:
-
-1. shared rules/events contract
-2. minimal backend state loop
-3. minimal client UI loop
-4. one end-to-end playable flow
-5. verification and regression tests
-6. polish and future features
-
-Avoid starting with account systems, matchmaking, skins, analytics, scaling infrastructure, or deployment complexity unless the intake record explicitly requires them for MVP.
+Split or rewrite tasks that fail these checks.
 
 ## Blocking tasks
 
-If planning cannot proceed without a decision, create a blocking task instead of guessing.
+Use a blocking task only when the accepted plan intentionally preserves a decision that must be resolved before downstream work.
 
-Example:
-
-```text
-T-BLOCK-001 Decide deployment target
-Reason: Hosting choice changes backend runtime, environment config, and verification steps.
-Required answer: local-only, LAN, cloud staging, or production hosting.
-```
-
-Blocking tasks should be few. If there are many, intake is not ready.
+If many blocking tasks are required, the planning package is not ready and should be revised instead.
 
 ## Done state
 
-A generated task backlog is ready when:
+Task decomposition is ready for review when:
 
-- every task has a stable ID
-- every task has a lane/owner target
-- dependencies reference valid task IDs
-- MVP tasks are separated from post-MVP tasks
-- shared contract tasks come before parallel implementation work
-- every task has acceptance criteria
-- every task has verification steps
-- open questions are explicit
-- no task requires forbidden scope
-
-For batched generation, the backlog is ready only after every accepted batch validates individually, task IDs/dependencies form an acyclic graph, and batch order is topological.
+- every index batch has its expected file
+- every expected task ID exists exactly once
+- dependencies reference existing tasks
+- the graph is acyclic
+- batch order is topological
+- contract/interface work precedes consumers
+- MVP and post-MVP work are distinguishable
+- every task has acceptance criteria and verification
+- the canonical backlog was generated from validated batches
+- collaboration state references the canonical backlog
+- one complete PR contains the proposed task state
