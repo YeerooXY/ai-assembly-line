@@ -1,0 +1,33 @@
+{
+  "schema_version": "0.1.0",
+  "workspace_id": "ai-assembly-line-seed",
+  "generated_from": "generated/task_backlog.json",
+  "actors": [
+    {
+      "actor_id": "human-nemo",
+      "display_name": "Nemo",
+      "kind": "human",
+      "status": "active",
+      "notes": "Human owner/operator for manual task assignment and review."
+    },
+    {
+      "actor_id": "web-ai-task-executor",
+      "display_name": "Web AI Task Executor",
+      "kind": "web_ai",
+      "status": "active",
+      "notes": "Copy-paste AI executor working from one task JSON at a time."
+    },
+    {
+      "actor_id": "local-ai-codex",
+      "display_name": "Local AI / Codex",
+      "kind": "local_ai",
+      "status": "active",
+      "notes": "Local repo-aware implementation agent."
+    }
+  ],
+  "task_assignments": [],
+  "task_claims": [],
+  "artifact_submissions": [],
+  "reviews": [],
+  "audit_events": []
+}
