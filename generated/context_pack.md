@@ -6,7 +6,7 @@ Treat the Git repository as the only source of truth and do not rely on chat his
 ## `README.md`
 
 - Category: `root-doc`
-- Purpose: Repository overview, source-of-truth rules, intake workflow, viewer constraints, validation guidance, and remote AI review links.
+- Purpose: Repository overview, source-of-truth rules, intake workflow, Dispatch workflow, viewer constraints, validation guidance, and remote AI review links.
 - Required: `true`
 
 ```markdown
@@ -14,7 +14,7 @@ Treat the Git repository as the only source of truth and do not rely on chat his
 
 `ai-assembly-line` is the seed repository for a human-in-the-loop multi-agent software assembly line.
 
-Its first job is not autonomous execution. Its first job is project decomposition:
+Its first job is not autonomous execution. Its first job is project decomposition and static, file-based coordination:
 
 - rough idea -> guided project intake
 - guided project intake -> structured project specification
@@ -22,6 +22,7 @@ Its first job is not autonomous execution. Its first job is project decompositio
 - repo split -> microtask backlog
 - microtask backlog -> role-specific prompt pack
 - planning artifacts -> verification rules
+- task backlog + collaboration state -> dispatchable one-task execution context
 
 ## Phase 0 Goal
 
@@ -29,7 +30,7 @@ Build the planning kernel and the first "spec compiler":
 
 `rough idea -> safe, structured project specification`
 
-This repository is intentionally limited to intake, planning, contracts, prompts, and read-only presentation scaffolding.
+This repository is intentionally limited to intake, planning, contracts, prompts, file-based execution coordination, and read-only presentation scaffolding.
 
 It does not include:
 
@@ -62,7 +63,10 @@ The source-of-truth layers are:
    - `generated/task_batches/*.json`
    - `generated/agent_prompts.json`
    - `generated/slots_db.json`
-5. Derived planning-run index
+5. File-based execution coordination state
+   - `generated/collaboration_state.json`
+   - `generated/task_runs/*.json`
+6. Derived planning-run index
    - `generated/planning_runs_index.json`
 
 ## Frontend Rule
@@ -88,7 +92,7 @@ The future frontend is allowed to consume only source-of-truth material from:
 - `docs/*.md`
 - `prompts/*.md`
 
-Rule: the frontend must render generated state and must not invent intake, task, repo, prompt, slot, or contract structure.
+Rule: the frontend must render generated state and must not invent intake, task, repo, prompt, slot, execution, or contract structure.
 
 ## Read-Only Viewer
 
@@ -109,11 +113,21 @@ The viewer pages are:
 - `web/index.html`
 - `web/repos.html`
 - `web/backlog.html`
+- `web/dispatch.html`
+- `web/assignments.html`
 - `web/task-batches.html`
 - `web/prompts.html`
 - `web/slots.html`
 - `web/planning-runs.html`
 - `web/verification.html`
+
+Page roles:
+
+- Dispatch is the primary "what can I do next?" page for selecting available tasks and copying one-task execution context.
+- Assignments is the audit/status page for collaboration state, actors, assignment records, and proof references.
+- Task Batches is the generation/validation page for batch-created tasks before they are merged into the canonical backlog.
+
+See `docs/VIEWER_PAGE_ROLES.md` for the detailed page split.
 
 The generated sources remain:
 
@@ -122,6 +136,8 @@ The generated sources remain:
 - `generated/task_backlog.json`
 - `generated/task_batch_index.json`
 - `generated/task_batches/*.json`
+- `generated/collaboration_state.json`
+- `generated/task_runs/*.json`
 - `generated/agent_prompts.json`
 - `generated/slots_db.json`
 - `generated/planning_runs_index.json`
@@ -131,6 +147,8 @@ The viewer displays:
 - project overview
 - repository split and repo ownership
 - task backlog grouped by repo target
+- task dispatch grouped by topological dependency wave, availability, and execution status
+- assignment/audit state for actors, task ownership, notes, and proof references
 - task batch files, copy-paste workflow readiness, task nodes, and dependency graph checks
 - agent prompts
 - slot board
@@ -144,7 +162,8 @@ The viewer intentionally does not do the following yet:
 - authentication
 - realtime sync
 - mutable workflow state
-- frontend-owned intake, task, repo, prompt, slot, planning-run, or contract models
+- direct task claiming or locking
+- frontend-owned intake, task, repo, prompt, slot, planning-run, execution, or contract models
 
 ## Initial Public Surface
 
@@ -157,6 +176,8 @@ It should display:
 - repo split
 - agent roles
 - task backlog
+- dispatchable available-task view
+- assignment/proof status
 - contract files
 - prompt pack
 - task batch index and generated batch files
@@ -171,21 +192,29 @@ It should display:
 - `docs/`: public overview, workflow, intake workflow, roles, task format, verification rules
 - `docs/PROJECT_INTAKE_WORKFLOW.md`: interactive intake workflow for turning rough ideas into structured intake records
 - `docs/EXTERNAL_REVIEW_PROMPT.md`: fresh-clone external reviewer prompt
+- `docs/EXECUTION_WORKFLOW.md`: static file-based task assignment, execution, proof, and review workflow
 - `docs/PLANNING_RUN_WORKFLOW.md`: manual planning-run workflow
 - `docs/TASK_CREATION_GUIDE.md`: generic schema-aligned guide for creating implementation-ready task records
+- `docs/TASK_GENERATION_WORKFLOW.md`: workflow for splitting accepted plans into task batches
+- `docs/VIEWER_PAGE_ROLES.md`: role split for Dispatch, Assignments, and Task Batches viewer pages
 - `contracts/`: schemas and OpenAPI contract
 - `contracts/project_intake.schema.json`: schema for guided project intake records
-- `contracts/collaboration_state.schema.json`: draft schema for future human and web-AI coordination state
+- `contracts/collaboration_state.schema.json`: schema for file-based actors, task assignment state, proof references, and audit events
+- `contracts/task_run.schema.json`: schema for one executor completion/proof report
 - `contracts/task_batch_index.schema.json` and `contracts/task_batch.schema.json`: schemas for copy-paste task generation batches
-- `generated/`: canonical machine-readable planning artifacts for the current seed state
+- `generated/`: canonical machine-readable planning and execution coordination artifacts for the current seed state
+- `generated/collaboration_state.json`: file-based execution ownership, status, notes, and proof overlay for the canonical backlog
+- `generated/task_runs/`: optional detailed per-task executor proof reports
 - `generated/planning_runs_index.json`: derived index of manual planning-run folders and output completeness
 - `examples/coc-base-builder/`: example decomposition for a safe base layout planner
 - `planning_runs/`: manual planning-run folders and review artifacts
 - `prompts/`: copy-paste role prompts and task-splitting prompts, including the intake interviewer
 - `tools/validate_seed.py`: repository JSON validation utility
+- `tools/validate_collaboration_state.py`: validates file-based execution coordination state and task-run references
 - `tools/init_planning_run.py`: manual planning-run folder initializer
 - `tools/validate_planning_run.py`: planning-run output validator
 - `tools/build_planning_runs_index.py`: derives `generated/planning_runs_index.json` from `planning_runs/`
+- `tools/build_task_backlog_from_batches.py`: merges validated task batches into the canonical task backlog
 - `tools/sync_and_check.ps1`: local helper for pulling GitHub-side changes and running validation checks
 - `web/`: static multi-page read-only viewer over generated state
 
@@ -248,6 +277,7 @@ Run:
 
 ```powershell
 python tools/validate_seed.py
+python tools/validate_collaboration_state.py
 ```
 
 Planning run outputs can be validated separately with:
@@ -279,7 +309,7 @@ The static viewer reads contract files directly for the Verification page, but t
 
 ## Current Use
 
-This repository is currently a Phase 0 intake and planning kernel with a static viewer.
+This repository is currently a Phase 0 intake and planning kernel with static file-based dispatch/coordination views.
 
 Start here:
 - `docs/PROJECT_INTAKE_WORKFLOW.md`
@@ -287,13 +317,14 @@ Start here:
 - `PROJECT_SPEC.md`
 - `PRODUCT_RULES.md`
 - `generated/`
-- `web/index.html`
+- `web/dispatch.html`
 
 Run validation:
 
 ```powershell
 python tools\validate_seed.py
 python tools\validate_task_batches.py
+python tools\validate_collaboration_state.py
 ```
 
 ```
@@ -301,7 +332,7 @@ python tools\validate_task_batches.py
 ## `PROJECT_SPEC.md`
 
 - Category: `root-doc`
-- Purpose: Human-readable phase 0 product specification covering guided intake, planning, and current viewer scope.
+- Purpose: Human-readable phase 0 product specification covering guided intake, planning, execution-coordination artifacts, and current viewer scope.
 - Required: `true`
 
 ```markdown
@@ -658,7 +689,7 @@ Tasks, prompts, and repo plans must trace back to the current project spec.
 ## `.gitignore`
 
 - Category: `repo-config`
-- Purpose: Local noise and generated cache ignore rules for developer workflows.
+- Purpose: Local noise and generated cache ignore rules, including local tasks_created.json scratch output.
 - Required: `false`
 
 ```
@@ -674,6 +705,11 @@ venv/
 # Local environment/config files
 .env
 .env.*
+
+# Local scratch/generated experiments
+# Canonical task state lives under generated/task_backlog.json,
+# generated/collaboration_state.json, and generated/task_runs/.
+tasks_created.json
 
 # OS/editor noise
 .DS_Store
@@ -1861,6 +1897,124 @@ For batched generation, the backlog is ready only after every accepted batch val
 
 ```
 
+## `docs/EXECUTION_WORKFLOW.md`
+
+- Category: `review-doc`
+- Purpose: File-based execution loop for task assignments, executor prompts, task_run reports, and proof review without backend persistence.
+- Required: `true`
+
+```markdown
+# Execution Workflow
+
+This repo still uses a static, file-based workflow. Execution state is recorded as generated JSON, not as frontend-owned mutable state.
+
+## Source files
+
+- `generated/task_backlog.json` is the canonical task list.
+- `generated/collaboration_state.json` overlays ownership, execution status, notes, and proof references.
+- `contracts/collaboration_state.schema.json` defines actors and task assignment state.
+- `contracts/task_run.schema.json` defines one executor completion report.
+- `generated/task_runs/<task_id>.json` may hold detailed proof for one task execution run.
+
+## Basic loop
+
+1. Pick one task from `generated/task_backlog.json`.
+2. Add or update one `task_assignments` entry in `generated/collaboration_state.json`.
+3. Give the task JSON to `prompts/07-task-executor.md`.
+4. Save the returned report as `generated/task_runs/<task_id>.json` or another stable run file.
+5. Add a short proof reference to the task assignment in `generated/collaboration_state.json`.
+6. Review the proof before treating the task as done.
+
+## Status meanings
+
+- `unclaimed`: no active owner; normally derived when no assignment record exists.
+- `claimed`: an actor has taken responsibility but has not started visible work.
+- `in_progress`: active implementation or verification is underway.
+- `review`: implementation/proof exists and needs review.
+- `done`: accepted proof exists.
+- `blocked`: work cannot safely continue without a decision, dependency, or missing context.
+- `released`: previously claimed work was released back to the pool.
+
+## Validation
+
+Run:
+
+```powershell
+python tools\validate_collaboration_state.py
+```
+
+For generated task batches, build the canonical backlog after every batch validates:
+
+```powershell
+python tools\validate_task_batches.py
+python tools\build_task_backlog_from_batches.py
+```
+
+## Frontend
+
+Open `web/assignments.html` from the static viewer. It renders task ownership and proof from files only. It does not claim, edit, lock, or write state.
+
+```
+
+## `docs/VIEWER_PAGE_ROLES.md`
+
+- Category: `review-doc`
+- Purpose: Dispatch/Assignments/Task Batches page-role split, making Dispatch the primary what-can-I-do-next surface.
+- Required: `true`
+
+```markdown
+# Viewer Page Roles
+
+The static viewer has overlapping pages on purpose, but each page has a different job.
+
+## Primary workflow page
+
+### Dispatch
+
+`web/dispatch.html` is the primary "what can I do next?" page.
+
+Use it to:
+
+- see tasks grouped by topological dependency wave
+- find green/available tasks whose dependencies are done
+- avoid locked, blocked, waiting, and done tasks
+- open one task's detail panel
+- copy the full one-task execution context into a fresh AI chat
+- copy raw task JSON when needed
+
+Dispatch does not claim, lock, edit, or write task state. It only renders source-of-truth files and produces copyable context.
+
+## Audit/status page
+
+### Assignments
+
+`web/assignments.html` is the audit and status page for file-based collaboration state.
+
+Use it to:
+
+- inspect actors
+- inspect assignment records
+- inspect proof references
+- preview/copy/download replacement `generated/collaboration_state.json` through the static helper
+
+Assignments remains file-based. It does not write directly to the repo.
+
+## Generation/validation page
+
+### Task Batches
+
+`web/task-batches.html` is the generation and validation page for batch-created task files.
+
+Use it to:
+
+- inspect `generated/task_batch_index.json`
+- inspect generated batch file readiness
+- validate dependency graph shape before merging task batches into the canonical backlog
+
+Once batches are accepted and merged into `generated/task_backlog.json`, Dispatch becomes the primary page for picking the next task.
+
+```
+
 ## `docs/TASK_CREATION_GUIDE.md`
 
 - Category: `review-doc`
@@ -2435,7 +2589,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
 ## `generated/project_spec.json`
 
 - Category: `generated-state`
-- Purpose: Canonical machine-readable product spec and frontend screen list.
+- Purpose: Canonical machine-readable product spec and frontend screen list, including Dispatch, Assignments, CollaborationState, and TaskRun concepts.
 - Required: `true`
 
 ```json
@@ -2462,13 +2616,13 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     "The repository is planning-first and not an autonomous execution runtime.",
     "Human review is required before generated intake or planning artifacts are treated as approved.",
     "Unsafe requests must be rejected or safely reinterpreted into planning-only outputs.",
-    "The initial frontend may render generated state but must not invent intake, task, repo, prompt, slot, planning-run, or contract structure.",
+    "The initial frontend may render generated state but must not invent intake, task, repo, prompt, slot, planning-run, execution, or contract structure.",
     "The phase 0 seed must remain free of authentication, databases, realtime sync, and agent automation."
   ],
   "repo_split": [
     {
       "name": "seed-docs-and-rules",
-      "purpose": "Store the human-readable phase 0 specification, product rules, intake workflow notes, workflow notes, and reusable planning template.",
+      "purpose": "Store the human-readable phase 0 specification, product rules, intake workflow notes, workflow notes, execution workflow notes, and reusable planning template.",
       "contains": [
         "PROJECT_SPEC.md",
         "PROJECT_SPEC_TEMPLATE.md",
@@ -2479,7 +2633,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     },
     {
       "name": "seed-contracts",
-      "purpose": "Define machine-readable contracts for intake records, project specs, repo plans, tasks, slots, prompts, and future read-only APIs.",
+      "purpose": "Define machine-readable contracts for intake records, project specs, repo plans, tasks, task runs, slots, prompts, file-based collaboration state, and future read-only APIs.",
       "contains": [
         "contracts/project_intake.schema.json",
         "contracts/*.schema.json",
@@ -2491,12 +2645,14 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     },
     {
       "name": "seed-generated-state",
-      "purpose": "Provide canonical generated artifacts and derived planning-run indexes for the current seed repository state.",
+      "purpose": "Provide canonical generated artifacts, file-based execution coordination state, and derived planning-run indexes for the current seed repository state.",
       "contains": [
         "generated/project_spec.json",
         "generated/repo_plan.json",
         "generated/task_backlog.json",
         "generated/task_batch_index.json",
+        "generated/collaboration_state.json",
+        "generated/task_runs/",
         "generated/agent_prompts.json",
         "generated/slots_db.json",
         "generated/planning_runs_index.json"
@@ -2508,7 +2664,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     },
     {
       "name": "seed-prompts",
-      "purpose": "Store role-specific prompt source material aligned to the contracts, intake workflow, and current project spec.",
+      "purpose": "Store role-specific prompt source material aligned to the contracts, intake workflow, current project spec, task splitting, and task execution.",
       "contains": [
         "prompts/*.md"
       ],
@@ -2524,6 +2680,9 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "web/index.html",
         "web/repos.html",
         "web/backlog.html",
+        "web/dispatch.html",
+        "web/assignments.html",
+        "web/task-batches.html",
         "web/prompts.html",
         "web/slots.html",
         "web/planning-runs.html",
@@ -2581,7 +2740,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "starter_prompts"
       ],
       "relations": [
-        "ProjectSpec is produced after intake and drives RepoPlan, Task, AgentPrompt, AgentSlot, and read-only planning-run index artifacts."
+        "ProjectSpec is produced after intake and drives RepoPlan, Task, CollaborationState, TaskRun, AgentPrompt, AgentSlot, and read-only planning-run index artifacts."
       ]
     },
     {
@@ -2610,6 +2769,41 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       ],
       "relations": [
         "Tasks trace back to RepoPlan units and verification goals."
+      ]
+    },
+    {
+      "name": "CollaborationState",
+      "fields": [
+        "schema_version",
+        "workspace_id",
+        "actors",
+        "task_assignments",
+        "task_claims",
+        "artifact_submissions",
+        "reviews",
+        "audit_events"
+      ],
+      "relations": [
+        "CollaborationState overlays assignment, status, notes, and proof references onto the canonical task backlog without becoming frontend-owned mutable state."
+      ]
+    },
+    {
+      "name": "TaskRun",
+      "fields": [
+        "schema_version",
+        "task_id",
+        "run_id",
+        "actor_id",
+        "status",
+        "implementation_summary",
+        "files_changed",
+        "verification",
+        "proof",
+        "blockers",
+        "updated_at"
+      ],
+      "relations": [
+        "TaskRun records one executor completion or blocker report that can be referenced from CollaborationState proof."
       ]
     },
     {
@@ -2682,12 +2876,30 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "notes": "Static backlog page that renders task cards directly from the generated backlog grouped by repo target."
     },
     {
+      "name": "Dispatch",
+      "renders_from": [
+        "generated/task_backlog.json",
+        "generated/collaboration_state.json",
+        "generated/task_runs/"
+      ],
+      "notes": "Primary static what-can-I-do-next page. Groups tasks by topological dependency wave, colors available/locked/waiting/blocked/done state, and copies one-task execution context for a fresh AI chat."
+    },
+    {
+      "name": "Task Assignments",
+      "renders_from": [
+        "generated/task_backlog.json",
+        "generated/collaboration_state.json",
+        "generated/task_runs/"
+      ],
+      "notes": "Static audit and status page for actors, assignment records, notes, and proof references. It may generate copy/download JSON but does not write state."
+    },
+    {
       "name": "Task Batches",
       "renders_from": [
         "generated/task_batch_index.json",
         "generated/task_batches/"
       ],
-      "notes": "Static task-batches page that renders batch index status, generated batch file readiness, task nodes, and dependency graph checks."
+      "notes": "Static generation and validation page that renders batch index status, generated batch file readiness, task nodes, and dependency graph checks before batch output is merged into the canonical backlog."
     },
     {
       "name": "Prompt Pack",
@@ -2716,6 +2928,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "generated/project_spec.json",
         "generated/task_backlog.json",
         "generated/task_batch_index.json",
+        "generated/collaboration_state.json",
         "generated/agent_prompts.json",
         "generated/slots_db.json",
         "contracts/project_intake.schema.json",
@@ -2724,6 +2937,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         "contracts/task.schema.json",
         "contracts/task_batch_index.schema.json",
         "contracts/task_batch.schema.json",
+        "contracts/task_run.schema.json",
         "contracts/slot.schema.json",
         "contracts/agent_prompt.schema.json",
         "contracts/collaboration_state.schema.json",
@@ -2763,6 +2977,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     "Maintain contract-first generated artifacts for the seed repository.",
     "Derive planning-run indexes from file-based manual planning runs.",
     "Preserve traceability from product rules to intake, repo plan, tasks, prompts, slots, and planning-run readiness.",
+    "Render Dispatch as a static source-of-truth view that helps humans pick available tasks without adding backend claiming, auth, realtime, or mutable frontend state.",
     "Reject or reinterpret unsafe scope expansion into planning-only outputs.",
     "Support deterministic validation of machine-readable seed artifacts."
   ],
@@ -2772,6 +2987,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     "Verify that project intake records conform to contracts/project_intake.schema.json when present.",
     "Verify that the generated artifacts stay aligned with the current phase 0 scope limits.",
     "Verify that future frontend work renders generated state and does not invent hidden models.",
+    "Verify that the Dispatch page derives available, locked, waiting, blocked, and done states from task backlog plus collaboration state only.",
     "Verify that the planning-runs page renders only generated/planning_runs_index.json and does not mutate planning-run folders.",
     "Red-team prompt drift toward automation, auth, persistence, or realtime scope."
   ],
@@ -2919,7 +3135,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
 ## `generated/task_backlog.json`
 
 - Category: `generated-state`
-- Purpose: Canonical task backlog grouped by repo ownership targets.
+- Purpose: Canonical task backlog grouped by repo ownership targets and consumed by Dispatch.
 - Required: `true`
 
 ```json
@@ -3085,6 +3301,60 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
   "batching_strategy": "owner_role",
   "batches": []
 }
+
+```
+
+## `generated/collaboration_state.json`
+
+- Category: `generated-state`
+- Purpose: File-based execution overlay for actors, task assignments, execution status, notes, and proof references.
+- Required: `true`
+
+```json
+{
+  "schema_version": "0.1.0",
+  "workspace_id": "ai-assembly-line-seed",
+  "generated_from": "generated/task_backlog.json",
+  "actors": [
+    {
+      "actor_id": "human-nemo",
+      "display_name": "Nemo",
+      "kind": "human",
+      "status": "active",
+      "notes": "Human owner/operator for manual task assignment and review."
+    },
+    {
+      "actor_id": "web-ai-task-executor",
+      "display_name": "Web AI Task Executor",
+      "kind": "web_ai",
+      "status": "active",
+      "notes": "Copy-paste AI executor working from one task JSON at a time."
+    },
+    {
+      "actor_id": "local-ai-codex",
+      "display_name": "Local AI / Codex",
+      "kind": "local_ai",
+      "status": "active",
+      "notes": "Local repo-aware implementation agent."
+    }
+  ],
+  "task_assignments": [],
+  "task_claims": [],
+  "artifact_submissions": [],
+  "reviews": [],
+  "audit_events": []
+}
+
+```
+
+## `generated/task_runs/README.md`
+
+- Category: `generated-state`
+- Purpose: Directory note for per-task execution proof reports saved as generated/task_runs/<task_id>.json.
+- Required: `true`
+
+```markdown
+Task run JSON files can be saved in this directory.
 
 ```
 
@@ -3695,13 +3965,13 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     {
       "path": "README.md",
       "category": "root-doc",
-      "purpose": "Repository overview, source-of-truth rules, intake workflow, viewer constraints, validation guidance, and remote AI review links.",
+      "purpose": "Repository overview, source-of-truth rules, intake workflow, Dispatch workflow, viewer constraints, validation guidance, and remote AI review links.",
       "required": true
     },
     {
       "path": "PROJECT_SPEC.md",
       "category": "root-doc",
-      "purpose": "Human-readable phase 0 product specification covering guided intake, planning, and current viewer scope.",
+      "purpose": "Human-readable phase 0 product specification covering guided intake, planning, execution-coordination artifacts, and current viewer scope.",
       "required": true
     },
     {
@@ -3719,7 +3989,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     {
       "path": ".gitignore",
       "category": "repo-config",
-      "purpose": "Local noise and generated cache ignore rules for developer workflows.",
+      "purpose": "Local noise and generated cache ignore rules, including local tasks_created.json scratch output.",
       "required": false
     },
     {
@@ -3777,6 +4047,18 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "required": true
     },
     {
+      "path": "docs/EXECUTION_WORKFLOW.md",
+      "category": "review-doc",
+      "purpose": "File-based execution loop for task assignments, executor prompts, task_run reports, and proof review without backend persistence.",
+      "required": true
+    },
+    {
+      "path": "docs/VIEWER_PAGE_ROLES.md",
+      "category": "review-doc",
+      "purpose": "Dispatch/Assignments/Task Batches page-role split, making Dispatch the primary what-can-I-do-next surface.",
+      "required": true
+    },
+    {
       "path": "docs/TASK_CREATION_GUIDE.md",
       "category": "review-doc",
       "purpose": "Generic schema-aligned guide for creating implementation-ready tasks with ownership, status, priority, proof, edge cases, and non-goals.",
@@ -3815,7 +4097,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     {
       "path": "generated/project_spec.json",
       "category": "generated-state",
-      "purpose": "Canonical machine-readable product spec and frontend screen list.",
+      "purpose": "Canonical machine-readable product spec and frontend screen list, including Dispatch, Assignments, CollaborationState, and TaskRun concepts.",
       "required": true
     },
     {
@@ -3827,13 +4109,25 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     {
       "path": "generated/task_backlog.json",
       "category": "generated-state",
-      "purpose": "Canonical task backlog grouped by repo ownership targets.",
+      "purpose": "Canonical task backlog grouped by repo ownership targets and consumed by Dispatch.",
       "required": true
     },
     {
       "path": "generated/task_batch_index.json",
       "category": "generated-state",
       "purpose": "Canonical index for copy-paste task generation batches, including batch order and expected task IDs.",
+      "required": true
+    },
+    {
+      "path": "generated/collaboration_state.json",
+      "category": "generated-state",
+      "purpose": "File-based execution overlay for actors, task assignments, execution status, notes, and proof references.",
+      "required": true
+    },
+    {
+      "path": "generated/task_runs/README.md",
+      "category": "generated-state",
+      "purpose": "Directory note for per-task execution proof reports saved as generated/task_runs/<task_id>.json.",
       "required": true
     },
     {
@@ -3903,6 +4197,12 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "required": true
     },
     {
+      "path": "contracts/task_run.schema.json",
+      "category": "contract",
+      "purpose": "Schema for one per-task executor completion/proof report saved under generated/task_runs/.",
+      "required": true
+    },
+    {
       "path": "contracts/slot.schema.json",
       "category": "contract",
       "purpose": "Schema for each generated slot board entry.",
@@ -3917,7 +4217,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     {
       "path": "contracts/collaboration_state.schema.json",
       "category": "contract",
-      "purpose": "Draft schema for future coordination between humans, web-based AI agents, task claims, artifact submissions, reviews, and audit events.",
+      "purpose": "Schema for file-based coordination state: actors, task assignments, claims, artifact submissions, reviews, proof references, and audit events.",
       "required": true
     },
     {
@@ -3971,7 +4271,13 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     {
       "path": "prompts/06-task-splitter.md",
       "category": "prompt-source",
-      "purpose": "Copy-paste prompt template for converting an accepted generated plan into schema-valid task_backlog.json.",
+      "purpose": "Copy-paste prompt template for converting an accepted generated plan into schema-valid task batches.",
+      "required": true
+    },
+    {
+      "path": "prompts/07-task-executor.md",
+      "category": "prompt-source",
+      "purpose": "Copy-paste prompt template for executing exactly one task and returning a task_run JSON proof report.",
       "required": true
     },
     {
@@ -4037,7 +4343,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     {
       "path": "web/README.md",
       "category": "viewer",
-      "purpose": "Static viewer documentation and file:// versus local server usage notes.",
+      "purpose": "Static viewer documentation, page-role split, Dispatch workflow notes, and file:// versus local server usage notes.",
       "required": true
     },
     {
@@ -4056,6 +4362,18 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "path": "web/backlog.html",
       "category": "viewer",
       "purpose": "Backlog page entry point.",
+      "required": true
+    },
+    {
+      "path": "web/dispatch.html",
+      "category": "viewer",
+      "purpose": "Dispatch page entry point for topological what-can-I-do-next task pickup and execution-context copying.",
+      "required": true
+    },
+    {
+      "path": "web/assignments.html",
+      "category": "viewer",
+      "purpose": "Assignments page entry point for read-only execution ownership, status, notes, and proof review.",
       "required": true
     },
     {
@@ -4097,7 +4415,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     {
       "path": "web/viewer-layout.js",
       "category": "viewer",
-      "purpose": "Shared viewer shell, status handling, and reusable rendering helpers.",
+      "purpose": "Shared viewer shell, status handling, navigation, and reusable rendering helpers.",
       "required": true
     },
     {
@@ -4116,6 +4434,30 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "path": "web/page-backlog.js",
       "category": "viewer",
       "purpose": "Backlog page rendering logic.",
+      "required": true
+    },
+    {
+      "path": "web/page-dispatch.js",
+      "category": "viewer",
+      "purpose": "Dispatch page rendering logic for topological task waves, availability state, task detail, and execution-context copying.",
+      "required": true
+    },
+    {
+      "path": "web/page-dispatch-keyboard.js",
+      "category": "viewer",
+      "purpose": "Keyboard helper that maps Enter/Space on focused dispatch nodes to click activation.",
+      "required": true
+    },
+    {
+      "path": "web/page-assignments.js",
+      "category": "viewer",
+      "purpose": "Assignments page rendering logic for task ownership, execution status, notes, and proof references.",
+      "required": true
+    },
+    {
+      "path": "web/page-assignment-tools.js",
+      "category": "viewer",
+      "purpose": "Static copy/download helper for generated collaboration state and executor prompts without writing files.",
       "required": true
     },
     {
@@ -4151,7 +4493,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     {
       "path": "web/viewer.css",
       "category": "viewer",
-      "purpose": "Shared static viewer styles.",
+      "purpose": "Shared static viewer styles, including dispatch state and focus/active styling.",
       "required": true
     },
     {
@@ -4179,15 +4521,27 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "required": true
     },
     {
+      "path": "tools/build_planning_runs_index.py",
+      "category": "tool",
+      "purpose": "Builds the derived planning-runs index consumed by later read-only review surfaces.",
+      "required": true
+    },
+    {
       "path": "tools/validate_task_batches.py",
       "category": "tool",
       "purpose": "Validates task batch files, task dependency graph references, and topological batch order.",
       "required": true
     },
     {
-      "path": "tools/build_planning_runs_index.py",
+      "path": "tools/build_task_backlog_from_batches.py",
       "category": "tool",
-      "purpose": "Builds the derived planning-runs index consumed by later read-only review surfaces.",
+      "purpose": "Merges validated generated task batches into canonical generated/task_backlog.json while refusing empty-batch overwrites.",
+      "required": true
+    },
+    {
+      "path": "tools/validate_collaboration_state.py",
+      "category": "tool",
+      "purpose": "Validates file-based collaboration state, task assignments, and task run proof reports against the canonical backlog and actor list.",
       "required": true
     },
     {
@@ -5099,6 +5453,151 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
 
 ```
 
+## `contracts/task_run.schema.json`
+
+- Category: `contract`
+- Purpose: Schema for one per-task executor completion/proof report saved under generated/task_runs/.
+- Required: `true`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-assembly-line.local/contracts/task_run.schema.json",
+  "title": "TaskRun",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "run_id",
+    "actor_id",
+    "status",
+    "implementation_summary",
+    "files_changed",
+    "verification",
+    "proof",
+    "blockers",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9\\-]*$"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9\\-]*$"
+    },
+    "actor_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9\\-]*$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["review", "done", "blocked", "failed"]
+    },
+    "implementation_summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "files_changed": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/file_change" }
+    },
+    "verification": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/verification_result" }
+    },
+    "proof": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/proof_entry" }
+    },
+    "blockers": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "notes": {
+      "type": "string"
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "$defs": {
+    "file_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "change"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "change": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "verification_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "result"],
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "result": {
+          "type": "string",
+          "enum": ["passed", "failed", "not_run", "manual"]
+        },
+        "output": {
+          "type": "string"
+        }
+      }
+    },
+    "proof_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "summary"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["command_output", "test_output", "screenshot", "log", "file", "manual_note"]
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": ["passed", "failed", "accepted", "needs_review"]
+        },
+        "recorded_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}
+
+```
+
 ## `contracts/slot.schema.json`
 
 - Category: `contract`
@@ -5271,7 +5770,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
 ## `contracts/collaboration_state.schema.json`
 
 - Category: `contract`
-- Purpose: Draft schema for future coordination between humans, web-based AI agents, task claims, artifact submissions, reviews, and audit events.
+- Purpose: Schema for file-based coordination state: actors, task assignments, claims, artifact submissions, reviews, proof references, and audit events.
 - Required: `true`
 
 ```json
@@ -5285,6 +5784,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
     "schema_version",
     "workspace_id",
     "actors",
+    "task_assignments",
     "task_claims",
     "artifact_submissions",
     "reviews",
@@ -5299,9 +5799,17 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9\\-]*$"
     },
+    "generated_from": {
+      "type": "string",
+      "minLength": 1
+    },
     "actors": {
       "type": "array",
       "items": { "$ref": "#/$defs/actor" }
+    },
+    "task_assignments": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/task_assignment" }
     },
     "task_claims": {
       "type": "array",
@@ -5347,6 +5855,74 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         }
       }
     },
+    "task_assignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "status", "updated_at"],
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9\\-]*$"
+        },
+        "assigned_to": {
+          "type": ["string", "null"],
+          "pattern": "^[a-z0-9][a-z0-9\\-]*$"
+        },
+        "assignee_type": {
+          "type": "string",
+          "enum": ["human", "web_ai", "local_ai", "service", "unassigned"]
+        },
+        "assignee_label": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["unclaimed", "claimed", "in_progress", "review", "done", "blocked", "released"]
+        },
+        "claimed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "proof": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/proof_ref" }
+        },
+        "notes": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "proof_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "summary"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["command_output", "test_output", "screenshot", "log", "file", "manual_note", "task_run"]
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "passed", "failed", "accepted", "needs_review"]
+        },
+        "recorded_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
     "task_claim": {
       "type": "object",
       "additionalProperties": false,
@@ -5358,7 +5934,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         },
         "task_id": {
           "type": "string",
-          "pattern": "^[a-z0-9\\-]+$"
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9\\-]*$"
         },
         "actor_id": {
           "type": "string",
@@ -5392,7 +5968,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         },
         "task_id": {
           "type": "string",
-          "pattern": "^[a-z0-9\\-]+$"
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9\\-]*$"
         },
         "actor_id": {
           "type": "string",
@@ -5405,6 +5981,10 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         },
         "summary": {
           "type": "string"
+        },
+        "proof": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/proof_ref" }
         },
         "status": {
           "type": "string",
@@ -5462,7 +6042,7 @@ _Skipped self-embedding to avoid recursive context-pack inclusion._
         },
         "event_type": {
           "type": "string",
-          "enum": ["claim_created", "claim_released", "artifact_submitted", "review_added", "status_changed"]
+          "enum": ["claim_created", "claim_released", "assignment_updated", "artifact_submitted", "review_added", "status_changed"]
         },
         "target_id": {
           "type": "string",
@@ -6477,7 +7057,7 @@ Return a verdict first, then findings. Keep fixes minimal. Do not redesign the r
 ## `prompts/06-task-splitter.md`
 
 - Category: `prompt-source`
-- Purpose: Copy-paste prompt template for converting an accepted generated plan into schema-valid task_backlog.json.
+- Purpose: Copy-paste prompt template for converting an accepted generated plan into schema-valid task batches.
 - Required: `true`
 
 ```markdown
@@ -6752,6 +7332,120 @@ If `MODE: task-batch`, return only the task batch object for `TARGET_BATCH_ID`.
 ## Generated Plan
 
 Paste the accepted generated plan below this line:
+
+```
+
+## `prompts/07-task-executor.md`
+
+- Category: `prompt-source`
+- Purpose: Copy-paste prompt template for executing exactly one task and returning a task_run JSON proof report.
+- Required: `true`
+
+```markdown
+# Task Executor Prompt
+
+You are a Task Executor for the AI Assembly Line workflow.
+
+Your job is to complete exactly one assigned task from a schema-valid task JSON object, then return a small completion report that can be saved as `generated/task_runs/<task_id>.json` and referenced from `generated/collaboration_state.json`.
+
+You are not replanning the project. You are executing one task within its stated boundaries.
+
+## Inputs
+
+The user will provide:
+
+1. One task object from `generated/task_backlog.json` or `generated/task_batches/<batch_id>.json`.
+2. Optional current repository/file context.
+3. Optional assignment metadata from `generated/collaboration_state.json`.
+
+## Hard Rules
+
+- Work only on the provided task.
+- Respect `allowed_areas`, `outputs`, `non_goals`, and `depends_on`.
+- Do not silently implement dependencies that are not part of the task.
+- Do not claim success without proof.
+- If required context is missing, return `status: "blocked"` with a concrete blocker.
+- If implementation is complete but not reviewed, return `status: "review"` unless the user explicitly asks you to mark it done and verification passed.
+- If verification failed, return `status: "failed"` or `status: "blocked"`, not `done`.
+- Keep the output small enough to copy from one code block.
+
+## Execution Steps
+
+1. Read the task JSON.
+2. Confirm the task boundary in your own working context.
+3. Make the smallest implementation that satisfies the acceptance criteria.
+4. Run or describe the verification requested by the task.
+5. Return a task run report matching `contracts/task_run.schema.json`.
+
+## Output Format
+
+Return exactly one fenced `json` code block and no prose outside it.
+
+The top-level JSON value must be one task run object:
+
+```json
+{
+  "schema_version": "0.1.0",
+  "task_id": "TASK-001",
+  "run_id": "TASK-001-run-001",
+  "actor_id": "web-ai-task-executor",
+  "status": "review",
+  "implementation_summary": "Short summary of what was implemented.",
+  "files_changed": [
+    {
+      "path": "path/to/file.ext",
+      "change": "Short description of the change."
+    }
+  ],
+  "verification": [
+    {
+      "command": "command that was run, or manual verification name",
+      "result": "passed",
+      "output": "Important output, shortened if needed."
+    }
+  ],
+  "proof": [
+    {
+      "kind": "command_output",
+      "summary": "Evidence that the task satisfies the acceptance criteria.",
+      "status": "passed"
+    }
+  ],
+  "blockers": [],
+  "notes": "Optional notes for the reviewer.",
+  "updated_at": "2026-07-10T00:00:00Z"
+}
+```
+
+## Status Guidance
+
+Use:
+
+- `review` when the implementation appears complete and proof is provided, but human review is still expected.
+- `done` only when the task explicitly allows executor-side completion and verification passed.
+- `blocked` when missing context, failing dependencies, forbidden file boundaries, or unresolved decisions prevent safe execution.
+- `failed` when implementation or verification was attempted and failed.
+
+## Proof Guidance
+
+Prefer concrete proof:
+
+- test command output
+- schema validation output
+- linter or syntax-check output
+- manual checklist result
+- screenshot path or artifact path
+- changed file summary
+
+If the task asks for screenshots or browser verification and you cannot provide them, state that in `blockers` or `verification` with `result: "not_run"`.
+
+## Final Instruction
+
+Read the task below and return only the task run JSON report.
+
+## Task JSON
+
+Paste exactly one task object below this line:
 
 ```
 
@@ -7453,13 +8147,13 @@ python tools\validate_planning_run.py planning_runs\coc-base-builder-v1
 ## `web/README.md`
 
 - Category: `viewer`
-- Purpose: Static viewer documentation and file:// versus local server usage notes.
+- Purpose: Static viewer documentation, page-role split, Dispatch workflow notes, and file:// versus local server usage notes.
 - Required: `true`
 
 ```markdown
 # Web Viewer
 
-This directory contains the static multi-page read-only viewer for the generated planning state.
+This directory contains the static multi-page read-only viewer for the generated planning and execution-coordination state.
 
 Serve the repo root locally with:
 
@@ -7469,37 +8163,64 @@ Then open:
 
 `http://localhost:8000/web/`
 
-The viewer pages are:
+If the browser blocks `file://` fetches, open any page directly and use the page-level file picker to load the required generated JSON files for that page.
+
+## Page roles
+
+Dispatch is the primary task-pickup surface. Assignments and Task Batches remain useful, but they have narrower roles:
+
+- `web/dispatch.html`: primary "what can I do next?" page. It renders topological task waves from `generated/task_backlog.json`, overlays execution state from `generated/collaboration_state.json`, colors tasks by availability, and generates one-task execution context for a fresh AI chat.
+- `web/assignments.html`: audit/status page for task ownership, execution status, notes, proof references, and copy/download helpers for `generated/collaboration_state.json`.
+- `web/task-batches.html`: generation/validation page for guided task splitting, task batch index readiness, generated batch files, and dependency graph checks.
+
+The remaining viewer pages are:
 
 - `web/index.html`: overview from `generated/project_spec.json`
 - `web/repos.html`: repository split and ownership from `generated/repo_plan.json`
 - `web/backlog.html`: backlog grouped by `repo_target` from `generated/task_backlog.json`
-- `web/task-batches.html`: task batch index, batch file readiness, task nodes, and dependency graph checks from `generated/task_batch_index.json` plus `generated/task_batches/*.json`
 - `web/prompts.html`: prompt pack from `generated/agent_prompts.json`
 - `web/slots.html`: slot board from `generated/slots_db.json`
 - `web/planning-runs.html`: planning-run scaffold and output completeness from `generated/planning_runs_index.json`
 - `web/verification.html`: verification rules, proof requirements, and raw contract rendering from generated JSON artifacts plus `contracts/*.schema.json` and `contracts/api_contract.openapi.yaml`
 
-If the browser blocks `file://` fetches, open any page directly and use the page-level file picker to load the required `generated/*.json` files for that page.
-Generated JSON and contract files are handled differently on the Verification page:
+See `docs/VIEWER_PAGE_ROLES.md` for the page-consolidation decision.
 
-- generated JSON can still be loaded through the local file picker
-- contract files are fetched from repository paths and are most reliable when serving the repo root with `python -m http.server 8000`
+## Source files
 
-Shared files:
+Common generated sources:
+
+- `generated/project_spec.json`
+- `generated/repo_plan.json`
+- `generated/task_backlog.json`
+- `generated/task_batch_index.json`
+- `generated/task_batches/*.json`
+- `generated/collaboration_state.json`
+- `generated/task_runs/*.json`
+- `generated/agent_prompts.json`
+- `generated/slots_db.json`
+- `generated/planning_runs_index.json`
+
+Contract files are most reliable when serving the repo root with `python -m http.server 8000`. Generated JSON can also be loaded through the local file picker.
+
+## Shared files
 
 - `web/viewer-data.js`: generated JSON loading and file-picker fallback
 - `web/viewer-layout.js`: shared shell, navigation, status handling, and helpers
 - `web/page-*.js`: page-specific rendering only
+- `web/page-dispatch-keyboard.js`: small keyboard helper for Enter/Space task-node activation on Dispatch
 - `web/viewer.css`: shared styling
+
+## Still intentionally absent
 
 The viewer does not add:
 
-- editing
+- editing as persisted browser state
 - backend APIs
 - authentication
 - realtime sync
-- frontend-only task, repo, prompt, slot, planning-run, or contract models
+- direct task claiming
+- file writes
+- frontend-only task, repo, prompt, slot, planning-run, execution, or contract models
 
 ```
 
@@ -7567,6 +8288,54 @@ The viewer does not add:
 <body data-page="backlog">
   <div id="app"></div>
   <script type="module" src="page-backlog.js"></script>
+</body>
+</html>
+
+```
+
+## `web/dispatch.html`
+
+- Category: `viewer`
+- Purpose: Dispatch page entry point for topological what-can-I-do-next task pickup and execution-context copying.
+- Required: `true`
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Assembly Line Viewer - Dispatch</title>
+  <link rel="stylesheet" href="viewer.css">
+</head>
+<body data-page="dispatch">
+  <div id="app"></div>
+  <script type="module" src="page-dispatch.js"></script>
+  <script type="module" src="page-dispatch-keyboard.js"></script>
+</body>
+</html>
+
+```
+
+## `web/assignments.html`
+
+- Category: `viewer`
+- Purpose: Assignments page entry point for read-only execution ownership, status, notes, and proof review.
+- Required: `true`
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Assembly Line Viewer - Assignments</title>
+  <link rel="stylesheet" href="viewer.css">
+</head>
+<body data-page="assignments">
+  <div id="app"></div>
+  <script type="module" src="page-assignments.js"></script>
+  <script type="module" src="page-assignment-tools.js"></script>
 </body>
 </html>
 
@@ -7699,6 +8468,7 @@ export const DATA_FILES = {
   repoPlan: "../generated/repo_plan.json",
   taskBacklog: "../generated/task_backlog.json",
   taskBatchIndex: "../generated/task_batch_index.json",
+  collaborationState: "../generated/collaboration_state.json",
   agentPrompts: "../generated/agent_prompts.json",
   slotsDb: "../generated/slots_db.json",
   planningRunsIndex: "../generated/planning_runs_index.json",
@@ -7710,6 +8480,7 @@ export const CONTRACT_FILES = {
   taskSchema: "../contracts/task.schema.json",
   taskBatchIndexSchema: "../contracts/task_batch_index.schema.json",
   taskBatchSchema: "../contracts/task_batch.schema.json",
+  taskRunSchema: "../contracts/task_run.schema.json",
   slotSchema: "../contracts/slot.schema.json",
   agentPromptSchema: "../contracts/agent_prompt.schema.json",
   collaborationStateSchema: "../contracts/collaboration_state.schema.json",
@@ -7721,6 +8492,7 @@ export const FILE_NAMES = {
   repoPlan: "repo_plan.json",
   taskBacklog: "task_backlog.json",
   taskBatchIndex: "task_batch_index.json",
+  collaborationState: "collaboration_state.json",
   agentPrompts: "agent_prompts.json",
   slotsDb: "slots_db.json",
   planningRunsIndex: "planning_runs_index.json",
@@ -7800,7 +8572,7 @@ export function formatError(error) {
 ## `web/viewer-layout.js`
 
 - Category: `viewer`
-- Purpose: Shared viewer shell, status handling, and reusable rendering helpers.
+- Purpose: Shared viewer shell, status handling, navigation, and reusable rendering helpers.
 - Required: `true`
 
 ```javascript
@@ -7810,6 +8582,8 @@ const NAV_ITEMS = [
   { id: "overview", label: "Overview", href: "index.html" },
   { id: "repos", label: "Repos", href: "repos.html" },
   { id: "backlog", label: "Backlog", href: "backlog.html" },
+  { id: "assignments", label: "Assignments", href: "assignments.html" },
+  { id: "dispatch", label: "Dispatch", href: "dispatch.html" },
   { id: "task-batches", label: "Task Batches", href: "task-batches.html" },
   { id: "prompts", label: "Prompts", href: "prompts.html" },
   { id: "slots", label: "Slots", href: "slots.html" },
@@ -8247,6 +9021,1005 @@ function renderTaskCard(task) {
       </div>
     </article>
   `;
+}
+
+```
+
+## `web/page-dispatch.js`
+
+- Category: `viewer`
+- Purpose: Dispatch page rendering logic for topological task waves, availability state, task detail, and execution-context copying.
+- Required: `true`
+
+```javascript
+import { escapeHtml, initializeViewerPage, renderChipRow, renderKeyValueRows, renderList } from "./viewer-layout.js";
+
+const LOCKED_STATUSES = new Set(["claimed", "in_progress", "review"]);
+const DONE_STATUSES = new Set(["done"]);
+const BLOCKED_STATUSES = new Set(["blocked"]);
+const FILTERS = ["all", "available", "locked", "waiting", "blocked", "done"];
+
+initializeViewerPage({
+  pageId: "dispatch",
+  eyebrow: "Task Dispatch",
+  title: "Available Task Graph",
+  description: "Topological task board that highlights what can be picked up now and generates one-copy execution context for a fresh AI chat.",
+  requiredKeys: ["taskBacklog", "collaborationState"],
+  extraSourceFiles: ["prompts/07-task-executor.md", "contracts/task_run.schema.json"],
+  helperNote: "Green tasks are available now. Red tasks are locked or blocked. Yellow tasks are waiting for dependencies or review.",
+  renderContent(container, data) {
+    const tasks = Array.isArray(data.taskBacklog) ? data.taskBacklog : [];
+    const state = data.collaborationState && typeof data.collaborationState === "object" ? data.collaborationState : {};
+    const model = buildDispatchModel(tasks, state);
+
+    container.innerHTML = renderDispatchShell(model);
+    bindDispatchControls(container, model);
+  },
+});
+
+function buildDispatchModel(tasks, state) {
+  const actors = Array.isArray(state.actors) ? state.actors : [];
+  const actorMap = new Map(actors.map((actor) => [actor.actor_id, actor]));
+  const assignmentMap = buildAssignmentMap(state.task_assignments);
+  const taskMap = new Map(tasks.map((task) => [task.id, task]));
+  const layers = computeTopologicalLayers(tasks);
+
+  const rawRows = tasks.map((task) => {
+    const assignment = assignmentMap.get(task.id);
+    const actor = assignment?.assigned_to ? actorMap.get(assignment.assigned_to) : null;
+    return {
+      task,
+      assignment,
+      id: task.id ?? "unknown-task",
+      title: task.title ?? task.summary ?? task.id ?? "Untitled task",
+      summary: task.summary ?? "",
+      ownerRole: task.owner_role ?? "unknown role",
+      repoTarget: task.repo_target ?? "unknown repo",
+      lane: task.lane ?? "unassigned lane",
+      planningStatus: task.status ?? "not set",
+      executionStatus: assignment?.status ?? "unclaimed",
+      assignedTo: actor?.display_name ?? assignment?.assignee_label ?? assignment?.assigned_to ?? "Unassigned",
+      assigneeType: assignment?.assignee_type ?? actor?.kind ?? "unassigned",
+      dependsOn: Array.isArray(task.depends_on) ? task.depends_on : [],
+      outputs: Array.isArray(task.outputs) ? task.outputs : [],
+      verification: Array.isArray(task.verification) ? task.verification : [],
+      acceptanceCriteria: Array.isArray(task.acceptance_criteria) ? task.acceptance_criteria : [],
+      proof: Array.isArray(assignment?.proof) ? assignment.proof : [],
+      notes: assignment?.notes ?? "",
+      updatedAt: assignment?.updated_at ?? "",
+    };
+  });
+
+  const rowsById = new Map(rawRows.map((row) => [row.id, row]));
+  const rows = rawRows.map((row) => classifyRow(row, rowsById, taskMap));
+  const classifiedRowsById = new Map(rows.map((row) => [row.id, row]));
+  const summary = summarizeRows(rows);
+  const defaultTaskId = rows.find((row) => row.dispatchStatus === "available")?.id ?? rows[0]?.id ?? "";
+
+  return {
+    actors,
+    state,
+    tasks,
+    layers,
+    rows,
+    rowsById: classifiedRowsById,
+    summary,
+    defaultTaskId,
+  };
+}
+
+function buildAssignmentMap(assignments) {
+  const map = new Map();
+  if (!Array.isArray(assignments)) {
+    return map;
+  }
+
+  for (const assignment of assignments) {
+    if (assignment?.task_id) {
+      map.set(assignment.task_id, assignment);
+    }
+  }
+  return map;
+}
+
+function classifyRow(row, rowsById, taskMap) {
+  const missingDependencies = row.dependsOn.filter((dependencyId) => !taskMap.has(dependencyId));
+  const dependencyRows = row.dependsOn.map((dependencyId) => rowsById.get(dependencyId)).filter(Boolean);
+  const blockedDependencies = dependencyRows.filter((dependency) => BLOCKED_STATUSES.has(dependency.executionStatus));
+  const unfinishedDependencies = dependencyRows.filter((dependency) => !isDone(dependency));
+
+  let dispatchStatus = "available";
+  let visualStatus = "complete";
+  let dispatchReason = "All dependencies are done or absent, and the task is free to take.";
+
+  if (isDone(row)) {
+    dispatchStatus = "done";
+    visualStatus = "done";
+    dispatchReason = "Task is already marked done.";
+  } else if (BLOCKED_STATUSES.has(row.executionStatus) || missingDependencies.length || blockedDependencies.length) {
+    dispatchStatus = "blocked";
+    visualStatus = "blocked";
+    dispatchReason = missingDependencies.length
+      ? `Missing dependency reference(s): ${missingDependencies.join(", ")}.`
+      : blockedDependencies.length
+        ? `Blocked by dependency task(s): ${blockedDependencies.map((dependency) => dependency.id).join(", ")}.`
+        : "Task is explicitly blocked.";
+  } else if (LOCKED_STATUSES.has(row.executionStatus)) {
+    dispatchStatus = "locked";
+    visualStatus = "blocked";
+    dispatchReason = `Task is currently ${row.executionStatus} by ${row.assignedTo}.`;
+  } else if (unfinishedDependencies.length) {
+    dispatchStatus = "waiting";
+    visualStatus = "review";
+    dispatchReason = `Waiting for dependency task(s): ${unfinishedDependencies.map((dependency) => dependency.id).join(", ")}.`;
+  }
+
+  return {
+    ...row,
+    dependencyRows,
+    missingDependencies,
+    blockedDependencies,
+    unfinishedDependencies,
+    dispatchStatus,
+    visualStatus,
+    dispatchReason,
+  };
+}
+
+function isDone(row) {
+  return DONE_STATUSES.has(row.executionStatus) || row.planningStatus === "done";
+}
+
+function computeTopologicalLayers(tasks) {
+  const taskMap = new Map(tasks.map((task) => [task.id, task]));
+  const indegree = new Map(tasks.map((task) => [task.id, 0]));
+  const dependents = new Map(tasks.map((task) => [task.id, []]));
+
+  for (const task of tasks) {
+    const dependencies = Array.isArray(task.depends_on) ? task.depends_on : [];
+    for (const dependencyId of dependencies) {
+      if (!taskMap.has(dependencyId)) {
+        continue;
+      }
+      indegree.set(task.id, (indegree.get(task.id) ?? 0) + 1);
+      dependents.get(dependencyId).push(task.id);
+    }
+  }
+
+  const remaining = new Set(tasks.map((task) => task.id));
+  let ready = tasks.filter((task) => (indegree.get(task.id) ?? 0) === 0).map((task) => task.id);
+  const layers = [];
+
+  while (ready.length) {
+    const layerIds = ready.filter((taskId) => remaining.has(taskId));
+    if (!layerIds.length) {
+      break;
+    }
+
+    layers.push({ label: `Wave ${layers.length + 1}`, taskIds: layerIds, cyclic: false });
+    const next = [];
+
+    for (const taskId of layerIds) {
+      remaining.delete(taskId);
+      for (const dependentId of dependents.get(taskId) ?? []) {
+        indegree.set(dependentId, (indegree.get(dependentId) ?? 0) - 1);
+        if ((indegree.get(dependentId) ?? 0) === 0) {
+          next.push(dependentId);
+        }
+      }
+    }
+
+    ready = next;
+  }
+
+  if (remaining.size) {
+    layers.push({ label: "Unsorted / cyclic", taskIds: Array.from(remaining), cyclic: true });
+  }
+
+  return layers;
+}
+
+function summarizeRows(rows) {
+  return rows.reduce(
+    (summary, row) => {
+      summary.total += 1;
+      summary[row.dispatchStatus] = (summary[row.dispatchStatus] ?? 0) + 1;
+      return summary;
+    },
+    {
+      total: 0,
+      available: 0,
+      locked: 0,
+      waiting: 0,
+      blocked: 0,
+      done: 0,
+    },
+  );
+}
+
+function renderDispatchShell(model) {
+  const summaryRows = [
+    { label: "Total", value: escapeHtml(String(model.summary.total)) },
+    { label: "Available now", value: `<strong>${escapeHtml(String(model.summary.available))}</strong>` },
+    { label: "Locked", value: escapeHtml(String(model.summary.locked)) },
+    { label: "Waiting", value: escapeHtml(String(model.summary.waiting)) },
+    { label: "Blocked", value: escapeHtml(String(model.summary.blocked)) },
+    { label: "Done", value: escapeHtml(String(model.summary.done)) },
+  ];
+
+  return `
+    <div class="stack">
+      <section class="card">
+        <div class="section-heading">
+          <div>
+            <h2>Dispatch Board</h2>
+            <p class="muted">Pick a green task, copy its full execution context, and paste it into a fresh AI chat.</p>
+          </div>
+          <span class="chip status-complete">${escapeHtml(String(model.summary.available))} available</span>
+        </div>
+        ${renderKeyValueRows(summaryRows)}
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <div>
+            <h3>Topological graph</h3>
+            <p class="muted">Tasks are grouped by dependency wave. Availability is derived from dependency completion and collaboration state.</p>
+          </div>
+          <div class="chip-row" id="dispatchFilters">
+            ${FILTERS.map((filter) => `<button type="button" data-filter="${escapeHtml(filter)}">${escapeHtml(filter)}</button>`).join("")}
+          </div>
+        </div>
+        <div id="dispatchGraph" class="dependency-graph"></div>
+      </section>
+
+      <section id="dispatchDetail" class="card"></section>
+    </div>
+  `;
+}
+
+function bindDispatchControls(container, model) {
+  let selectedTaskId = model.defaultTaskId;
+  let activeFilter = "available";
+  const graph = container.querySelector("#dispatchGraph");
+  const detail = container.querySelector("#dispatchDetail");
+  const filterContainer = container.querySelector("#dispatchFilters");
+
+  container.addEventListener("click", async (event) => {
+    const filterButton = event.target.closest("[data-filter]");
+    if (filterButton) {
+      activeFilter = filterButton.dataset.filter;
+      render();
+      return;
+    }
+
+    const node = event.target.closest("[data-task-id]");
+    if (node) {
+      selectedTaskId = node.dataset.taskId;
+      render();
+      return;
+    }
+
+    const copyButton = event.target.closest("[data-copy-kind]");
+    if (copyButton) {
+      const selectedRow = model.rowsById.get(selectedTaskId);
+      if (!selectedRow) {
+        return;
+      }
+      const text = copyButton.dataset.copyKind === "task" ? JSON.stringify(selectedRow.task, null, 2) : buildExecutionContext(selectedRow, model);
+      await copyText(text, copyButton);
+    }
+  });
+
+  function render() {
+    graph.innerHTML = renderGraph(model, activeFilter, selectedTaskId);
+    detail.innerHTML = renderTaskDetail(model.rowsById.get(selectedTaskId), model);
+    for (const button of filterContainer.querySelectorAll("[data-filter]")) {
+      button.classList.toggle("active", button.dataset.filter === activeFilter);
+    }
+  }
+
+  render();
+}
+
+function renderGraph(model, activeFilter, selectedTaskId) {
+  if (!model.rows.length) {
+    return '<p class="muted">No tasks exist in generated/task_backlog.json yet.</p>';
+  }
+
+  const columns = model.layers.map((layer) => {
+    const rows = layer.taskIds
+      .map((taskId) => model.rowsById.get(taskId))
+      .filter(Boolean)
+      .filter((row) => activeFilter === "all" || row.dispatchStatus === activeFilter);
+
+    return `
+      <section class="graph-column ${layer.cyclic ? "error-card" : ""}">
+        <div class="graph-column-heading">
+          <h4>${escapeHtml(layer.label)}</h4>
+          <span class="chip">${escapeHtml(String(rows.length))}</span>
+        </div>
+        <div class="graph-node-stack">
+          ${rows.length ? rows.map((row) => renderGraphNode(row, selectedTaskId)).join("") : '<p class="muted">No tasks for this filter.</p>'}
+        </div>
+      </section>
+    `;
+  });
+
+  return `<div class="graph-columns">${columns.join("")}</div>`;
+}
+
+function renderGraphNode(row, selectedTaskId) {
+  const selectedLabel = row.id === selectedTaskId ? ' <span class="chip status-active">selected</span>' : "";
+  return `
+    <article class="graph-node status-${escapeHtml(row.visualStatus)}" data-task-id="${escapeHtml(row.id)}" tabindex="0">
+      <div class="graph-node-title">
+        <strong>${escapeHtml(row.id)}</strong>
+        <span class="chip status-${escapeHtml(row.visualStatus)}">${escapeHtml(row.dispatchStatus)}</span>
+      </div>
+      <p>${escapeHtml(row.title)}</p>
+      <div class="graph-node-meta">
+        <span>${escapeHtml(row.ownerRole)} · ${escapeHtml(row.repoTarget)}</span>
+        <span>${escapeHtml(row.dispatchReason)}</span>
+        ${selectedLabel}
+      </div>
+    </article>
+  `;
+}
+
+function renderTaskDetail(row, model) {
+  if (!row) {
+    return '<p class="muted">Select a task to see dispatch context.</p>';
+  }
+
+  const dependencyRows = row.dependsOn.map((dependencyId) => model.rowsById.get(dependencyId)).filter(Boolean);
+  const missingDependencyText = row.missingDependencies.length ? `Missing: ${row.missingDependencies.join(", ")}` : "";
+
+  return `
+    <div class="section-heading">
+      <div>
+        <h3>${escapeHtml(row.id)}</h3>
+        <p class="muted">${escapeHtml(row.title)}</p>
+      </div>
+      <span class="chip status-${escapeHtml(row.visualStatus)}">${escapeHtml(row.dispatchStatus)}</span>
+    </div>
+
+    <div class="chip-row">
+      <button type="button" data-copy-kind="context">Copy Full Execution Context</button>
+      <button type="button" data-copy-kind="task">Copy Task JSON</button>
+    </div>
+
+    ${renderKeyValueRows([
+      { label: "Availability", value: escapeHtml(row.dispatchReason) },
+      { label: "Assigned To", value: escapeHtml(row.assignedTo) },
+      { label: "Execution Status", value: `<code>${escapeHtml(row.executionStatus)}</code>` },
+      { label: "Owner Role", value: escapeHtml(row.ownerRole) },
+      { label: "Repo Target", value: escapeHtml(row.repoTarget) },
+      { label: "Expected Task Run", value: `<code>generated/task_runs/${escapeHtml(row.id)}.json</code>` },
+    ])}
+
+    <h4>Dependencies</h4>
+    ${dependencyRows.length ? renderDependencyCards(dependencyRows) : '<p class="muted">No known dependencies.</p>'}
+    ${missingDependencyText ? `<p class="helper">${escapeHtml(missingDependencyText)}</p>` : ""}
+
+    <h4>Acceptance Criteria</h4>
+    ${renderList(row.acceptanceCriteria, "No acceptance criteria listed")}
+
+    <h4>Expected Outputs</h4>
+    ${renderList(row.outputs, "No outputs listed")}
+
+    <h4>Verification</h4>
+    ${renderList(row.verification, "No verification listed")}
+
+    <h4>Task JSON Preview</h4>
+    <pre class="code-block">${escapeHtml(JSON.stringify(row.task, null, 2))}</pre>
+  `;
+}
+
+function renderDependencyCards(rows) {
+  return `
+    <div class="card-grid two-up">
+      ${rows.map((row) => `
+        <article class="card inset-card">
+          <div class="section-heading">
+            <strong>${escapeHtml(row.id)}</strong>
+            <span class="chip status-${escapeHtml(row.visualStatus)}">${escapeHtml(row.dispatchStatus)}</span>
+          </div>
+          <p class="muted">${escapeHtml(row.title)}</p>
+          ${row.proof.length ? renderProofSummary(row.proof) : '<p class="muted">No proof reference recorded.</p>'}
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderProofSummary(proofItems) {
+  return `
+    <ul class="list">
+      ${proofItems.map((item) => `<li>${escapeHtml(item.summary ?? item.path ?? item.kind ?? "proof")}</li>`).join("")}
+    </ul>
+  `;
+}
+
+function buildExecutionContext(row, model) {
+  const dependencyRows = row.dependsOn.map((dependencyId) => model.rowsById.get(dependencyId)).filter(Boolean);
+  const dependencySummary = dependencyRows.length
+    ? dependencyRows.map((dependency) => `- ${dependency.id}: ${dependency.dispatchStatus}; proof: ${summarizeProof(dependency.proof)}`).join("\n")
+    : "- No dependencies.";
+
+  return `# AI Assembly Line - One Task Execution Context
+
+You are executing exactly one task from the AI Assembly Line backlog. Stay inside this task boundary and return a task run JSON report matching contracts/task_run.schema.json.
+
+Expected output path for your report:
+generated/task_runs/${row.id}.json
+
+Dispatch status: ${row.dispatchStatus}
+Reason: ${row.dispatchReason}
+Assigned to: ${row.assignedTo} (${row.assigneeType})
+
+## Task JSON
+
+${JSON.stringify(row.task, null, 2)}
+
+## Current Assignment
+
+${JSON.stringify(row.assignment ?? { task_id: row.id, status: "unclaimed" }, null, 2)}
+
+## Dependency Summary
+
+${dependencySummary}
+
+## Required Output Shape
+
+Return exactly one JSON object with:
+- schema_version
+- task_id
+- run_id
+- actor_id
+- status
+- implementation_summary
+- files_changed
+- verification
+- proof
+- blockers
+- notes
+- updated_at
+
+Use status "review" when implementation appears complete but still needs human review. Use "blocked" if required context or dependencies are missing. Do not mark "done" without accepted proof.
+`;
+}
+
+function summarizeProof(proofItems) {
+  if (!proofItems.length) {
+    return "no proof recorded";
+  }
+  return proofItems.map((item) => item.path ?? item.summary ?? item.kind ?? "proof").join("; ");
+}
+
+async function copyText(text, button) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      fallbackCopy(text);
+    }
+    flashButton(button, "Copied");
+  } catch (error) {
+    fallbackCopy(text);
+    flashButton(button, "Copied");
+  }
+}
+
+function fallbackCopy(text) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "absolute";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+}
+
+function flashButton(button, label) {
+  const original = button.textContent;
+  button.textContent = label;
+  window.setTimeout(() => {
+    button.textContent = original;
+  }, 1200);
+}
+
+```
+
+## `web/page-dispatch-keyboard.js`
+
+- Category: `viewer`
+- Purpose: Keyboard helper that maps Enter/Space on focused dispatch nodes to click activation.
+- Required: `true`
+
+```javascript
+document.addEventListener("keydown", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  const node = target.closest(".graph-node[data-task-id]");
+  if (!node) {
+    return;
+  }
+
+  if (event.key !== "Enter" && event.key !== " ") {
+    return;
+  }
+
+  event.preventDefault();
+  node.click();
+});
+
+```
+
+## `web/page-assignments.js`
+
+- Category: `viewer`
+- Purpose: Assignments page rendering logic for task ownership, execution status, notes, and proof references.
+- Required: `true`
+
+```javascript
+import { escapeHtml, initializeViewerPage, renderCardGrid, renderChipRow, renderKeyValueRows, renderList } from "./viewer-layout.js";
+
+initializeViewerPage({
+  pageId: "assignments",
+  eyebrow: "Execution Coordination",
+  title: "Task Assignments",
+  description: "Read-only ownership, execution status, and proof view over the canonical task backlog and file-based collaboration state.",
+  requiredKeys: ["taskBacklog", "collaborationState"],
+  extraSourceFiles: ["contracts/collaboration_state.schema.json", "contracts/task_run.schema.json", "generated/task_runs/*.json"],
+  helperNote: "Unclaimed tasks are derived from generated/task_backlog.json when no matching task_assignments entry exists.",
+  renderContent(container, data) {
+    const tasks = Array.isArray(data.taskBacklog) ? data.taskBacklog : [];
+    const state = data.collaborationState && typeof data.collaborationState === "object" ? data.collaborationState : {};
+    const actors = Array.isArray(state.actors) ? state.actors : [];
+    const assignmentMap = buildAssignmentMap(state.task_assignments);
+    const rows = tasks.map((task) => buildTaskView(task, assignmentMap.get(task.id), actors));
+    const summary = summarizeRows(rows);
+
+    container.innerHTML = `
+      <div class="stack">
+        <section class="card">
+          <div class="section-heading">
+            <div>
+              <h2>Collaboration State</h2>
+              <p class="muted">This page overlays execution ownership on top of the generated task backlog. It does not claim, edit, or lock tasks.</p>
+            </div>
+            <span class="chip ${summary.blocked ? "status-blocked" : "status-complete"}">${summary.blocked ? "blocked tasks" : "ready to assign"}</span>
+          </div>
+          ${renderKeyValueRows([
+            { label: "Schema Version", value: `<code>${escapeHtml(state.schema_version ?? "unknown")}</code>` },
+            { label: "Workspace", value: `<code>${escapeHtml(state.workspace_id ?? "unknown")}</code>` },
+            { label: "Actors", value: escapeHtml(String(actors.length)) },
+            { label: "Tasks", value: escapeHtml(String(tasks.length)) },
+            { label: "Unclaimed", value: escapeHtml(String(summary.unclaimed)) },
+            { label: "In Progress", value: escapeHtml(String(summary.in_progress)) },
+            { label: "Review", value: escapeHtml(String(summary.review)) },
+            { label: "Done", value: escapeHtml(String(summary.done)) },
+            { label: "Blocked", value: escapeHtml(String(summary.blocked)) },
+          ])}
+        </section>
+
+        <section class="card">
+          <h3>Actors</h3>
+          ${actors.length ? renderActorCards(actors) : '<p class="muted">No collaboration actors are defined yet.</p>'}
+        </section>
+
+        <section class="card">
+          <h3>Task Ownership</h3>
+          ${rows.length ? renderTaskCards(rows) : '<p class="muted">No tasks exist in generated/task_backlog.json yet.</p>'}
+        </section>
+      </div>
+    `;
+  },
+});
+
+function buildAssignmentMap(assignments) {
+  const map = new Map();
+  if (!Array.isArray(assignments)) {
+    return map;
+  }
+
+  for (const assignment of assignments) {
+    if (assignment && assignment.task_id) {
+      map.set(assignment.task_id, assignment);
+    }
+  }
+  return map;
+}
+
+function buildTaskView(task, assignment, actors) {
+  const actor = assignment?.assigned_to ? actors.find((candidate) => candidate.actor_id === assignment.assigned_to) : null;
+  return {
+    id: task.id ?? "unknown-task",
+    title: task.title ?? task.summary ?? task.id ?? "Untitled task",
+    ownerRole: task.owner_role ?? "unknown role",
+    repoTarget: task.repo_target ?? "unknown repo",
+    lane: task.lane ?? "unassigned lane",
+    planningStatus: task.status ?? "not set",
+    executionStatus: assignment?.status ?? "unclaimed",
+    assignedTo: actor?.display_name ?? assignment?.assignee_label ?? assignment?.assigned_to ?? "Unassigned",
+    assigneeType: assignment?.assignee_type ?? actor?.kind ?? "unassigned",
+    claimedAt: assignment?.claimed_at ?? "",
+    updatedAt: assignment?.updated_at ?? "",
+    proof: Array.isArray(assignment?.proof) ? assignment.proof : [],
+    notes: assignment?.notes ?? "",
+    dependsOn: Array.isArray(task.depends_on) ? task.depends_on : [],
+    outputs: Array.isArray(task.outputs) ? task.outputs : [],
+    verification: Array.isArray(task.verification) ? task.verification : [],
+  };
+}
+
+function summarizeRows(rows) {
+  return rows.reduce(
+    (summary, row) => {
+      summary.total += 1;
+      const key = row.executionStatus;
+      summary[key] = (summary[key] ?? 0) + 1;
+      return summary;
+    },
+    {
+      total: 0,
+      unclaimed: 0,
+      claimed: 0,
+      in_progress: 0,
+      review: 0,
+      done: 0,
+      blocked: 0,
+      released: 0,
+    },
+  );
+}
+
+function renderActorCards(actors) {
+  return renderCardGrid(
+    actors.map((actor) => `
+      <article class="card inset-card">
+        <div class="section-heading">
+          <div>
+            <h4>${escapeHtml(actor.display_name ?? actor.actor_id ?? "Unknown actor")}</h4>
+            <p class="muted"><code>${escapeHtml(actor.actor_id ?? "missing-actor-id")}</code></p>
+          </div>
+          <span class="chip ${statusClass(actor.status)}">${escapeHtml(actor.status ?? "unknown")}</span>
+        </div>
+        ${renderKeyValueRows([
+          { label: "Kind", value: `<code>${escapeHtml(actor.kind ?? "unknown")}</code>` },
+          { label: "Notes", value: escapeHtml(actor.notes ?? "") },
+        ])}
+      </article>
+    `).join(""),
+    "three-up",
+  );
+}
+
+function renderTaskCards(rows) {
+  return renderCardGrid(rows.map((row) => renderTaskCard(row)).join(""), "two-up");
+}
+
+function renderTaskCard(row) {
+  return `
+    <article class="card">
+      <div class="section-heading">
+        <div>
+          <h4>${escapeHtml(row.id)}</h4>
+          <p class="muted">${escapeHtml(row.title)}</p>
+        </div>
+        <span class="chip ${statusClass(row.executionStatus)}">${escapeHtml(row.executionStatus)}</span>
+      </div>
+      ${renderKeyValueRows([
+        { label: "Assigned To", value: escapeHtml(row.assignedTo) },
+        { label: "Assignee Type", value: `<code>${escapeHtml(row.assigneeType)}</code>` },
+        { label: "Planning Status", value: `<code>${escapeHtml(row.planningStatus)}</code>` },
+        { label: "Owner Role", value: escapeHtml(row.ownerRole) },
+        { label: "Repo Target", value: escapeHtml(row.repoTarget) },
+        { label: "Lane", value: escapeHtml(row.lane) },
+        { label: "Claimed At", value: row.claimedAt ? `<code>${escapeHtml(row.claimedAt)}</code>` : '<span class="muted">not claimed</span>' },
+        { label: "Updated At", value: row.updatedAt ? `<code>${escapeHtml(row.updatedAt)}</code>` : '<span class="muted">not updated</span>' },
+      ])}
+      <h4>Proof</h4>
+      ${renderProof(row.proof)}
+      <h4>Depends On</h4>
+      ${renderChipRow(row.dependsOn, "No dependencies")}
+      <h4>Expected Outputs</h4>
+      ${renderList(row.outputs, "No outputs listed")}
+      <h4>Verification</h4>
+      ${renderList(row.verification, "No verification listed")}
+      ${row.notes ? `<p class="helper">${escapeHtml(row.notes)}</p>` : ""}
+    </article>
+  `;
+}
+
+function renderProof(proof) {
+  if (!proof.length) {
+    return '<p class="muted">No proof submitted yet.</p>';
+  }
+
+  return `
+    <div class="stack">
+      ${proof.map((item) => `
+        <div class="card inset-card">
+          <div class="section-heading">
+            <strong>${escapeHtml(item.kind ?? "proof")}</strong>
+            <span class="chip ${statusClass(item.status ?? "needs_review")}">${escapeHtml(item.status ?? "needs_review")}</span>
+          </div>
+          <p>${escapeHtml(item.summary ?? "No proof summary provided.")}</p>
+          ${item.path ? `<p class="muted"><code>${escapeHtml(item.path)}</code></p>` : ""}
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function statusClass(status) {
+  const safeStatus = String(status ?? "unknown").replace(/[^a-z0-9_-]/gi, "").toLowerCase();
+  return `status-${safeStatus || "unknown"}`;
+}
+
+```
+
+## `web/page-assignment-tools.js`
+
+- Category: `viewer`
+- Purpose: Static copy/download helper for generated collaboration state and executor prompts without writing files.
+- Required: `true`
+
+```javascript
+import { escapeHtml } from "./viewer-layout.js";
+
+const STATUSES = ["unclaimed", "claimed", "in_progress", "review", "done", "blocked", "released"];
+let mounted = false;
+
+installStyles();
+new MutationObserver(() => void mount()).observe(document.body, { childList: true, subtree: true });
+void mount();
+
+async function mount() {
+  if (mounted) return;
+  const stack = document.querySelector("#pageContent .stack");
+  if (!stack) return;
+  mounted = true;
+
+  const panel = document.createElement("section");
+  panel.className = "card assignment-tools-panel";
+  panel.innerHTML = `<h3>Copy/Paste Execution Tools</h3><p class="helper">Loading generated files...</p>`;
+  stack.insertBefore(panel, stack.children[1] ?? null);
+
+  try {
+    const [tasks, state] = await Promise.all([
+      fetchJson("../generated/task_backlog.json"),
+      fetchJson("../generated/collaboration_state.json"),
+    ]);
+    render(panel, Array.isArray(tasks) ? tasks : [], state && typeof state === "object" ? state : {});
+  } catch (error) {
+    panel.innerHTML = `
+      <h3>Copy/Paste Execution Tools</h3>
+      <p class="helper">Could not auto-load generated files: ${escapeHtml(error instanceof Error ? error.message : String(error))}</p>
+      <p class="muted">Serve the repo root with <code>python -m http.server 8000</code>, then open <code>http://localhost:8000/web/assignments.html</code>.</p>
+    `;
+  }
+}
+
+async function fetchJson(path) {
+  const response = await fetch(path, { cache: "no-store" });
+  if (!response.ok) throw new Error(`${path}: ${response.status} ${response.statusText}`);
+  return response.json();
+}
+
+function render(panel, tasks, state) {
+  const actors = Array.isArray(state.actors) ? state.actors : [];
+  panel.innerHTML = `
+    <div class="section-heading">
+      <div>
+        <h3>Copy/Paste Execution Tools</h3>
+        <p class="muted">Generate executor prompts and replacement <code>generated/collaboration_state.json</code> previews. Nothing is written automatically.</p>
+      </div>
+      <span class="chip status-planned">static helper</span>
+    </div>
+    <div class="builder-grid">
+      <label>Task
+        <select id="toolTask">${tasks.map((task) => `<option value="${escapeHtml(task.id)}">${escapeHtml(task.id)} - ${escapeHtml(task.title ?? task.summary ?? "Untitled")}</option>`).join("")}</select>
+      </label>
+      <label>Actor
+        <select id="toolActor"><option value="">Unassigned</option>${actors.map((actor) => `<option value="${escapeHtml(actor.actor_id)}">${escapeHtml(actor.display_name ?? actor.actor_id)} (${escapeHtml(actor.kind ?? "unknown")})</option>`).join("")}</select>
+      </label>
+      <label>Status
+        <select id="toolStatus">${STATUSES.map((status) => `<option value="${escapeHtml(status)}">${escapeHtml(status)}</option>`).join("")}</select>
+      </label>
+      <label class="wide-field">Notes
+        <textarea id="toolNotes" rows="3" placeholder="Short assignment note"></textarea>
+      </label>
+      <label class="wide-field">Proof path
+        <input id="toolProofPath" type="text" placeholder="generated/task_runs/<task_id>.json">
+      </label>
+      <label class="wide-field">Proof summary
+        <textarea id="toolProofSummary" rows="3" placeholder="Optional proof summary"></textarea>
+      </label>
+    </div>
+    <div class="button-row">
+      <button id="copyPrompt" type="button">Copy Executor Prompt</button>
+      <button id="previewState" type="button">Preview State JSON</button>
+      <button id="copyState" type="button">Copy State JSON</button>
+      <button id="downloadState" type="button">Download State JSON</button>
+    </div>
+    <p id="toolMessage" class="helper">Select a task to start.</p>
+    <pre id="toolPreview" class="code-block">No generated preview yet.</pre>
+  `;
+  wire(panel, tasks, state, actors);
+}
+
+function wire(panel, tasks, state, actors) {
+  const q = (id) => panel.querySelector(id);
+  const taskSelect = q("#toolTask");
+  const actorSelect = q("#toolActor");
+  const statusSelect = q("#toolStatus");
+  const notesInput = q("#toolNotes");
+  const proofPathInput = q("#toolProofPath");
+  const proofSummaryInput = q("#toolProofSummary");
+  const message = q("#toolMessage");
+  const preview = q("#toolPreview");
+  const tasksById = new Map(tasks.map((task) => [task.id, task]));
+  const actorsById = new Map(actors.map((actor) => [actor.actor_id, actor]));
+  const assignments = new Map((Array.isArray(state.task_assignments) ? state.task_assignments : []).map((item) => [item.task_id, item]));
+
+  const task = () => tasksById.get(taskSelect.value) ?? tasks[0] ?? null;
+
+  function fill() {
+    const selected = task();
+    if (!selected) return;
+    const existing = assignments.get(selected.id);
+    actorSelect.value = actorsById.has(existing?.assigned_to) ? existing.assigned_to : "";
+    statusSelect.value = existing?.status ?? "claimed";
+    notesInput.value = existing?.notes ?? "";
+    proofPathInput.value = `generated/task_runs/${selected.id}.json`;
+    proofSummaryInput.value = "";
+    preview.textContent = "No generated preview yet.";
+    message.textContent = `Selected ${selected.id}.`;
+  }
+
+  function assignmentFor(selected) {
+    const now = new Date().toISOString();
+    const actor = actorSelect.value ? actorsById.get(actorSelect.value) : null;
+    const previous = assignments.get(selected.id) ?? {};
+    const status = statusSelect.value;
+    const unassigned = !actor || status === "unclaimed" || status === "released";
+    const assignment = {
+      task_id: selected.id,
+      assigned_to: unassigned ? null : actor.actor_id,
+      assignee_type: unassigned ? "unassigned" : actor.kind,
+      assignee_label: unassigned ? "Unassigned" : actor.display_name ?? actor.actor_id,
+      status,
+      updated_at: now,
+    };
+    if (!unassigned) assignment.claimed_at = previous.claimed_at ?? now;
+    const notes = notesInput.value.trim() || previous.notes;
+    if (notes) assignment.notes = notes;
+    const proof = Array.isArray(previous.proof) ? clone(previous.proof) : [];
+    const proofPath = proofPathInput.value.trim();
+    const proofSummary = proofSummaryInput.value.trim();
+    if (proofPath || proofSummary) {
+      proof.push({
+        kind: "task_run",
+        ...(proofPath ? { path: proofPath } : {}),
+        summary: proofSummary || `Proof recorded for ${selected.id}.`,
+        status: "needs_review",
+        recorded_at: now,
+      });
+    }
+    if (proof.length) assignment.proof = proof;
+    return assignment;
+  }
+
+  function stateText() {
+    const selected = task();
+    const payload = clone(state);
+    payload.schema_version = payload.schema_version ?? "0.1.0";
+    payload.workspace_id = payload.workspace_id ?? "default-workspace";
+    payload.actors = Array.isArray(payload.actors) ? payload.actors : [];
+    payload.task_assignments = Array.isArray(payload.task_assignments) ? payload.task_assignments : [];
+    payload.task_claims = Array.isArray(payload.task_claims) ? payload.task_claims : [];
+    payload.artifact_submissions = Array.isArray(payload.artifact_submissions) ? payload.artifact_submissions : [];
+    payload.reviews = Array.isArray(payload.reviews) ? payload.reviews : [];
+    payload.audit_events = Array.isArray(payload.audit_events) ? payload.audit_events : [];
+    if (selected) {
+      const nextAssignment = assignmentFor(selected);
+      const index = payload.task_assignments.findIndex((item) => item.task_id === selected.id);
+      if (index >= 0) payload.task_assignments[index] = nextAssignment;
+      else payload.task_assignments.push(nextAssignment);
+      payload.task_assignments.sort((left, right) => left.task_id.localeCompare(right.task_id));
+    }
+    const text = `${JSON.stringify(payload, null, 2)}\n`;
+    preview.textContent = text;
+    return text;
+  }
+
+  taskSelect.addEventListener("change", fill);
+  fill();
+
+  q("#copyPrompt")?.addEventListener("click", async () => {
+    const selected = task();
+    if (!selected) return;
+    await copyText(executorPrompt(selected, assignmentFor(selected)));
+    message.textContent = `Copied executor prompt for ${selected.id}.`;
+  });
+  q("#previewState")?.addEventListener("click", () => {
+    stateText();
+    message.textContent = "Generated collaboration_state.json preview.";
+  });
+  q("#copyState")?.addEventListener("click", async () => {
+    await copyText(stateText());
+    message.textContent = "Copied collaboration_state.json preview.";
+  });
+  q("#downloadState")?.addEventListener("click", () => {
+    downloadText("collaboration_state.json", stateText());
+    message.textContent = "Downloaded collaboration_state.json preview.";
+  });
+}
+
+function executorPrompt(task, assignment) {
+  return `Use prompts/07-task-executor.md for this exact task. Work only inside the task boundaries and return exactly one fenced json code block matching contracts/task_run.schema.json.
+
+Save returned report to: generated/task_runs/${task.id}.json
+After review, add a proof reference for that run to generated/collaboration_state.json.
+
+Assignment metadata:
+${JSON.stringify(assignment ?? {}, null, 2)}
+
+Task JSON:
+${JSON.stringify(task, null, 2)}
+`;
+}
+
+async function copyText(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.position = "absolute";
+  textarea.style.left = "-9999px";
+  document.body.append(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  textarea.remove();
+}
+
+function downloadText(filename, text) {
+  const blob = new Blob([text], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function installStyles() {
+  const style = document.createElement("style");
+  style.textContent = `
+    .builder-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }
+    .builder-grid label { display: grid; gap: 6px; color: var(--muted); line-height: 1.45; }
+    .builder-grid input, .builder-grid select, .builder-grid textarea { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font: inherit; color: var(--ink); background: #fffcf5; }
+    .wide-field { grid-column: span 3; }
+    .button-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+    @media (max-width: 820px) { .builder-grid { grid-template-columns: 1fr; } .wide-field { grid-column: span 1; } }
+  `;
+  document.head.append(style);
+}
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value ?? {}));
 }
 
 ```
@@ -9189,7 +10962,7 @@ function renderContractCard(result) {
 ## `web/viewer.css`
 
 - Category: `viewer`
-- Purpose: Shared static viewer styles.
+- Purpose: Shared static viewer styles, including dispatch state and focus/active styling.
 - Required: `true`
 
 ```css
@@ -9303,6 +11076,25 @@ button,
   font: inherit;
   cursor: pointer;
   box-shadow: var(--shadow);
+}
+
+button:hover,
+.file-button:hover {
+  filter: brightness(1.04);
+}
+
+button.active {
+  background: var(--paper);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 2px rgba(31, 92, 74, 0.28), var(--shadow);
+}
+
+button:focus-visible,
+.file-button:focus-visible,
+.nav-link:focus-visible,
+.graph-node:focus-visible {
+  outline: 3px solid rgba(31, 92, 74, 0.42);
+  outline-offset: 3px;
 }
 
 .file-button {
@@ -9424,20 +11216,28 @@ h4 {
 
 .chip.status-ready,
 .chip.status-active,
-.chip.status-complete {
+.chip.status-complete,
+.chip.status-available {
   background: var(--accent-soft);
   color: var(--accent);
 }
 
 .chip.status-planned,
-.chip.status-review {
+.chip.status-review,
+.chip.status-waiting {
   background: #eee7c8;
   color: #6d5a12;
 }
 
-.chip.status-blocked {
+.chip.status-blocked,
+.chip.status-locked {
   background: var(--warn-soft);
   color: var(--warn);
+}
+
+.chip.status-done {
+  background: #e5ebe7;
+  color: #2f5f4d;
 }
 
 .error-card {
@@ -9540,8 +11340,23 @@ h4 {
   border-radius: 14px;
   padding: 12px;
   background: var(--paper);
+  cursor: pointer;
 }
 
+.graph-node:hover {
+  box-shadow: var(--shadow);
+}
+
+.graph-node.status-available {
+  border-left-color: #2f755f;
+  background: linear-gradient(180deg, rgba(217, 235, 228, 0.72), var(--paper));
+}
+
+.graph-node.status-waiting {
+  border-left-color: #b28b13;
+}
+
+.graph-node.status-locked,
 .graph-node.status-blocked,
 .graph-node.status-rejected {
   border-left-color: var(--warn);
@@ -9550,6 +11365,7 @@ h4 {
 .graph-node.status-done,
 .graph-node.status-complete {
   border-left-color: #2f755f;
+  opacity: 0.82;
 }
 
 .graph-node p {
@@ -10979,6 +12795,128 @@ if __name__ == "__main__":
 
 ```
 
+## `tools/build_planning_runs_index.py`
+
+- Category: `tool`
+- Purpose: Builds the derived planning-runs index consumed by later read-only review surfaces.
+- Required: `true`
+
+```python
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+
+ROOT = Path(__file__).resolve().parents[1]
+PLANNING_RUNS_DIR = ROOT / "planning_runs"
+OUTPUT_PATH = ROOT / "generated" / "planning_runs_index.json"
+
+REQUIRED_OUTPUTS = [
+    "project_spec.json",
+    "repo_plan.json",
+    "task_backlog.json",
+    "agent_prompts.json",
+    "slots_db.json",
+]
+
+SCAFFOLD_FILES = {
+    "input_idea": "input-idea.md",
+    "planning_prompt": "planning-run.md",
+    "review_notes": "review-notes.md",
+}
+
+
+def posix(path: Path) -> str:
+    return path.relative_to(ROOT).as_posix()
+
+
+def build_run_entry(run_dir: Path) -> dict[str, Any]:
+    outputs_dir = run_dir / "outputs"
+    outputs = {name: (outputs_dir / name).is_file() for name in REQUIRED_OUTPUTS}
+
+    scaffold_presence = {
+        key: (run_dir / filename).is_file()
+        for key, filename in SCAFFOLD_FILES.items()
+    }
+    scaffold_presence["outputs_dir"] = outputs_dir.is_dir()
+
+    missing_scaffold = [
+        filename
+        for key, filename in SCAFFOLD_FILES.items()
+        if not scaffold_presence[key]
+    ]
+    if not scaffold_presence["outputs_dir"]:
+        missing_scaffold.append("outputs/")
+
+    missing_outputs = [name for name, present in outputs.items() if not present]
+    present_outputs = [name for name, present in outputs.items() if present]
+
+    if missing_scaffold:
+        status = "invalid_missing_scaffold"
+    elif not present_outputs:
+        status = "draft_missing_outputs"
+    elif missing_outputs:
+        status = "draft_partial_outputs"
+    else:
+        status = "outputs_present"
+
+    return {
+        "slug": run_dir.name,
+        "path": posix(run_dir),
+        "status": status,
+        "has_input_idea": scaffold_presence["input_idea"],
+        "has_planning_prompt": scaffold_presence["planning_prompt"],
+        "has_review_notes": scaffold_presence["review_notes"],
+        "has_outputs_dir": scaffold_presence["outputs_dir"],
+        "outputs": outputs,
+        "missing_outputs": missing_outputs,
+        "missing_scaffold": missing_scaffold,
+    }
+
+
+def discover_runs() -> list[dict[str, Any]]:
+    if not PLANNING_RUNS_DIR.exists():
+        return []
+
+    runs: list[dict[str, Any]] = []
+    for child in sorted(PLANNING_RUNS_DIR.iterdir(), key=lambda path: path.name):
+        if not child.is_dir():
+            continue
+        if child.name.startswith(".") or child.name == "__pycache__":
+            continue
+        runs.append(build_run_entry(child))
+    return runs
+
+
+def main() -> int:
+    runs = discover_runs()
+    index = {
+        "schema_version": "0.1.0",
+        "generated_by": "tools/build_planning_runs_index.py",
+        "planning_runs_path": "planning_runs",
+        "required_outputs": REQUIRED_OUTPUTS,
+        "runs": runs,
+    }
+
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT_PATH.write_text(json.dumps(index, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    print(f"WROTE {posix(OUTPUT_PATH)}")
+    print(f"RESULT OK runs={len(runs)}")
+    for run in runs:
+        print(f"RUN {run['slug']} status={run['status']} missing_outputs={len(run['missing_outputs'])}")
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+
+```
+
 ## `tools/validate_task_batches.py`
 
 - Category: `tool`
@@ -11242,10 +13180,102 @@ if __name__ == "__main__":
 
 ```
 
-## `tools/build_planning_runs_index.py`
+## `tools/build_task_backlog_from_batches.py`
 
 - Category: `tool`
-- Purpose: Builds the derived planning-runs index consumed by later read-only review surfaces.
+- Purpose: Merges validated generated task batches into canonical generated/task_backlog.json while refusing empty-batch overwrites.
+- Required: `true`
+
+```python
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+import validate_task_batches
+import validate_seed
+
+
+ROOT = Path(__file__).resolve().parents[1]
+INDEX_PATH = ROOT / "generated" / "task_batch_index.json"
+OUTPUT_PATH = ROOT / "generated" / "task_backlog.json"
+
+
+def load_json(path: Path) -> Any:
+    with path.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def rel(path: Path) -> str:
+    return path.relative_to(ROOT).as_posix()
+
+
+def write_json(path: Path, payload: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2)
+        handle.write("\n")
+
+
+def build_backlog(index: dict[str, Any]) -> list[dict[str, Any]]:
+    validate_task_batches.validate_batch_index(index)
+    validate_seed.expect(
+        len(index["batches"]) > 0,
+        "task_batch_index.batches is empty; refusing to overwrite generated/task_backlog.json",
+    )
+
+    all_tasks: dict[str, dict[str, Any]] = {}
+    task_to_batch: dict[str, str] = {}
+
+    for batch in index["batches"]:
+        batch_path = ROOT / batch["output_path"]
+        validate_seed.expect(
+            batch_path.is_file(),
+            f"missing task batch file: {batch['output_path']}",
+        )
+
+        payload = load_json(batch_path)
+        validate_task_batches.validate_task_batch(batch_path, payload, batch)
+
+        for task in payload["tasks"]:
+            task_id = task["id"]
+            validate_seed.expect(task_id not in all_tasks, f"duplicate task id across batches: {task_id}")
+            all_tasks[task_id] = task
+            task_to_batch[task_id] = batch["batch_id"]
+
+    ordered_task_ids = validate_task_batches.topological_order(all_tasks)
+    validate_task_batches.validate_batch_order(index, task_to_batch, all_tasks)
+    return [all_tasks[task_id] for task_id in ordered_task_ids]
+
+
+def main() -> int:
+    if not INDEX_PATH.is_file():
+        print(f"MISSING FAIL {rel(INDEX_PATH)}")
+        return 1
+
+    try:
+        index = load_json(INDEX_PATH)
+        backlog = build_backlog(index)
+        write_json(OUTPUT_PATH, backlog)
+    except Exception as exc:
+        print(f"RESULT FAIL {exc}")
+        return 1
+
+    print(f"RESULT OK   wrote {rel(OUTPUT_PATH)} tasks={len(backlog)}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+
+```
+
+## `tools/validate_collaboration_state.py`
+
+- Category: `tool`
+- Purpose: Validates file-based collaboration state, task assignments, and task run proof reports against the canonical backlog and actor list.
 - Required: `true`
 
 ```python
@@ -11258,104 +13288,135 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PLANNING_RUNS_DIR = ROOT / "planning_runs"
-OUTPUT_PATH = ROOT / "generated" / "planning_runs_index.json"
+TASK_BACKLOG_PATH = ROOT / "generated" / "task_backlog.json"
+COLLABORATION_STATE_PATH = ROOT / "generated" / "collaboration_state.json"
+TASK_RUNS_DIR = ROOT / "generated" / "task_runs"
 
-REQUIRED_OUTPUTS = [
-    "project_spec.json",
-    "repo_plan.json",
-    "task_backlog.json",
-    "agent_prompts.json",
-    "slots_db.json",
-]
-
-SCAFFOLD_FILES = {
-    "input_idea": "input-idea.md",
-    "planning_prompt": "planning-run.md",
-    "review_notes": "review-notes.md",
-}
+VALID_ASSIGNMENT_STATUSES = {"unclaimed", "claimed", "in_progress", "review", "done", "blocked", "released"}
+VALID_ACTOR_KINDS = {"human", "web_ai", "local_ai", "service"}
+VALID_RUN_STATUSES = {"review", "done", "blocked", "failed"}
 
 
-def posix(path: Path) -> str:
+def load_json(path: Path) -> Any:
+    with path.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def rel(path: Path) -> str:
     return path.relative_to(ROOT).as_posix()
 
 
-def build_run_entry(run_dir: Path) -> dict[str, Any]:
-    outputs_dir = run_dir / "outputs"
-    outputs = {name: (outputs_dir / name).is_file() for name in REQUIRED_OUTPUTS}
-
-    scaffold_presence = {
-        key: (run_dir / filename).is_file()
-        for key, filename in SCAFFOLD_FILES.items()
-    }
-    scaffold_presence["outputs_dir"] = outputs_dir.is_dir()
-
-    missing_scaffold = [
-        filename
-        for key, filename in SCAFFOLD_FILES.items()
-        if not scaffold_presence[key]
-    ]
-    if not scaffold_presence["outputs_dir"]:
-        missing_scaffold.append("outputs/")
-
-    missing_outputs = [name for name, present in outputs.items() if not present]
-    present_outputs = [name for name, present in outputs.items() if present]
-
-    if missing_scaffold:
-        status = "invalid_missing_scaffold"
-    elif not present_outputs:
-        status = "draft_missing_outputs"
-    elif missing_outputs:
-        status = "draft_partial_outputs"
-    else:
-        status = "outputs_present"
-
-    return {
-        "slug": run_dir.name,
-        "path": posix(run_dir),
-        "status": status,
-        "has_input_idea": scaffold_presence["input_idea"],
-        "has_planning_prompt": scaffold_presence["planning_prompt"],
-        "has_review_notes": scaffold_presence["review_notes"],
-        "has_outputs_dir": scaffold_presence["outputs_dir"],
-        "outputs": outputs,
-        "missing_outputs": missing_outputs,
-        "missing_scaffold": missing_scaffold,
-    }
+def expect(condition: bool, message: str) -> None:
+    if not condition:
+        raise ValueError(message)
 
 
-def discover_runs() -> list[dict[str, Any]]:
-    if not PLANNING_RUNS_DIR.exists():
-        return []
+def expect_string(value: Any, label: str, allow_empty: bool = False) -> None:
+    expect(isinstance(value, str), f"{label} must be a string")
+    if not allow_empty:
+        expect(bool(value.strip()), f"{label} must be a non-empty string")
 
-    runs: list[dict[str, Any]] = []
-    for child in sorted(PLANNING_RUNS_DIR.iterdir(), key=lambda path: path.name):
-        if not child.is_dir():
-            continue
-        if child.name.startswith(".") or child.name == "__pycache__":
-            continue
-        runs.append(build_run_entry(child))
-    return runs
+
+def expect_list(value: Any, label: str) -> None:
+    expect(isinstance(value, list), f"{label} must be a list")
+
+
+def validate_actor(actor: Any, label: str) -> str:
+    expect(isinstance(actor, dict), f"{label} must be an object")
+    expect_string(actor.get("actor_id"), f"{label}.actor_id")
+    expect_string(actor.get("display_name"), f"{label}.display_name")
+    expect(actor.get("kind") in VALID_ACTOR_KINDS, f"{label}.kind must be a valid actor kind")
+    expect(actor.get("status") in {"active", "inactive", "blocked"}, f"{label}.status must be a valid actor status")
+    return actor["actor_id"]
+
+
+def validate_assignment(assignment: Any, label: str, task_ids: set[str], actor_ids: set[str]) -> str:
+    expect(isinstance(assignment, dict), f"{label} must be an object")
+    expect_string(assignment.get("task_id"), f"{label}.task_id")
+    task_id = assignment["task_id"]
+    expect(task_id in task_ids, f"{label}.task_id must refer to generated/task_backlog.json: {task_id}")
+    expect(assignment.get("status") in VALID_ASSIGNMENT_STATUSES, f"{label}.status must be a valid assignment status")
+    expect_string(assignment.get("updated_at"), f"{label}.updated_at")
+
+    assigned_to = assignment.get("assigned_to")
+    if assigned_to is not None:
+        expect_string(assigned_to, f"{label}.assigned_to")
+        expect(assigned_to in actor_ids, f"{label}.assigned_to must refer to actors[].actor_id: {assigned_to}")
+    elif assignment.get("status") not in {"unclaimed", "released"}:
+        raise ValueError(f"{label}.assigned_to is required unless status is unclaimed or released")
+
+    proof = assignment.get("proof", [])
+    expect_list(proof, f"{label}.proof")
+    for proof_index, proof_ref in enumerate(proof):
+        proof_label = f"{label}.proof[{proof_index}]"
+        expect(isinstance(proof_ref, dict), f"{proof_label} must be an object")
+        expect_string(proof_ref.get("kind"), f"{proof_label}.kind")
+        expect_string(proof_ref.get("summary"), f"{proof_label}.summary")
+        path_value = proof_ref.get("path")
+        if path_value:
+            expect_string(path_value, f"{proof_label}.path")
+
+    return task_id
+
+
+def validate_task_run(path: Path, payload: Any, task_ids: set[str], actor_ids: set[str]) -> list[str]:
+    label = rel(path)
+    expect(isinstance(payload, dict), f"{label} must be an object")
+    expect_string(payload.get("task_id"), f"{label}.task_id")
+    expect(payload["task_id"] in task_ids, f"{label}.task_id must refer to generated/task_backlog.json")
+    expect_string(payload.get("run_id"), f"{label}.run_id")
+    expect_string(payload.get("actor_id"), f"{label}.actor_id")
+    expect(payload["actor_id"] in actor_ids, f"{label}.actor_id must refer to collaboration actors")
+    expect(payload.get("status") in VALID_RUN_STATUSES, f"{label}.status must be a valid task run status")
+    expect_string(payload.get("implementation_summary"), f"{label}.implementation_summary")
+    expect_list(payload.get("files_changed"), f"{label}.files_changed")
+    expect_list(payload.get("verification"), f"{label}.verification")
+    expect_list(payload.get("proof"), f"{label}.proof")
+    expect_list(payload.get("blockers"), f"{label}.blockers")
+    expect_string(payload.get("updated_at"), f"{label}.updated_at")
+    return [f"TASK RUN OK {label}"]
 
 
 def main() -> int:
-    runs = discover_runs()
-    index = {
-        "schema_version": "0.1.0",
-        "generated_by": "tools/build_planning_runs_index.py",
-        "planning_runs_path": "planning_runs",
-        "required_outputs": REQUIRED_OUTPUTS,
-        "runs": runs,
-    }
+    try:
+        task_backlog = load_json(TASK_BACKLOG_PATH)
+        state = load_json(COLLABORATION_STATE_PATH)
 
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT_PATH.write_text(json.dumps(index, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        expect_list(task_backlog, rel(TASK_BACKLOG_PATH))
+        expect(isinstance(state, dict), f"{rel(COLLABORATION_STATE_PATH)} must be an object")
 
-    print(f"WROTE {posix(OUTPUT_PATH)}")
-    print(f"RESULT OK runs={len(runs)}")
-    for run in runs:
-        print(f"RUN {run['slug']} status={run['status']} missing_outputs={len(run['missing_outputs'])}")
+        task_ids = {task["id"] for task in task_backlog if isinstance(task, dict) and "id" in task}
+        expect(len(task_ids) == len(task_backlog), "generated/task_backlog.json must contain unique task ids")
 
+        expect_list(state.get("actors"), "collaboration_state.actors")
+        actor_ids = set()
+        for index, actor in enumerate(state["actors"]):
+            actor_id = validate_actor(actor, f"collaboration_state.actors[{index}]")
+            expect(actor_id not in actor_ids, f"duplicate actor_id: {actor_id}")
+            actor_ids.add(actor_id)
+
+        expect_list(state.get("task_assignments"), "collaboration_state.task_assignments")
+        assigned_task_ids = set()
+        for index, assignment in enumerate(state["task_assignments"]):
+            task_id = validate_assignment(assignment, f"collaboration_state.task_assignments[{index}]", task_ids, actor_ids)
+            expect(task_id not in assigned_task_ids, f"duplicate task assignment for task_id: {task_id}")
+            assigned_task_ids.add(task_id)
+
+        messages = [
+            f"COLLAB OK actors={len(actor_ids)} assignments={len(assigned_task_ids)} unclaimed={len(task_ids - assigned_task_ids)}"
+        ]
+
+        if TASK_RUNS_DIR.is_dir():
+            for path in sorted(TASK_RUNS_DIR.glob("*.json")):
+                messages.extend(validate_task_run(path, load_json(path), task_ids, actor_ids))
+
+        for message in messages:
+            print(message)
+    except Exception as exc:
+        print(f"RESULT FAIL {exc}")
+        return 1
+
+    print("RESULT OK   collaboration state is internally consistent")
     return 0
 
 
