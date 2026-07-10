@@ -2,9 +2,27 @@
   "project_name": "AI Assembly Line",
   "review_files": [
     {
+      "path": "AGENTS.md",
+      "category": "agent-entrypoint",
+      "purpose": "Mandatory repository-aware AI contract, first-turn hard stop, and lifecycle routing rules.",
+      "required": true
+    },
+    {
+      "path": "docs/AI_START_HERE.md",
+      "category": "agent-entrypoint",
+      "purpose": "Intent router that separates new-product intake from framework review and selects the active lifecycle role.",
+      "required": true
+    },
+    {
+      "path": ".github/copilot-instructions.md",
+      "category": "agent-entrypoint",
+      "purpose": "Repository-aware coding-assistant pointer to the mandatory intake-first routing contract.",
+      "required": false
+    },
+    {
       "path": "README.md",
       "category": "root-doc",
-      "purpose": "Concise repository-first framework overview, lifecycle, bootstrap command, viewer usage, and validation entry point.",
+      "purpose": "Repository-first framework overview with a mandatory AI first-turn intake entrypoint.",
       "required": true
     },
     {
@@ -17,6 +35,12 @@
       "path": "PRODUCT_RULES.md",
       "category": "root-doc",
       "purpose": "Hard scope, safety, and source-of-truth rules.",
+      "required": true
+    },
+    {
+      "path": "docs/AI_CONTEXT.md",
+      "category": "workflow",
+      "purpose": "Separates new-product routing from explicit remote repository review.",
       "required": true
     },
     {
@@ -130,13 +154,13 @@
     {
       "path": "prompts/08-project-workspace-initializer.md",
       "category": "prompt",
-      "purpose": "Repository Bootstrap Agent instructions for readiness, kit installation, intake, and requirements PR creation.",
+      "purpose": "Repository Bootstrap Agent with mandatory first-turn and explicit Intake Interviewer activation locks.",
       "required": true
     },
     {
       "path": "prompts/00-intake-interviewer.md",
       "category": "prompt",
-      "purpose": "One-question guided intake role.",
+      "purpose": "One-question guided intake role and first-turn response envelope.",
       "required": true
     },
     {
