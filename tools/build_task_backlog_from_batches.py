@@ -32,6 +32,10 @@ def write_json(path: Path, payload: Any) -> None:
 
 def build_backlog(index: dict[str, Any]) -> list[dict[str, Any]]:
     validate_task_batches.validate_batch_index(index)
+    validate_seed.expect(
+        len(index["batches"]) > 0,
+        "task_batch_index.batches is empty; refusing to overwrite generated/task_backlog.json",
+    )
 
     all_tasks: dict[str, dict[str, Any]] = {}
     task_to_batch: dict[str, str] = {}
@@ -51,9 +55,6 @@ def build_backlog(index: dict[str, Any]) -> list[dict[str, Any]]:
             validate_seed.expect(task_id not in all_tasks, f"duplicate task id across batches: {task_id}")
             all_tasks[task_id] = task
             task_to_batch[task_id] = batch["batch_id"]
-
-    if not all_tasks:
-        return []
 
     ordered_task_ids = validate_task_batches.topological_order(all_tasks)
     validate_task_batches.validate_batch_order(index, task_to_batch, all_tasks)
