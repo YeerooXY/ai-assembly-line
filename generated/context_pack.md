@@ -8307,6 +8307,7 @@ The viewer does not add:
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AI Assembly Line Viewer - Dispatch</title>
   <link rel="stylesheet" href="viewer.css">
+  <link rel="stylesheet" href="dispatch.css">
 </head>
 <body data-page="dispatch">
   <div id="app"></div>
@@ -9032,21 +9033,23 @@ function renderTaskCard(task) {
 - Required: `true`
 
 ```javascript
-import { escapeHtml, initializeViewerPage, renderChipRow, renderKeyValueRows, renderList } from "./viewer-layout.js";
+import { escapeHtml, initializeViewerPage, renderList } from "./viewer-layout.js";
 
-const LOCKED_STATUSES = new Set(["claimed", "in_progress", "review"]);
+const LOCKED_STATUSES = new Set(["claimed", "in_progress"]);
+const REVIEW_STATUSES = new Set(["review"]);
 const DONE_STATUSES = new Set(["done"]);
 const BLOCKED_STATUSES = new Set(["blocked"]);
-const FILTERS = ["all", "available", "locked", "waiting", "blocked", "done"];
+const ACTIVE_CLAIM_STATUSES = new Set(["claimed", "in_progress"]);
+const FILTERS = ["all", "available", "waiting", "locked", "blocked", "done"];
 
 initializeViewerPage({
   pageId: "dispatch",
-  eyebrow: "Task Dispatch",
-  title: "Available Task Graph",
-  description: "Topological task board that highlights what can be picked up now and generates one-copy execution context for a fresh AI chat.",
+  eyebrow: "Execution Cockpit",
+  title: "Dispatch",
+  description: "Pick the next available task, copy one complete execution context, and start a focused AI task chat.",
   requiredKeys: ["taskBacklog", "collaborationState"],
   extraSourceFiles: ["prompts/07-task-executor.md", "contracts/task_run.schema.json"],
-  helperNote: "Green tasks are available now. Red tasks are locked or blocked. Yellow tasks are waiting for dependencies or review.",
+  helperNote: "Dispatch is the primary task-pickup screen. It is still static/read-only: it does not claim, lock, edit, or write files.",
   renderContent(container, data) {
     const tasks = Array.isArray(data.taskBacklog) ? data.taskBacklog : [];
     const state = data.collaborationState && typeof data.collaborationState === "object" ? data.collaborationState : {};
@@ -9061,15 +9064,21 @@ function buildDispatchModel(tasks, state) {
   const actors = Array.isArray(state.actors) ? state.actors : [];
   const actorMap = new Map(actors.map((actor) => [actor.actor_id, actor]));
   const assignmentMap = buildAssignmentMap(state.task_assignments);
+  const claimMap = buildActiveClaimMap(state.task_claims);
   const taskMap = new Map(tasks.map((task) => [task.id, task]));
   const layers = computeTopologicalLayers(tasks);
 
   const rawRows = tasks.map((task) => {
     const assignment = assignmentMap.get(task.id);
-    const actor = assignment?.assigned_to ? actorMap.get(assignment.assigned_to) : null;
+    const activeClaim = claimMap.get(task.id);
+    const actorId = assignment?.assigned_to ?? activeClaim?.actor_id ?? "";
+    const actor = actorId ? actorMap.get(actorId) : null;
+
     return {
       task,
       assignment,
+      activeClaim,
+      actor,
       id: task.id ?? "unknown-task",
       title: task.title ?? task.summary ?? task.id ?? "Untitled task",
       summary: task.summary ?? "",
@@ -9077,16 +9086,16 @@ function buildDispatchModel(tasks, state) {
       repoTarget: task.repo_target ?? "unknown repo",
       lane: task.lane ?? "unassigned lane",
       planningStatus: task.status ?? "not set",
-      executionStatus: assignment?.status ?? "unclaimed",
-      assignedTo: actor?.display_name ?? assignment?.assignee_label ?? assignment?.assigned_to ?? "Unassigned",
-      assigneeType: assignment?.assignee_type ?? actor?.kind ?? "unassigned",
+      executionStatus: assignment?.status ?? claimStatusToAssignmentStatus(activeClaim?.status) ?? "unclaimed",
+      assignedTo: actor?.display_name ?? assignment?.assignee_label ?? assignment?.assigned_to ?? activeClaim?.actor_id ?? "Unassigned",
+      assigneeType: assignment?.assignee_type ?? actor?.kind ?? (activeClaim ? "unknown" : "unassigned"),
       dependsOn: Array.isArray(task.depends_on) ? task.depends_on : [],
       outputs: Array.isArray(task.outputs) ? task.outputs : [],
       verification: Array.isArray(task.verification) ? task.verification : [],
       acceptanceCriteria: Array.isArray(task.acceptance_criteria) ? task.acceptance_criteria : [],
       proof: Array.isArray(assignment?.proof) ? assignment.proof : [],
-      notes: assignment?.notes ?? "",
-      updatedAt: assignment?.updated_at ?? "",
+      notes: assignment?.notes ?? activeClaim?.notes ?? "",
+      updatedAt: assignment?.updated_at ?? activeClaim?.claimed_at ?? activeClaim?.released_at ?? "",
     };
   });
 
@@ -9119,7 +9128,39 @@ function buildAssignmentMap(assignments) {
       map.set(assignment.task_id, assignment);
     }
   }
+
   return map;
+}
+
+function buildActiveClaimMap(claims) {
+  const map = new Map();
+  if (!Array.isArray(claims)) {
+    return map;
+  }
+
+  for (const claim of claims) {
+    if (claim?.task_id && ACTIVE_CLAIM_STATUSES.has(claim.status)) {
+      map.set(claim.task_id, claim);
+    }
+  }
+
+  return map;
+}
+
+function claimStatusToAssignmentStatus(status) {
+  if (!status) {
+    return null;
+  }
+
+  if (status === "submitted") {
+    return "review";
+  }
+
+  if (status === "released") {
+    return "released";
+  }
+
+  return status;
 }
 
 function classifyRow(row, rowsById, taskMap) {
@@ -9129,29 +9170,49 @@ function classifyRow(row, rowsById, taskMap) {
   const unfinishedDependencies = dependencyRows.filter((dependency) => !isDone(dependency));
 
   let dispatchStatus = "available";
-  let visualStatus = "complete";
-  let dispatchReason = "All dependencies are done or absent, and the task is free to take.";
+  let visualStatus = "available";
+  let dispatchReason = "All dependencies are done and the task is free to take.";
+  let unavailableDetails = [];
 
   if (isDone(row)) {
     dispatchStatus = "done";
     visualStatus = "done";
-    dispatchReason = "Task is already marked done.";
+    dispatchReason = "Done. Review proof before using this as dependency context.";
   } else if (BLOCKED_STATUSES.has(row.executionStatus) || missingDependencies.length || blockedDependencies.length) {
     dispatchStatus = "blocked";
     visualStatus = "blocked";
-    dispatchReason = missingDependencies.length
-      ? `Missing dependency reference(s): ${missingDependencies.join(", ")}.`
-      : blockedDependencies.length
-        ? `Blocked by dependency task(s): ${blockedDependencies.map((dependency) => dependency.id).join(", ")}.`
-        : "Task is explicitly blocked.";
+    if (missingDependencies.length) {
+      dispatchReason = `Missing dependency reference(s): ${missingDependencies.join(", ")}.`;
+    } else if (blockedDependencies.length) {
+      dispatchReason = `Blocked by dependency task(s): ${blockedDependencies.map((dependency) => dependency.id).join(", ")}.`;
+    } else {
+      dispatchReason = row.notes ? `Blocked: ${row.notes}` : "Task is explicitly blocked.";
+    }
+    unavailableDetails = buildBlockedDetails(row, missingDependencies, blockedDependencies);
   } else if (LOCKED_STATUSES.has(row.executionStatus)) {
     dispatchStatus = "locked";
-    visualStatus = "blocked";
-    dispatchReason = `Task is currently ${row.executionStatus} by ${row.assignedTo}.`;
+    visualStatus = "locked";
+    dispatchReason = `Locked by ${row.assignedTo} (${row.executionStatus}).`;
+    unavailableDetails = [
+      `actor: ${row.assignedTo}`,
+      `status: ${row.executionStatus}`,
+      row.updatedAt ? `updated: ${row.updatedAt}` : "updated: not recorded",
+    ];
+  } else if (REVIEW_STATUSES.has(row.executionStatus)) {
+    dispatchStatus = "waiting";
+    visualStatus = "waiting";
+    dispatchReason = "In review; wait for proof acceptance before taking follow-up work.";
+    unavailableDetails = [
+      `review actor/status: ${row.assignedTo} / ${row.executionStatus}`,
+      row.updatedAt ? `updated: ${row.updatedAt}` : "updated: not recorded",
+    ];
   } else if (unfinishedDependencies.length) {
     dispatchStatus = "waiting";
-    visualStatus = "review";
+    visualStatus = "waiting";
     dispatchReason = `Waiting for dependency task(s): ${unfinishedDependencies.map((dependency) => dependency.id).join(", ")}.`;
+    unavailableDetails = unfinishedDependencies.map(
+      (dependency) => `${dependency.id} - ${dependency.title} - ${dependency.executionStatus}`,
+    );
   }
 
   return {
@@ -9163,7 +9224,26 @@ function classifyRow(row, rowsById, taskMap) {
     dispatchStatus,
     visualStatus,
     dispatchReason,
+    unavailableDetails,
   };
+}
+
+function buildBlockedDetails(row, missingDependencies, blockedDependencies) {
+  const details = [];
+
+  if (missingDependencies.length) {
+    details.push(`missing dependencies: ${missingDependencies.join(", ")}`);
+  }
+
+  for (const dependency of blockedDependencies) {
+    details.push(`${dependency.id} - ${dependency.title} - ${dependency.dispatchReason}`);
+  }
+
+  if (BLOCKED_STATUSES.has(row.executionStatus)) {
+    details.push(row.notes ? `blocked note: ${row.notes}` : "assignment status is blocked");
+  }
+
+  return details;
 }
 
 function isDone(row) {
@@ -9181,6 +9261,7 @@ function computeTopologicalLayers(tasks) {
       if (!taskMap.has(dependencyId)) {
         continue;
       }
+
       indegree.set(task.id, (indegree.get(task.id) ?? 0) + 1);
       dependents.get(dependencyId).push(task.id);
     }
@@ -9229,8 +9310,8 @@ function summarizeRows(rows) {
     {
       total: 0,
       available: 0,
-      locked: 0,
       waiting: 0,
+      locked: 0,
       blocked: 0,
       done: 0,
     },
@@ -9238,44 +9319,57 @@ function summarizeRows(rows) {
 }
 
 function renderDispatchShell(model) {
-  const summaryRows = [
-    { label: "Total", value: escapeHtml(String(model.summary.total)) },
-    { label: "Available now", value: `<strong>${escapeHtml(String(model.summary.available))}</strong>` },
-    { label: "Locked", value: escapeHtml(String(model.summary.locked)) },
-    { label: "Waiting", value: escapeHtml(String(model.summary.waiting)) },
-    { label: "Blocked", value: escapeHtml(String(model.summary.blocked)) },
-    { label: "Done", value: escapeHtml(String(model.summary.done)) },
-  ];
-
   return `
-    <div class="stack">
-      <section class="card">
-        <div class="section-heading">
-          <div>
-            <h2>Dispatch Board</h2>
-            <p class="muted">Pick a green task, copy its full execution context, and paste it into a fresh AI chat.</p>
-          </div>
-          <span class="chip status-complete">${escapeHtml(String(model.summary.available))} available</span>
+    <div class="dispatch-cockpit">
+      <section class="dispatch-intro">
+        <div>
+          <p class="eyebrow">Static execution cockpit</p>
+          <h2>Pick one task and launch a fresh AI chat</h2>
+          <p class="muted">Green cards are ready now. Click a task, copy the full execution context, and save the returned report as <code>generated/task_runs/&lt;task_id&gt;.json</code>.</p>
         </div>
-        ${renderKeyValueRows(summaryRows)}
+        <span class="chip status-available">${escapeHtml(String(model.summary.available))} ready now</span>
       </section>
 
-      <section class="card">
-        <div class="section-heading">
-          <div>
-            <h3>Topological graph</h3>
-            <p class="muted">Tasks are grouped by dependency wave. Availability is derived from dependency completion and collaboration state.</p>
-          </div>
-          <div class="chip-row" id="dispatchFilters">
-            ${FILTERS.map((filter) => `<button type="button" data-filter="${escapeHtml(filter)}">${escapeHtml(filter)}</button>`).join("")}
-          </div>
-        </div>
-        <div id="dispatchGraph" class="dependency-graph"></div>
+      <section class="dispatch-summary" aria-label="Dispatch state summary">
+        ${renderSummaryButton("available", "Available", model.summary.available)}
+        ${renderSummaryButton("waiting", "Waiting", model.summary.waiting)}
+        ${renderSummaryButton("locked", "Locked", model.summary.locked)}
+        ${renderSummaryButton("blocked", "Blocked", model.summary.blocked)}
+        ${renderSummaryButton("done", "Done", model.summary.done)}
+        ${renderSummaryButton("all", "Total", model.summary.total)}
       </section>
 
-      <section id="dispatchDetail" class="card"></section>
+      <section class="dispatch-workspace">
+        <div class="dispatch-board card">
+          <div class="section-heading dispatch-board-heading">
+            <div>
+              <h3>Task waves</h3>
+              <p class="muted">Topological order: earlier waves unblock later waves.</p>
+            </div>
+            <div class="chip-row dispatch-filter-row" id="dispatchFilters">
+              ${FILTERS.map((filter) => renderFilterButton(filter)).join("")}
+            </div>
+          </div>
+          <div id="dispatchGraph" class="dependency-graph dispatch-graph"></div>
+        </div>
+
+        <aside id="dispatchDetail" class="dispatch-detail card"></aside>
+      </section>
     </div>
   `;
+}
+
+function renderSummaryButton(filter, label, value) {
+  return `
+    <button type="button" class="dispatch-summary-button status-${escapeHtml(filter)}" data-filter="${escapeHtml(filter)}">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(String(value))}</strong>
+    </button>
+  `;
+}
+
+function renderFilterButton(filter) {
+  return `<button type="button" class="dispatch-filter-button" data-filter="${escapeHtml(filter)}">${escapeHtml(filter)}</button>`;
 }
 
 function bindDispatchControls(container, model) {
@@ -9283,9 +9377,20 @@ function bindDispatchControls(container, model) {
   let activeFilter = "available";
   const graph = container.querySelector("#dispatchGraph");
   const detail = container.querySelector("#dispatchDetail");
-  const filterContainer = container.querySelector("#dispatchFilters");
 
   container.addEventListener("click", async (event) => {
+    const copyButton = event.target.closest("[data-copy-kind]");
+    if (copyButton) {
+      const selectedRow = model.rowsById.get(selectedTaskId);
+      if (!selectedRow) {
+        return;
+      }
+
+      const text = copyButton.dataset.copyKind === "task" ? JSON.stringify(selectedRow.task, null, 2) : buildExecutionContext(selectedRow, model);
+      await copyText(text, copyButton);
+      return;
+    }
+
     const filterButton = event.target.closest("[data-filter]");
     if (filterButton) {
       activeFilter = filterButton.dataset.filter;
@@ -9297,25 +9402,15 @@ function bindDispatchControls(container, model) {
     if (node) {
       selectedTaskId = node.dataset.taskId;
       render();
-      return;
-    }
-
-    const copyButton = event.target.closest("[data-copy-kind]");
-    if (copyButton) {
-      const selectedRow = model.rowsById.get(selectedTaskId);
-      if (!selectedRow) {
-        return;
-      }
-      const text = copyButton.dataset.copyKind === "task" ? JSON.stringify(selectedRow.task, null, 2) : buildExecutionContext(selectedRow, model);
-      await copyText(text, copyButton);
     }
   });
 
   function render() {
     graph.innerHTML = renderGraph(model, activeFilter, selectedTaskId);
     detail.innerHTML = renderTaskDetail(model.rowsById.get(selectedTaskId), model);
-    for (const button of filterContainer.querySelectorAll("[data-filter]")) {
+    for (const button of container.querySelectorAll("[data-filter]")) {
       button.classList.toggle("active", button.dataset.filter === activeFilter);
+      button.setAttribute("aria-pressed", String(button.dataset.filter === activeFilter));
     }
   }
 
@@ -9334,32 +9429,33 @@ function renderGraph(model, activeFilter, selectedTaskId) {
       .filter((row) => activeFilter === "all" || row.dispatchStatus === activeFilter);
 
     return `
-      <section class="graph-column ${layer.cyclic ? "error-card" : ""}">
+      <section class="graph-column dispatch-wave ${layer.cyclic ? "error-card" : ""}">
         <div class="graph-column-heading">
           <h4>${escapeHtml(layer.label)}</h4>
           <span class="chip">${escapeHtml(String(rows.length))}</span>
         </div>
         <div class="graph-node-stack">
-          ${rows.length ? rows.map((row) => renderGraphNode(row, selectedTaskId)).join("") : '<p class="muted">No tasks for this filter.</p>'}
+          ${rows.length ? rows.map((row) => renderGraphNode(row, selectedTaskId)).join("") : '<p class="muted dispatch-empty-wave">No tasks for this filter.</p>'}
         </div>
       </section>
     `;
   });
 
-  return `<div class="graph-columns">${columns.join("")}</div>`;
+  return `<div class="graph-columns dispatch-columns">${columns.join("")}</div>`;
 }
 
 function renderGraphNode(row, selectedTaskId) {
-  const selectedLabel = row.id === selectedTaskId ? ' <span class="chip status-active">selected</span>' : "";
+  const selectedClass = row.id === selectedTaskId ? " selected" : "";
+  const selectedLabel = row.id === selectedTaskId ? '<span class="chip status-active">selected</span>' : "";
   return `
-    <article class="graph-node status-${escapeHtml(row.visualStatus)}" data-task-id="${escapeHtml(row.id)}" tabindex="0">
+    <article class="graph-node dispatch-task-card status-${escapeHtml(row.visualStatus)}${selectedClass}" data-task-id="${escapeHtml(row.id)}" tabindex="0" aria-label="${escapeHtml(`${row.id}: ${row.dispatchStatus}`)}">
       <div class="graph-node-title">
         <strong>${escapeHtml(row.id)}</strong>
         <span class="chip status-${escapeHtml(row.visualStatus)}">${escapeHtml(row.dispatchStatus)}</span>
       </div>
-      <p>${escapeHtml(row.title)}</p>
+      <p class="dispatch-task-title">${escapeHtml(row.title)}</p>
       <div class="graph-node-meta">
-        <span>${escapeHtml(row.ownerRole)} · ${escapeHtml(row.repoTarget)}</span>
+        <span>${escapeHtml(row.ownerRole)} / ${escapeHtml(row.repoTarget)}</span>
         <span>${escapeHtml(row.dispatchReason)}</span>
         ${selectedLabel}
       </div>
@@ -9372,35 +9468,37 @@ function renderTaskDetail(row, model) {
     return '<p class="muted">Select a task to see dispatch context.</p>';
   }
 
-  const dependencyRows = row.dependsOn.map((dependencyId) => model.rowsById.get(dependencyId)).filter(Boolean);
-  const missingDependencyText = row.missingDependencies.length ? `Missing: ${row.missingDependencies.join(", ")}` : "";
-
   return `
-    <div class="section-heading">
+    <div class="dispatch-detail-actions">
+      <button type="button" class="dispatch-primary-action" data-copy-kind="context">Copy Full Execution Context</button>
+      <button type="button" class="dispatch-secondary-action" data-copy-kind="task">Copy Task JSON</button>
+    </div>
+
+    <div class="dispatch-detail-heading">
       <div>
+        <p class="eyebrow">Selected task</p>
         <h3>${escapeHtml(row.id)}</h3>
         <p class="muted">${escapeHtml(row.title)}</p>
       </div>
       <span class="chip status-${escapeHtml(row.visualStatus)}">${escapeHtml(row.dispatchStatus)}</span>
     </div>
 
-    <div class="chip-row">
-      <button type="button" data-copy-kind="context">Copy Full Execution Context</button>
-      <button type="button" data-copy-kind="task">Copy Task JSON</button>
+    <section class="dispatch-state-explain status-${escapeHtml(row.visualStatus)}">
+      <h4>${escapeHtml(stateExplanationTitle(row))}</h4>
+      <p>${escapeHtml(row.dispatchReason)}</p>
+      ${renderUnavailableDetails(row)}
+    </section>
+
+    <div class="dispatch-facts">
+      ${renderFact("Owner", row.ownerRole)}
+      ${renderFact("Repo", row.repoTarget)}
+      ${renderFact("Execution", row.executionStatus)}
+      ${renderFact("Assignee", row.assignedTo)}
+      ${renderFact("Task run path", `generated/task_runs/${row.id}.json`, true)}
     </div>
 
-    ${renderKeyValueRows([
-      { label: "Availability", value: escapeHtml(row.dispatchReason) },
-      { label: "Assigned To", value: escapeHtml(row.assignedTo) },
-      { label: "Execution Status", value: `<code>${escapeHtml(row.executionStatus)}</code>` },
-      { label: "Owner Role", value: escapeHtml(row.ownerRole) },
-      { label: "Repo Target", value: escapeHtml(row.repoTarget) },
-      { label: "Expected Task Run", value: `<code>generated/task_runs/${escapeHtml(row.id)}.json</code>` },
-    ])}
-
     <h4>Dependencies</h4>
-    ${dependencyRows.length ? renderDependencyCards(dependencyRows) : '<p class="muted">No known dependencies.</p>'}
-    ${missingDependencyText ? `<p class="helper">${escapeHtml(missingDependencyText)}</p>` : ""}
+    ${renderDependencyStatus(row)}
 
     <h4>Acceptance Criteria</h4>
     ${renderList(row.acceptanceCriteria, "No acceptance criteria listed")}
@@ -9411,90 +9509,207 @@ function renderTaskDetail(row, model) {
     <h4>Verification</h4>
     ${renderList(row.verification, "No verification listed")}
 
-    <h4>Task JSON Preview</h4>
-    <pre class="code-block">${escapeHtml(JSON.stringify(row.task, null, 2))}</pre>
+    <details class="dispatch-json-preview">
+      <summary>Task JSON preview</summary>
+      <pre class="code-block">${escapeHtml(JSON.stringify(row.task, null, 2))}</pre>
+    </details>
   `;
 }
 
-function renderDependencyCards(rows) {
+function renderFact(label, value, code = false) {
   return `
-    <div class="card-grid two-up">
-      ${rows.map((row) => `
-        <article class="card inset-card">
-          <div class="section-heading">
-            <strong>${escapeHtml(row.id)}</strong>
-            <span class="chip status-${escapeHtml(row.visualStatus)}">${escapeHtml(row.dispatchStatus)}</span>
-          </div>
-          <p class="muted">${escapeHtml(row.title)}</p>
-          ${row.proof.length ? renderProofSummary(row.proof) : '<p class="muted">No proof reference recorded.</p>'}
+    <div class="dispatch-fact">
+      <dt>${escapeHtml(label)}</dt>
+      <dd>${code ? `<code>${escapeHtml(value)}</code>` : escapeHtml(value)}</dd>
+    </div>
+  `;
+}
+
+function stateExplanationTitle(row) {
+  if (row.dispatchStatus === "available") {
+    return "Ready to launch";
+  }
+
+  if (row.dispatchStatus === "waiting") {
+    return REVIEW_STATUSES.has(row.executionStatus) ? "Waiting for review" : "Waiting on dependencies";
+  }
+
+  if (row.dispatchStatus === "locked") {
+    return "Locked by active work";
+  }
+
+  if (row.dispatchStatus === "blocked") {
+    return "Blocked";
+  }
+
+  return "Completed";
+}
+
+function renderUnavailableDetails(row) {
+  if (row.dispatchStatus === "available") {
+    return '<p class="helper">This is the happy path: copy the context and start one fresh AI task chat.</p>';
+  }
+
+  if (row.dispatchStatus === "done") {
+    return row.proof.length
+      ? `<div class="helper">Proof recorded: ${escapeHtml(summarizeProof(row.proof))}</div>`
+      : '<p class="helper">No proof reference is recorded on this assignment yet.</p>';
+  }
+
+  if (!row.unavailableDetails.length) {
+    return "";
+  }
+
+  return `
+    <ul class="list">
+      ${row.unavailableDetails.map((detail) => `<li>${escapeHtml(detail)}</li>`).join("")}
+    </ul>
+  `;
+}
+
+function renderDependencyStatus(row) {
+  const dependencyRows = row.dependsOn.map((dependencyId) => row.dependencyRows.find((dependency) => dependency.id === dependencyId));
+  const knownRows = dependencyRows.filter(Boolean);
+  const missingRows = row.missingDependencies;
+
+  if (!knownRows.length && !missingRows.length) {
+    return '<p class="muted">No dependencies. This task can stand alone once unclaimed.</p>';
+  }
+
+  return `
+    <div class="dispatch-dependency-list">
+      ${knownRows.map((dependency) => renderDependencyCard(dependency)).join("")}
+      ${missingRows.map((dependencyId) => `
+        <article class="dispatch-dependency-card status-blocked">
+          <strong>${escapeHtml(dependencyId)}</strong>
+          <span class="chip status-blocked">missing</span>
+          <p class="muted">This dependency ID is referenced but not present in the backlog.</p>
         </article>
       `).join("")}
     </div>
   `;
 }
 
+function renderDependencyCard(row) {
+  return `
+    <article class="dispatch-dependency-card status-${escapeHtml(row.visualStatus)}">
+      <div class="graph-node-title">
+        <strong>${escapeHtml(row.id)}</strong>
+        <span class="chip status-${escapeHtml(row.visualStatus)}">${escapeHtml(row.dispatchStatus)}</span>
+      </div>
+      <p>${escapeHtml(row.title)}</p>
+      <p class="muted">${escapeHtml(row.dispatchReason)}</p>
+      ${row.proof.length ? renderProofSummary(row.proof) : '<p class="muted">No proof reference recorded.</p>'}
+    </article>
+  `;
+}
+
 function renderProofSummary(proofItems) {
   return `
     <ul class="list">
-      ${proofItems.map((item) => `<li>${escapeHtml(item.summary ?? item.path ?? item.kind ?? "proof")}</li>`).join("")}
+      ${proofItems.map((item) => `<li>${escapeHtml(proofLabel(item))}</li>`).join("")}
     </ul>
   `;
 }
 
+function proofLabel(item) {
+  const bits = [item.kind, item.status, item.path, item.summary].filter(Boolean);
+  return bits.length ? bits.join(" / ") : "proof";
+}
+
 function buildExecutionContext(row, model) {
   const dependencyRows = row.dependsOn.map((dependencyId) => model.rowsById.get(dependencyId)).filter(Boolean);
+  const missingDependencySummary = row.missingDependencies.length
+    ? `\nMissing dependency reference(s): ${row.missingDependencies.join(", ")}`
+    : "";
   const dependencySummary = dependencyRows.length
-    ? dependencyRows.map((dependency) => `- ${dependency.id}: ${dependency.dispatchStatus}; proof: ${summarizeProof(dependency.proof)}`).join("\n")
+    ? dependencyRows.map((dependency) => formatDependencyContext(dependency)).join("\n")
     : "- No dependencies.";
 
   return `# AI Assembly Line - One Task Execution Context
 
-You are executing exactly one task from the AI Assembly Line backlog. Stay inside this task boundary and return a task run JSON report matching contracts/task_run.schema.json.
+You are executing exactly one task from the AI Assembly Line backlog.
 
-Expected output path for your report:
+Use the task executor rules from:
+prompts/07-task-executor.md
+
+Hard rules:
+- Work only on the selected task.
+- Do not broaden scope.
+- Respect dependencies, allowed files, outputs, non-goals, and verification.
+- Do not mark done without accepted proof.
+- If required context is missing, return blocked with a clear blocker.
+- Return one task_run JSON object only.
+
+Expected output path:
 generated/task_runs/${row.id}.json
 
 Dispatch status: ${row.dispatchStatus}
 Reason: ${row.dispatchReason}
 Assigned to: ${row.assignedTo} (${row.assigneeType})
+Updated at: ${row.updatedAt || "not recorded"}
 
-## Task JSON
+## Selected Task JSON
 
 ${JSON.stringify(row.task, null, 2)}
 
-## Current Assignment
+## Current Assignment Metadata
 
 ${JSON.stringify(row.assignment ?? { task_id: row.id, status: "unclaimed" }, null, 2)}
 
+## Active Claim Metadata
+
+${JSON.stringify(row.activeClaim ?? { task_id: row.id, status: "none" }, null, 2)}
+
 ## Dependency Summary
 
-${dependencySummary}
+${dependencySummary}${missingDependencySummary}
 
-## Required Output Shape
+## Dependency Proof Summaries
 
-Return exactly one JSON object with:
-- schema_version
-- task_id
-- run_id
-- actor_id
-- status
-- implementation_summary
-- files_changed
-- verification
-- proof
-- blockers
-- notes
-- updated_at
+${dependencyRows.length ? dependencyRows.map((dependency) => `- ${dependency.id}: ${summarizeProof(dependency.proof)}`).join("\n") : "- No dependency proof required."}
 
-Use status "review" when implementation appears complete but still needs human review. Use "blocked" if required context or dependencies are missing. Do not mark "done" without accepted proof.
+## Required Return Shape
+
+Return exactly one JSON object compatible with contracts/task_run.schema.json:
+
+{
+  "schema_version": "0.1.0",
+  "task_id": "${row.id}",
+  "run_id": "<unique-run-id>",
+  "actor_id": "<your-actor-id>",
+  "status": "review",
+  "implementation_summary": ["<what changed>"],
+  "files_changed": [],
+  "verification": [],
+  "proof": [],
+  "blockers": [],
+  "notes": [],
+  "updated_at": "<ISO-8601 timestamp>"
+}
+
+Use status "review" when implementation appears complete but still needs human review.
+Use status "blocked" if required context or dependencies are missing.
+Do not mark "done" without accepted proof.
 `;
+}
+
+function formatDependencyContext(dependency) {
+  return [
+    `- ${dependency.id}: ${dependency.dispatchStatus}`,
+    `  title: ${dependency.title}`,
+    `  execution_status: ${dependency.executionStatus}`,
+    `  reason: ${dependency.dispatchReason}`,
+    `  proof: ${summarizeProof(dependency.proof)}`,
+  ].join("\n");
 }
 
 function summarizeProof(proofItems) {
   if (!proofItems.length) {
     return "no proof recorded";
   }
-  return proofItems.map((item) => item.path ?? item.summary ?? item.kind ?? "proof").join("; ");
+
+  return proofItems.map((item) => proofLabel(item)).join("; ");
 }
 
 async function copyText(text, button) {
