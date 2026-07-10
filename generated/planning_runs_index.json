@@ -5,9 +5,12 @@
   "required_outputs": [
     "project_spec.json",
     "repo_plan.json",
-    "task_backlog.json",
     "agent_prompts.json",
     "slots_db.json"
+  ],
+  "deferred_to_task_splitter": [
+    "task_batch_index.json",
+    "task_backlog.json"
   ],
   "runs": [
     {
@@ -21,18 +24,21 @@
       "outputs": {
         "project_spec.json": false,
         "repo_plan.json": false,
-        "task_backlog.json": false,
         "agent_prompts.json": false,
         "slots_db.json": false
       },
       "missing_outputs": [
         "project_spec.json",
         "repo_plan.json",
-        "task_backlog.json",
         "agent_prompts.json",
         "slots_db.json"
       ],
-      "missing_scaffold": []
+      "deferred_outputs": {
+        "task_batch_index.json": false,
+        "task_backlog.json": false
+      },
+      "missing_scaffold": [],
+      "task_decomposition_deferred": true
     }
   ]
 }
