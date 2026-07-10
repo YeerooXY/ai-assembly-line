@@ -1,4 +1,13 @@
-import { formatError, isFileProtocol, loadGeneratedState, loadLocalState, sourceFilesForKeys } from "./viewer-data.js";
+import {
+  formatError,
+  isFileProtocol,
+  loadGeneratedState,
+  loadLocalState,
+  resolveViewerProjectContext,
+  sourceFileForExtra,
+  sourceFilesForKeys,
+} from "./viewer-data.js";
+import { buildProjectSelectionUrl, projectUrlForPage, renderProjectLabel } from "./project-workspace.js";
 
 const NAV_ITEMS = [
   { id: "overview", label: "Overview", href: "index.html" },
@@ -14,6 +23,15 @@ const NAV_ITEMS = [
 ];
 
 export function initializeViewerPage(config) {
+  const app = document.getElementById("app");
+  if (!app) {
+    throw new Error('Missing required root element: #app');
+  }
+
+  void initializeAsync(app, config);
+}
+
+async function initializeAsync(app, config) {
   const {
     pageId,
     eyebrow,
@@ -25,12 +43,19 @@ export function initializeViewerPage(config) {
     renderContent,
   } = config;
 
-  const app = document.getElementById("app");
-  if (!app) {
-    throw new Error('Missing required root element: #app');
+  let projectContext;
+  try {
+    projectContext = await resolveViewerProjectContext();
+  } catch (error) {
+    renderInitializationFailure(app, config, error);
+    return;
   }
 
-  const sourceFiles = [...sourceFilesForKeys(requiredKeys), ...extraSourceFiles];
+  const sourceFiles = [
+    ...sourceFilesForKeys(requiredKeys, projectContext),
+    ...extraSourceFiles.map((path) => sourceFileForExtra(path, projectContext)),
+  ];
+
   app.innerHTML = `
     <header class="hero shell-width">
       <div class="hero-copy">
@@ -38,10 +63,11 @@ export function initializeViewerPage(config) {
         <h1>${escapeHtml(title)}</h1>
         <p class="lede">${escapeHtml(description)}</p>
         <nav class="site-nav" aria-label="Viewer pages">
-          ${NAV_ITEMS.map((item) => renderNavLink(item, pageId)).join("")}
+          ${NAV_ITEMS.map((item) => renderNavLink(item, pageId, projectContext)).join("")}
         </nav>
       </div>
       <div class="hero-actions">
+        ${renderProjectSelector(projectContext)}
         <button id="reloadButton" type="button">Reload Generated State</button>
         <label class="file-button" for="filePicker">Load Local JSON Files</label>
         <input id="filePicker" type="file" accept=".json" multiple>
@@ -56,11 +82,17 @@ export function initializeViewerPage(config) {
           This page renders generated state only. It does not edit or invent task, repo, prompt, slot, planning-run, or contract structure.
         </p>
         <p class="source-note">
+          Project mode:
+          <strong>${escapeHtml(renderProjectLabel(projectContext))}</strong>
+          ${projectContext.mode === "project" ? `from <code>${escapeHtml(projectContext.workspaceRootPath)}</code>` : "from root generated files"}.
+        </p>
+        <p class="source-note">
           Source of truth for this page:
           ${sourceFiles.map((path) => `<code>${escapeHtml(path)}</code>`).join(", ")}.
         </p>
         <p class="helper">
           Serve the repo root with <code>python -m http.server 8000</code> and open <code>http://localhost:8000/web/</code>.
+          Project URLs use <code>?project=&lt;project-id&gt;</code>, for example <code>dispatch.html?project=snake-game</code>.
           If the page is opened with <code>file://</code> and fetch is blocked, load the required JSON files with the button above.
         </p>
         ${helperNote ? `<p class="helper">${helperNote}</p>` : ""}
@@ -79,6 +111,11 @@ export function initializeViewerPage(config) {
   const pageContent = document.getElementById("pageContent");
   const reloadButton = document.getElementById("reloadButton");
   const filePicker = document.getElementById("filePicker");
+  const projectPicker = document.getElementById("projectPicker");
+
+  projectPicker?.addEventListener("change", (event) => {
+    window.location.href = buildProjectSelectionUrl(event.target.value);
+  });
 
   reloadButton.addEventListener("click", () => {
     void fetchAndRender();
@@ -88,11 +125,11 @@ export function initializeViewerPage(config) {
     try {
       setStatus(statusMessage, "Loading local JSON files...", "loading");
       clearContent(pageContent);
-      const data = await loadLocalState(requiredKeys, event.target.files);
-      renderContent(pageContent, data);
+      const data = await loadLocalState(requiredKeys, event.target.files, projectContext);
+      renderContent(pageContent, data, projectContext);
       setStatus(statusMessage, "Loaded generated state from local files.", "success");
     } catch (error) {
-      renderFailure(pageContent, statusMessage, error, requiredKeys);
+      renderFailure(pageContent, statusMessage, error, requiredKeys, projectContext);
     } finally {
       filePicker.value = "";
     }
@@ -104,23 +141,50 @@ export function initializeViewerPage(config) {
     try {
       setStatus(statusMessage, "Loading generated state...", "loading");
       clearContent(pageContent);
-      const data = await loadGeneratedState(requiredKeys);
-      renderContent(pageContent, data);
+      const data = await loadGeneratedState(requiredKeys, projectContext);
+      renderContent(pageContent, data, projectContext);
       setStatus(statusMessage, `Loaded generated state from ${sourceFiles.join(", ")}.`, "success");
     } catch (error) {
-      renderFailure(pageContent, statusMessage, error, requiredKeys);
+      renderFailure(pageContent, statusMessage, error, requiredKeys, projectContext);
     }
   }
 }
 
-function renderFailure(pageContent, statusMessage, error, requiredKeys) {
-  const fileList = sourceFilesForKeys(requiredKeys)
+function renderInitializationFailure(app, config, error) {
+  const pageId = config.pageId ?? "";
+  app.innerHTML = `
+    <header class="hero shell-width">
+      <div class="hero-copy">
+        <p class="eyebrow">${escapeHtml(config.eyebrow ?? "Viewer")}</p>
+        <h1>${escapeHtml(config.title ?? "Unable to load viewer")}</h1>
+        <p class="lede">${escapeHtml(config.description ?? "")}</p>
+        <nav class="site-nav" aria-label="Viewer pages">
+          ${NAV_ITEMS.map((item) => renderNavLink(item, pageId, null)).join("")}
+        </nav>
+      </div>
+    </header>
+    <main class="layout shell-width">
+      <section class="panel">
+        <div class="card error-card">
+          <h2>Unable to load project workspace</h2>
+          <p>${escapeHtml(formatError(error))}</p>
+          <p class="helper">Check <code>projects/index.json</code>, the requested <code>?project=...</code> value, and the selected project's <code>project_workspace.json</code>.</p>
+        </div>
+      </section>
+    </main>
+  `;
+}
+
+function renderFailure(pageContent, statusMessage, error, requiredKeys, projectContext) {
+  const fileList = sourceFilesForKeys(requiredKeys, projectContext)
     .map((path) => `<code>${escapeHtml(path)}</code>`)
     .join(", ");
 
   const hint = isFileProtocol()
     ? 'Fetch is likely blocked under <code>file://</code>. Use <code>python -m http.server 8000</code> from the repo root or load the required files manually.'
-    : 'Check that the generated JSON files exist and contain valid JSON.';
+    : projectContext?.mode === "project"
+      ? 'Check that the selected project workspace exists and its project-scoped generated JSON files exist.'
+      : 'Check that the generated JSON files exist and contain valid JSON.';
 
   setStatus(statusMessage, formatError(error), "error");
   pageContent.innerHTML = `
@@ -133,9 +197,37 @@ function renderFailure(pageContent, statusMessage, error, requiredKeys) {
   `;
 }
 
-function renderNavLink(item, pageId) {
+function renderProjectSelector(projectContext) {
+  const projects = projectContext.projects ?? [];
+  const selected = projectContext.mode === "project" ? projectContext.projectId : "";
+
+  if (!projects.length) {
+    return `
+      <div class="project-switcher" aria-label="Project selection">
+        <span class="project-switcher-label">Project</span>
+        <strong>Root Generated State</strong>
+      </div>
+    `;
+  }
+
+  return `
+    <label class="project-switcher" for="projectPicker">
+      <span class="project-switcher-label">Project</span>
+      <select id="projectPicker">
+        <option value="" ${selected ? "" : "selected"}>Root Generated State</option>
+        ${projects.map((project) => `
+          <option value="${escapeHtml(project.project_id)}" ${project.project_id === selected ? "selected" : ""}>
+            ${escapeHtml(project.name)} (${escapeHtml(project.project_id)})
+          </option>
+        `).join("")}
+      </select>
+    </label>
+  `;
+}
+
+function renderNavLink(item, pageId, projectContext) {
   const className = item.id === pageId ? "nav-link active" : "nav-link";
-  return `<a class="${className}" href="${item.href}">${escapeHtml(item.label)}</a>`;
+  return `<a class="${className}" href="${projectUrlForPage(item.href, projectContext)}">${escapeHtml(item.label)}</a>`;
 }
 
 export function renderList(items, emptyLabel = "None") {
