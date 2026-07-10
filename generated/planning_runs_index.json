@@ -12,33 +12,5 @@
     "task_batch_index.json",
     "task_backlog.json"
   ],
-  "runs": [
-    {
-      "slug": "coc-base-builder-v1",
-      "path": "planning_runs/coc-base-builder-v1",
-      "status": "draft_missing_outputs",
-      "has_input_idea": true,
-      "has_planning_prompt": true,
-      "has_review_notes": true,
-      "has_outputs_dir": true,
-      "outputs": {
-        "project_spec.json": false,
-        "repo_plan.json": false,
-        "agent_prompts.json": false,
-        "slots_db.json": false
-      },
-      "missing_outputs": [
-        "project_spec.json",
-        "repo_plan.json",
-        "agent_prompts.json",
-        "slots_db.json"
-      ],
-      "deferred_outputs": {
-        "task_batch_index.json": false,
-        "task_backlog.json": false
-      },
-      "missing_scaffold": [],
-      "task_decomposition_deferred": true
-    }
-  ]
+  "runs": []
 }
