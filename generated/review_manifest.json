@@ -4,578 +4,224 @@
     {
       "path": "README.md",
       "category": "root-doc",
-      "purpose": "Repository overview, source-of-truth rules, intake workflow, Dispatch workflow, viewer constraints, validation guidance, and remote AI review links.",
+      "purpose": "Concise repository-first framework overview, lifecycle, bootstrap command, viewer usage, and validation entry point.",
       "required": true
     },
     {
       "path": "PROJECT_SPEC.md",
       "category": "root-doc",
-      "purpose": "Human-readable phase 0 product specification covering guided intake, planning, execution-coordination artifacts, and current viewer scope.",
+      "purpose": "Current framework product specification.",
       "required": true
-    },
-    {
-      "path": "PROJECT_SPEC_TEMPLATE.md",
-      "category": "root-doc",
-      "purpose": "Reusable planning template that shows the intended product-spec structure.",
-      "required": false
     },
     {
       "path": "PRODUCT_RULES.md",
       "category": "root-doc",
-      "purpose": "Hard product rules, scope boundaries, and frontend source-of-truth constraints.",
+      "purpose": "Hard scope, safety, and source-of-truth rules.",
       "required": true
     },
     {
-      "path": ".gitignore",
-      "category": "repo-config",
-      "purpose": "Local noise and generated cache ignore rules, including local tasks_created.json scratch output.",
-      "required": false
-    },
-    {
-      "path": "docs/AI_CONTEXT.md",
-      "category": "review-doc",
-      "purpose": "Remote AI review entry guidance for environments that cannot clone or run shell commands.",
+      "path": "docs/REPOSITORY_FIRST_LIFECYCLE.md",
+      "category": "workflow",
+      "purpose": "Canonical repository-first lifecycle and artifact gates.",
       "required": true
     },
     {
-      "path": "docs/EXTERNAL_REVIEW_PROMPT.md",
-      "category": "review-doc",
-      "purpose": "External reviewer instructions, including clone and no-clone fallback flows.",
+      "path": "docs/GUIDED_REPOSITORY_BOOTSTRAP.md",
+      "category": "workflow",
+      "purpose": "Guided repository readiness, kit installation, intake, and requirements PR workflow.",
       "required": true
     },
     {
-      "path": "docs/public-overview.md",
-      "category": "review-doc",
-      "purpose": "Short public-facing overview of the planning-kernel repository scope.",
-      "required": true
-    },
-    {
-      "path": "docs/workflow.md",
-      "category": "review-doc",
-      "purpose": "Workflow description for decomposition, tasks, prompts, and verification.",
+      "path": "docs/AGENT_PR_WORKFLOW.md",
+      "category": "workflow",
+      "purpose": "Shared branch, persistence, recovery, validation, and PR rules for web agents.",
       "required": true
     },
     {
       "path": "docs/PROJECT_INTAKE_WORKFLOW.md",
-      "category": "review-doc",
-      "purpose": "Interactive intake workflow for turning a rough idea into an intake_session.json state and then a structured project_intake.json record before planning.",
-      "required": true
-    },
-    {
-      "path": "docs/INTAKE_SESSION_FORMAT.md",
-      "category": "review-doc",
-      "purpose": "Interactive intake-session response format and first-turn hard-stop rules for rough project requests.",
-      "required": true
-    },
-    {
-      "path": "docs/INTAKE_DECISION_CARDS.md",
-      "category": "review-doc",
-      "purpose": "Decision-card guidance for one-question guided intake choices with A/B/C options, tradeoffs, MVP risk, scaling risk, and explicit recommendations.",
+      "category": "workflow",
+      "purpose": "Guided intake behavior and requirements handoff.",
       "required": true
     },
     {
       "path": "docs/PLANNING_RUN_WORKFLOW.md",
-      "category": "review-doc",
-      "purpose": "Manual planning-run workflow for turning a rough idea or intake record into saved planning artifacts and human-reviewed outputs.",
+      "category": "workflow",
+      "purpose": "Repository-first planning PR workflow with task decomposition deferred.",
       "required": true
     },
     {
       "path": "docs/TASK_GENERATION_WORKFLOW.md",
-      "category": "review-doc",
-      "purpose": "Workflow for turning an accepted intake record into parallel-safe task_backlog.json tasks with dependencies and verification.",
+      "category": "workflow",
+      "purpose": "Repository-first task batching, validation, backlog building, and task-decomposition PR workflow.",
       "required": true
     },
     {
       "path": "docs/EXECUTION_WORKFLOW.md",
-      "category": "review-doc",
-      "purpose": "File-based execution loop for task assignments, executor prompts, task_run reports, and proof review without backend persistence.",
+      "category": "workflow",
+      "purpose": "One-task execution, proof, and review workflow.",
       "required": true
     },
     {
-      "path": "docs/VIEWER_PAGE_ROLES.md",
-      "category": "review-doc",
-      "purpose": "Dispatch/Assignments/Task Batches page-role split, making Dispatch the primary what-can-I-do-next surface.",
-      "required": true
-    },
-    {
-      "path": "docs/TASK_CREATION_GUIDE.md",
-      "category": "review-doc",
-      "purpose": "Generic schema-aligned guide for creating implementation-ready tasks with ownership, status, priority, proof, edge cases, and non-goals.",
-      "required": true
-    },
-    {
-      "path": "docs/TASK_CARD_FORMAT.md",
-      "category": "review-doc",
-      "purpose": "Task-card format guidance for small, owned, bounded, dependency-aware, verifiable, parallel-safe tasks.",
-      "required": true
-    },
-    {
-      "path": "docs/roles.md",
-      "category": "review-doc",
-      "purpose": "Role descriptions for the planning kernel and static viewer work.",
-      "required": true
-    },
-    {
-      "path": "docs/task-format.md",
-      "category": "review-doc",
-      "purpose": "Task record expectations referenced by generated planning artifacts.",
-      "required": true
-    },
-    {
-      "path": "docs/verification-rules.md",
-      "category": "review-doc",
-      "purpose": "Verification and frontend source-of-truth rules referenced by the generated planning state.",
-      "required": true
-    },
-    {
-      "path": "generated/project_spec.json",
-      "category": "generated-state",
-      "purpose": "Canonical machine-readable product spec and frontend screen list, including Dispatch, Assignments, CollaborationState, and TaskRun concepts.",
-      "required": true
-    },
-    {
-      "path": "generated/repo_plan.json",
-      "category": "generated-state",
-      "purpose": "Canonical repo ownership split for the phase 0 seed.",
-      "required": true
-    },
-    {
-      "path": "generated/task_backlog.json",
-      "category": "generated-state",
-      "purpose": "Canonical task backlog grouped by repo ownership targets and consumed by Dispatch.",
-      "required": true
-    },
-    {
-      "path": "generated/task_batch_index.json",
-      "category": "generated-state",
-      "purpose": "Canonical index for copy-paste task generation batches, including batch order and expected task IDs.",
-      "required": true
-    },
-    {
-      "path": "generated/collaboration_state.json",
-      "category": "generated-state",
-      "purpose": "File-based execution overlay for actors, task assignments, execution status, notes, and proof references.",
-      "required": true
-    },
-    {
-      "path": "generated/task_runs/README.md",
-      "category": "generated-state",
-      "purpose": "Directory note for per-task execution proof reports saved as generated/task_runs/<task_id>.json.",
-      "required": true
-    },
-    {
-      "path": "generated/agent_prompts.json",
-      "category": "generated-state",
-      "purpose": "Canonical machine-readable prompt pack for the current seed, including the intake interviewer.",
-      "required": true
-    },
-    {
-      "path": "generated/slots_db.json",
-      "category": "generated-state",
-      "purpose": "Canonical slot board data consumed by the static viewer.",
-      "required": true
-    },
-    {
-      "path": "generated/planning_runs_index.json",
-      "category": "generated-state",
-      "purpose": "Derived index of manual planning-run folders, scaffold presence, output completeness, and run status.",
-      "required": true
-    },
-    {
-      "path": "generated/review_manifest.json",
-      "category": "generated-state",
-      "purpose": "Remote review manifest listing the key files needed to inspect the repository without a full clone.",
-      "required": true
-    },
-    {
-      "path": "contracts/intake_session.schema.json",
+      "path": "contracts/repository_bootstrap.schema.json",
       "category": "contract",
-      "purpose": "Schema for interactive intake_session.json state produced before project_intake.json exists.",
+      "purpose": "State contract for repository selection, readiness, kit installation, intake, and requirements PR status.",
+      "required": true
+    },
+    {
+      "path": "contracts/project_workspace.schema.json",
+      "category": "contract",
+      "purpose": "Project workspace, repository identity, workflow mode, and artifact path contract.",
+      "required": true
+    },
+    {
+      "path": "contracts/project_lifecycle.schema.json",
+      "category": "contract",
+      "purpose": "Derived lifecycle phase, artifact gates, PRs, blockers, and next action contract.",
       "required": true
     },
     {
       "path": "contracts/project_intake.schema.json",
       "category": "contract",
-      "purpose": "Schema for guided project intake records produced before planning runs.",
+      "purpose": "Accepted guided requirements intake contract.",
       "required": true
     },
     {
       "path": "contracts/project_spec.schema.json",
       "category": "contract",
-      "purpose": "Schema for the generated machine-readable project spec.",
+      "purpose": "Planning-stage project specification contract.",
       "required": true
     },
     {
       "path": "contracts/repo_plan.schema.json",
       "category": "contract",
-      "purpose": "Schema for the generated repository plan.",
-      "required": true
-    },
-    {
-      "path": "contracts/task.schema.json",
-      "category": "contract",
-      "purpose": "Schema for each generated task backlog entry.",
+      "purpose": "Planning-stage repository/module ownership contract.",
       "required": true
     },
     {
       "path": "contracts/task_batch_index.schema.json",
       "category": "contract",
-      "purpose": "Schema for the task batch index used by large copy-paste task-generation workflows.",
+      "purpose": "Task batch index and workspace-aware output path contract.",
       "required": true
     },
     {
       "path": "contracts/task_batch.schema.json",
       "category": "contract",
-      "purpose": "Schema for one generated task batch file under generated/task_batches/.",
+      "purpose": "One generated task batch contract.",
+      "required": true
+    },
+    {
+      "path": "contracts/task.schema.json",
+      "category": "contract",
+      "purpose": "Implementation task contract.",
       "required": true
     },
     {
       "path": "contracts/task_run.schema.json",
       "category": "contract",
-      "purpose": "Schema for one per-task executor completion/proof report saved under generated/task_runs/.",
-      "required": true
-    },
-    {
-      "path": "contracts/slot.schema.json",
-      "category": "contract",
-      "purpose": "Schema for each generated slot board entry.",
-      "required": true
-    },
-    {
-      "path": "contracts/agent_prompt.schema.json",
-      "category": "contract",
-      "purpose": "Schema for the generated agent prompt pack.",
+      "purpose": "Per-task execution proof report contract.",
       "required": true
     },
     {
       "path": "contracts/collaboration_state.schema.json",
       "category": "contract",
-      "purpose": "Schema for file-based coordination state: actors, task assignments, claims, artifact submissions, reviews, proof references, and audit events.",
+      "purpose": "File-based assignment, claim, submission, review, and audit state contract.",
       "required": true
     },
     {
-      "path": "contracts/api_contract.openapi.yaml",
-      "category": "contract",
-      "purpose": "Future API and spec-compiler contract draft, not an implemented backend.",
+      "path": "prompts/08-project-workspace-initializer.md",
+      "category": "prompt",
+      "purpose": "Repository Bootstrap Agent instructions for readiness, kit installation, intake, and requirements PR creation.",
       "required": true
     },
     {
       "path": "prompts/00-intake-interviewer.md",
-      "category": "prompt-source",
-      "purpose": "Prompt source file for the guided intake interviewer role.",
+      "category": "prompt",
+      "purpose": "One-question guided intake role.",
       "required": true
     },
     {
       "path": "prompts/00-planning-agent.md",
-      "category": "prompt-source",
-      "purpose": "Prompt source file for the planning agent role.",
-      "required": true
-    },
-    {
-      "path": "prompts/01-contract-steward.md",
-      "category": "prompt-source",
-      "purpose": "Prompt source file for the contract steward role.",
-      "required": true
-    },
-    {
-      "path": "prompts/02-frontend-builder.md",
-      "category": "prompt-source",
-      "purpose": "Prompt source file for the Phase 0 frontend builder role.",
-      "required": true
-    },
-    {
-      "path": "prompts/03-backend-builder.md",
-      "category": "prompt-source",
-      "purpose": "Prompt source file for the backend builder role.",
-      "required": true
-    },
-    {
-      "path": "prompts/04-core-engine-builder.md",
-      "category": "prompt-source",
-      "purpose": "Prompt source file for the core engine builder role.",
-      "required": true
-    },
-    {
-      "path": "prompts/05-red-team-verifier.md",
-      "category": "prompt-source",
-      "purpose": "Prompt source file for the red-team verifier role.",
+      "category": "prompt",
+      "purpose": "Repository-first Planning Agent role.",
       "required": true
     },
     {
       "path": "prompts/06-task-splitter.md",
-      "category": "prompt-source",
-      "purpose": "Copy-paste prompt template for converting an accepted generated plan into schema-valid task batches.",
+      "category": "prompt",
+      "purpose": "Repository-first resumable Task Splitter role.",
       "required": true
     },
     {
       "path": "prompts/07-task-executor.md",
-      "category": "prompt-source",
-      "purpose": "Copy-paste prompt template for executing exactly one task and returning a task_run JSON proof report.",
+      "category": "prompt",
+      "purpose": "Single-task executor and task-run proof role.",
       "required": true
     },
     {
-      "path": "examples/coc-base-builder/input-idea.md",
-      "category": "example",
-      "purpose": "Example input idea used to demonstrate safe decomposition in a domain-specific sample.",
-      "required": false
-    },
-    {
-      "path": "examples/coc-base-builder/generated-project-spec.md",
-      "category": "example",
-      "purpose": "Human-readable example project spec output for the coc-base-builder sample.",
-      "required": false
-    },
-    {
-      "path": "examples/coc-base-builder/generated-repo-plan.json",
-      "category": "example",
-      "purpose": "Machine-readable example repo-plan output for the coc-base-builder sample.",
-      "required": false
-    },
-    {
-      "path": "examples/coc-base-builder/generated-task-backlog.json",
-      "category": "example",
-      "purpose": "Machine-readable example task backlog output for the coc-base-builder sample.",
-      "required": false
-    },
-    {
-      "path": "examples/coc-base-builder/generated-agent-prompts.md",
-      "category": "example",
-      "purpose": "Human-readable example prompt pack output for the coc-base-builder sample.",
-      "required": false
-    },
-    {
-      "path": "planning_runs/README.md",
-      "category": "workflow",
-      "purpose": "Explains planning-run folders and what run artifacts should be committed.",
-      "required": true
-    },
-    {
-      "path": "planning_runs/coc-base-builder-v1/input-idea.md",
-      "category": "workflow-example",
-      "purpose": "Safe sample planning-run input idea for an offline strategy-game base layout planner.",
-      "required": true
-    },
-    {
-      "path": "planning_runs/coc-base-builder-v1/planning-run.md",
-      "category": "workflow-example",
-      "purpose": "Sample generated planning-run prompt for the safe coc-base-builder-v1 run.",
-      "required": true
-    },
-    {
-      "path": "planning_runs/coc-base-builder-v1/outputs/README.md",
-      "category": "workflow-example",
-      "purpose": "Explains that the five required JSON outputs are intentionally absent until a planning agent produces them.",
-      "required": true
-    },
-    {
-      "path": "planning_runs/coc-base-builder-v1/review-notes.md",
-      "category": "workflow-example",
-      "purpose": "Sample review-notes scaffold for the coc-base-builder-v1 planning run.",
-      "required": true
-    },
-    {
-      "path": "web/README.md",
-      "category": "viewer",
-      "purpose": "Static viewer documentation, page-role split, Dispatch workflow notes, and file:// versus local server usage notes.",
-      "required": true
-    },
-    {
-      "path": "web/index.html",
-      "category": "viewer",
-      "purpose": "Overview page entry point for the static viewer.",
-      "required": true
-    },
-    {
-      "path": "web/repos.html",
-      "category": "viewer",
-      "purpose": "Repository split page entry point.",
-      "required": true
-    },
-    {
-      "path": "web/backlog.html",
-      "category": "viewer",
-      "purpose": "Backlog page entry point.",
-      "required": true
-    },
-    {
-      "path": "web/dispatch.html",
-      "category": "viewer",
-      "purpose": "Dispatch page entry point for topological what-can-I-do-next task pickup and execution-context copying.",
-      "required": true
-    },
-    {
-      "path": "web/assignments.html",
-      "category": "viewer",
-      "purpose": "Assignments page entry point for read-only execution ownership, status, notes, and proof review.",
-      "required": true
-    },
-    {
-      "path": "web/task-batches.html",
-      "category": "viewer",
-      "purpose": "Task batches page entry point for batch index status, batch file readiness, task nodes, and dependency graph checks.",
-      "required": true
-    },
-    {
-      "path": "web/prompts.html",
-      "category": "viewer",
-      "purpose": "Prompts page entry point.",
-      "required": true
-    },
-    {
-      "path": "web/slots.html",
-      "category": "viewer",
-      "purpose": "Slots page entry point.",
-      "required": true
-    },
-    {
-      "path": "web/planning-runs.html",
-      "category": "viewer",
-      "purpose": "Planning-runs page entry point that renders the derived planning-run index read-only.",
-      "required": true
-    },
-    {
-      "path": "web/verification.html",
-      "category": "viewer",
-      "purpose": "Verification page entry point that also renders raw contract files read-only.",
-      "required": true
-    },
-    {
-      "path": "web/viewer-data.js",
-      "category": "viewer",
-      "purpose": "Shared generated-data and contract-loading helpers for the static viewer.",
-      "required": true
-    },
-    {
-      "path": "web/viewer-layout.js",
-      "category": "viewer",
-      "purpose": "Shared viewer shell, status handling, navigation, and reusable rendering helpers.",
-      "required": true
-    },
-    {
-      "path": "web/page-overview.js",
-      "category": "viewer",
-      "purpose": "Overview page rendering logic.",
-      "required": true
-    },
-    {
-      "path": "web/page-repos.js",
-      "category": "viewer",
-      "purpose": "Repository split page rendering logic.",
-      "required": true
-    },
-    {
-      "path": "web/page-backlog.js",
-      "category": "viewer",
-      "purpose": "Backlog page rendering logic.",
-      "required": true
-    },
-    {
-      "path": "web/page-dispatch.js",
-      "category": "viewer",
-      "purpose": "Dispatch page rendering logic for topological task waves, availability state, task detail, and execution-context copying.",
-      "required": true
-    },
-    {
-      "path": "web/page-dispatch-keyboard.js",
-      "category": "viewer",
-      "purpose": "Keyboard helper that maps Enter/Space on focused dispatch nodes to click activation.",
-      "required": true
-    },
-    {
-      "path": "web/page-assignments.js",
-      "category": "viewer",
-      "purpose": "Assignments page rendering logic for task ownership, execution status, notes, and proof references.",
-      "required": true
-    },
-    {
-      "path": "web/page-assignment-tools.js",
-      "category": "viewer",
-      "purpose": "Static copy/download helper for generated collaboration state and executor prompts without writing files.",
-      "required": true
-    },
-    {
-      "path": "web/page-task-batches.js",
-      "category": "viewer",
-      "purpose": "Task batches page rendering logic for batch index status, batch file readiness, task nodes, and dependency graph checks.",
-      "required": true
-    },
-    {
-      "path": "web/page-prompts.js",
-      "category": "viewer",
-      "purpose": "Prompts page rendering logic.",
-      "required": true
-    },
-    {
-      "path": "web/page-slots.js",
-      "category": "viewer",
-      "purpose": "Slots page rendering logic.",
-      "required": true
-    },
-    {
-      "path": "web/page-planning-runs.js",
-      "category": "viewer",
-      "purpose": "Planning-runs page rendering logic for scaffold presence, output completeness, and run status.",
-      "required": true
-    },
-    {
-      "path": "web/page-verification.js",
-      "category": "viewer",
-      "purpose": "Verification page rendering logic, including raw contract display.",
-      "required": true
-    },
-    {
-      "path": "web/viewer.css",
-      "category": "viewer",
-      "purpose": "Shared static viewer styles, including dispatch state and focus/active styling.",
-      "required": true
-    },
-    {
-      "path": "tools/validate_seed.py",
+      "path": "tools/bootstrap_product_repository.py",
       "category": "tool",
-      "purpose": "Dependency-light validation script for generated JSON, contracts, and traceability consistency.",
+      "purpose": "Deterministic installer/checker for a curated reusable kit in an initialized product repository.",
       "required": true
     },
     {
-      "path": "tools/init_planning_run.py",
+      "path": "tools/workspace_paths.py",
       "category": "tool",
-      "purpose": "Initializes a manual planning-run folder and refreshes the AI-ready planning prompt.",
+      "purpose": "Workspace discovery and configured artifact path resolution.",
       "required": true
     },
     {
       "path": "tools/validate_planning_run.py",
       "category": "tool",
-      "purpose": "Validates saved planning-run output artifacts against existing contracts and cross-artifact consistency checks.",
-      "required": true
-    },
-    {
-      "path": "tools/build_planning_runs_index.py",
-      "category": "tool",
-      "purpose": "Builds the derived planning-runs index consumed by later read-only review surfaces.",
+      "purpose": "Planning package validation without requiring a task backlog.",
       "required": true
     },
     {
       "path": "tools/validate_task_batches.py",
       "category": "tool",
-      "purpose": "Validates task batch files, task dependency graph references, and topological batch order.",
+      "purpose": "Workspace-aware task batch and dependency graph validation.",
       "required": true
     },
     {
       "path": "tools/build_task_backlog_from_batches.py",
       "category": "tool",
-      "purpose": "Merges validated generated task batches into canonical generated/task_backlog.json while refusing empty-batch overwrites.",
+      "purpose": "Workspace-aware canonical backlog builder.",
       "required": true
     },
     {
       "path": "tools/validate_collaboration_state.py",
       "category": "tool",
-      "purpose": "Validates file-based collaboration state, task assignments, and task run proof reports against the canonical backlog and actor list.",
+      "purpose": "Collaboration state and task-run proof validation.",
       "required": true
     },
     {
-      "path": "tools/sync_and_check.ps1",
-      "category": "tool",
-      "purpose": "Local helper that pulls GitHub-side changes, rebuilds generated indexes/context, validates artifacts, and reports status.",
-      "required": false
+      "path": "web/README.md",
+      "category": "viewer",
+      "purpose": "Static viewer modes and page behavior.",
+      "required": true
+    },
+    {
+      "path": "web/project-workspace.js",
+      "category": "viewer",
+      "purpose": "Standalone, registry, and root workspace resolution.",
+      "required": true
+    },
+    {
+      "path": "web/viewer-data.js",
+      "category": "viewer",
+      "purpose": "Logical artifact loading from the selected workspace.",
+      "required": true
+    },
+    {
+      "path": "web/viewer-layout.js",
+      "category": "viewer",
+      "purpose": "Shared read-only viewer shell and project context.",
+      "required": true
+    },
+    {
+      "path": "web/page-dispatch.js",
+      "category": "viewer",
+      "purpose": "Available-task classification and one-task execution context generation.",
+      "required": true
     }
   ]
 }
