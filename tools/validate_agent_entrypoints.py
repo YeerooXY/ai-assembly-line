@@ -24,6 +24,7 @@ REQUIRED_MARKERS = {
         "Repository state: not established",
         "A. Greenfield",
         "Then stop",
+        "tools/install_product_agent_entrypoints.py",
     ],
     ".github/copilot-instructions.md": [
         "Read `AGENTS.md`",
@@ -40,6 +41,11 @@ REQUIRED_MARKERS = {
         "Critical start-request rule",
         "First-turn hard stop",
         "ask exactly one user-facing question per turn",
+    ],
+    "tools/install_product_agent_entrypoints.py": [
+        "product_agent_entrypoints_installed=true",
+        "product_agent_entrypoints_ready=true",
+        "ask exactly one high-impact question per turn",
     ],
 }
 
@@ -80,7 +86,7 @@ def main() -> int:
 
     print(
         "RESULT OK agent_entrypoints "
-        f"files={len(REQUIRED_MARKERS)} first_turn_lock=true"
+        f"files={len(REQUIRED_MARKERS)} first_turn_lock=true product_repo_routing=true"
     )
     return 0
 
