@@ -24,7 +24,7 @@ pull requests are the approval boundary
 merged files are authoritative
 ```
 
-The web agent should guide the user. The human should not have to invent folders, move JSON files, or decide which repository owns generated state.
+The web agent should guide the user. The human should not have to invent folders, move JSON files, decide which repository owns generated state, or edit placeholders inside shell commands.
 
 ## Repository creation
 
@@ -138,15 +138,86 @@ python tools\bootstrap_product_repository.py `
   --check
 ```
 
+## Copy-paste command handoff
+
+The examples above are documentation examples. A web agent guiding a real user must not hand over those placeholders unchanged.
+
+When local execution is necessary, the agent must first know or ask for:
+
+- PowerShell, Bash, or the user's actual shell
+- framework checkout path
+- product repository checkout path
+- project ID and name
+- repository owner/name
+- visibility and default branch
+
+The final handoff must:
+
+1. contain one shell-specific copy-paste block
+2. include changing to the correct framework directory
+3. include bootstrap branch creation or switching
+4. include the installer command
+5. include `--check` verification when practical
+6. contain no angle-bracket placeholders, template variables, or paths the user must edit
+7. safely quote paths and names
+8. state that success includes:
+   - `RESULT OK product_repository_bootstrapped=true`
+   - `RESULT OK product_repository_ready=true`
+9. ask the user to paste the complete output
+
+A resolved PowerShell handoff should have this shape:
+
+```powershell
+Set-Location "C:\dev\ai-assembly-line"
+git -C "C:\dev\my-product" checkout -b "assembly/bootstrap-my-product"
+python tools\bootstrap_product_repository.py `
+  --target "C:\dev\my-product" `
+  --project-id "my-product" `
+  --name "My Product" `
+  --repository-full-name "owner/my-product" `
+  --visibility "private"
+python tools\bootstrap_product_repository.py `
+  --target "C:\dev\my-product" `
+  --project-id "my-product" `
+  --name "My Product" `
+  --repository-full-name "owner/my-product" `
+  --visibility "private" `
+  --check
+```
+
+A resolved Bash handoff should have this shape:
+
+```bash
+cd "/home/user/dev/ai-assembly-line"
+git -C "/home/user/dev/my-product" checkout -b "assembly/bootstrap-my-product"
+python tools/bootstrap_product_repository.py \
+  --target "/home/user/dev/my-product" \
+  --project-id "my-product" \
+  --name "My Product" \
+  --repository-full-name "owner/my-product" \
+  --visibility "private"
+python tools/bootstrap_product_repository.py \
+  --target "/home/user/dev/my-product" \
+  --project-id "my-product" \
+  --name "My Product" \
+  --repository-full-name "owner/my-product" \
+  --visibility "private" \
+  --check
+```
+
+These blocks demonstrate shell formatting only. The agent must substitute the user's real values and must not make the user edit the final block.
+
+After receiving output, the agent should parse it, identify any blocker, and continue from the confirmed state. It should not repeat commands already confirmed successful.
+
 ## Web-agent behavior
 
-With repository write access, the web agent should produce the same file set directly on the bootstrap branch.
+With repository write access, the web agent should produce the same file set directly on the bootstrap branch and should not ask the user to run the installer unnecessarily.
 
 The agent should:
 
 1. verify repository metadata
 2. create or reuse the bootstrap branch
-3. install the reusable kit
+3. install the reusable kit directly, or issue one resolved command handoff when local execution is necessary
 4. run guided intake one decision at a time
 5. write accepted `project_intake.json`
 6. replace the requirements draft with accepted requirements
