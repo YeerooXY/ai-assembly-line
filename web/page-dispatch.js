@@ -176,7 +176,7 @@ function classifyRow(row, rowsById, taskMap) {
     visualStatus = "waiting";
     dispatchReason = `Waiting for dependency task(s): ${unfinishedDependencies.map((dependency) => dependency.id).join(", ")}.`;
     unavailableDetails = unfinishedDependencies.map(
-      (dependency) => `${dependency.id} — ${dependency.title} — ${dependency.executionStatus}`,
+      (dependency) => `${dependency.id} - ${dependency.title} - ${dependency.executionStatus}`,
     );
   }
 
@@ -201,7 +201,7 @@ function buildBlockedDetails(row, missingDependencies, blockedDependencies) {
   }
 
   for (const dependency of blockedDependencies) {
-    details.push(`${dependency.id} — ${dependency.title} — ${dependency.dispatchReason}`);
+    details.push(`${dependency.id} - ${dependency.title} - ${dependency.dispatchReason}`);
   }
 
   if (BLOCKED_STATUSES.has(row.executionStatus)) {
@@ -420,7 +420,7 @@ function renderGraphNode(row, selectedTaskId) {
       </div>
       <p class="dispatch-task-title">${escapeHtml(row.title)}</p>
       <div class="graph-node-meta">
-        <span>${escapeHtml(row.ownerRole)} · ${escapeHtml(row.repoTarget)}</span>
+        <span>${escapeHtml(row.ownerRole)} / ${escapeHtml(row.repoTarget)}</span>
         <span>${escapeHtml(row.dispatchReason)}</span>
         ${selectedLabel}
       </div>
@@ -579,7 +579,7 @@ function renderProofSummary(proofItems) {
 
 function proofLabel(item) {
   const bits = [item.kind, item.status, item.path, item.summary].filter(Boolean);
-  return bits.length ? bits.join(" · ") : "proof";
+  return bits.length ? bits.join(" / ") : "proof";
 }
 
 function buildExecutionContext(row, model) {
