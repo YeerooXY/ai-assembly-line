@@ -65,9 +65,8 @@ if ($Before -ne $After) {
 Invoke-NativeChecked "Build planning runs index" { python tools\build_planning_runs_index.py }
 Invoke-NativeChecked "Validate seed" { python tools\validate_seed.py }
 Invoke-NativeChecked "Validate task batches" { python tools\validate_task_batches.py }
-Invoke-NativeChecked "Rebuild context pack" { python tools\build_context_pack.py }
-Invoke-NativeChecked "Validate seed after context rebuild" { python tools\validate_seed.py }
-Invoke-NativeChecked "Validate task batches after context rebuild" { python tools\validate_task_batches.py }
+Invoke-NativeChecked "Validate collaboration state" { python tools\validate_collaboration_state.py }
+Invoke-NativeChecked "Check context pack freshness" { python tools\build_context_pack.py --check }
 
 Invoke-NativeChecked "JavaScript syntax checks" {
     Get-ChildItem web -Filter *.js | Sort-Object Name | ForEach-Object {
