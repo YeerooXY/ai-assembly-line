@@ -1,4 +1,5 @@
 import { escapeHtml, initializeViewerPage, renderCardGrid, renderChipRow, renderKeyValueRows, renderList } from "./viewer-layout.js";
+import { isWorkspaceContext, workspaceDisplayPath } from "./project-workspace.js";
 
 initializeViewerPage({
   pageId: "assignments",
@@ -16,8 +17,10 @@ initializeViewerPage({
     const rows = tasks.map((task) => buildTaskView(task, assignmentMap.get(task.id), actors));
     const summary = summarizeRows(rows);
     const context = projectContext ?? data.__projectContext;
-    const collaborationPath = context?.mode === "project"
-      ? `${context.workspaceRootPath}${state.generated_from ?? "generated/collaboration_state.json"}`
+    const configuredCollaborationPath = context?.workspace?.paths?.generated?.collaboration_state
+      ?? "generated/collaboration_state.json";
+    const collaborationPath = isWorkspaceContext(context)
+      ? workspaceDisplayPath(context, configuredCollaborationPath)
       : "generated/collaboration_state.json";
 
     container.innerHTML = `
@@ -60,7 +63,7 @@ initializeViewerPage({
 });
 
 function projectLabel(context) {
-  return context?.mode === "project" ? `${context.projectName} (${context.projectId})` : "Root Generated State";
+  return isWorkspaceContext(context) ? `${context.projectName} (${context.projectId})` : "Root Generated State";
 }
 
 function buildAssignmentMap(assignments) {
