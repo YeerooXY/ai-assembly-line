@@ -13,9 +13,13 @@ OUTPUT_PATH = ROOT / "generated" / "planning_runs_index.json"
 REQUIRED_OUTPUTS = [
     "project_spec.json",
     "repo_plan.json",
-    "task_backlog.json",
     "agent_prompts.json",
     "slots_db.json",
+]
+
+DEFERRED_OUTPUTS = [
+    "task_batch_index.json",
+    "task_backlog.json",
 ]
 
 SCAFFOLD_FILES = {
@@ -32,6 +36,7 @@ def posix(path: Path) -> str:
 def build_run_entry(run_dir: Path) -> dict[str, Any]:
     outputs_dir = run_dir / "outputs"
     outputs = {name: (outputs_dir / name).is_file() for name in REQUIRED_OUTPUTS}
+    deferred_outputs = {name: (outputs_dir / name).is_file() for name in DEFERRED_OUTPUTS}
 
     scaffold_presence = {
         key: (run_dir / filename).is_file()
@@ -69,7 +74,9 @@ def build_run_entry(run_dir: Path) -> dict[str, Any]:
         "has_outputs_dir": scaffold_presence["outputs_dir"],
         "outputs": outputs,
         "missing_outputs": missing_outputs,
+        "deferred_outputs": deferred_outputs,
         "missing_scaffold": missing_scaffold,
+        "task_decomposition_deferred": True,
     }
 
 
@@ -94,6 +101,7 @@ def main() -> int:
         "generated_by": "tools/build_planning_runs_index.py",
         "planning_runs_path": "planning_runs",
         "required_outputs": REQUIRED_OUTPUTS,
+        "deferred_to_task_splitter": DEFERRED_OUTPUTS,
         "runs": runs,
     }
 
@@ -101,7 +109,7 @@ def main() -> int:
     OUTPUT_PATH.write_text(json.dumps(index, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     print(f"WROTE {posix(OUTPUT_PATH)}")
-    print(f"RESULT OK runs={len(runs)}")
+    print(f"RESULT OK runs={len(runs)} task_decomposition_deferred=true")
     for run in runs:
         print(f"RUN {run['slug']} status={run['status']} missing_outputs={len(run['missing_outputs'])}")
 
