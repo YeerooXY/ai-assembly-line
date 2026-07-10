@@ -384,7 +384,7 @@ def create_workspace(args: argparse.Namespace) -> None:
 
     update_registry(project_id, args.name, args.status, force=args.force)
     print(f"CREATED projects/{project_id}/project_workspace.json")
-    print("SEE generated placeholders under projects/{project_id}/generated/")
+    print(f"SEE generated placeholders under projects/{project_id}/generated/")
     print("UPDATED projects/index.json")
     print("NEXT run: python tools\\validate_project_workspaces.py")
 
