@@ -4,17 +4,21 @@ initializeViewerPage({
   pageId: "assignments",
   eyebrow: "Execution Coordination",
   title: "Task Assignments",
-  description: "Read-only ownership, execution status, and proof view over the canonical task backlog and file-based collaboration state.",
+  description: "Read-only ownership, execution status, and proof view over the selected task backlog and file-based collaboration state.",
   requiredKeys: ["taskBacklog", "collaborationState"],
   extraSourceFiles: ["contracts/collaboration_state.schema.json", "contracts/task_run.schema.json", "generated/task_runs/*.json"],
-  helperNote: "Unclaimed tasks are derived from generated/task_backlog.json when no matching task_assignments entry exists.",
-  renderContent(container, data) {
+  helperNote: "Unclaimed tasks are derived from the selected task_backlog.json when no matching task_assignments entry exists.",
+  renderContent(container, data, projectContext) {
     const tasks = Array.isArray(data.taskBacklog) ? data.taskBacklog : [];
     const state = data.collaborationState && typeof data.collaborationState === "object" ? data.collaborationState : {};
     const actors = Array.isArray(state.actors) ? state.actors : [];
     const assignmentMap = buildAssignmentMap(state.task_assignments);
     const rows = tasks.map((task) => buildTaskView(task, assignmentMap.get(task.id), actors));
     const summary = summarizeRows(rows);
+    const context = projectContext ?? data.__projectContext;
+    const collaborationPath = context?.mode === "project"
+      ? `${context.workspaceRootPath}${state.generated_from ?? "generated/collaboration_state.json"}`
+      : "generated/collaboration_state.json";
 
     container.innerHTML = `
       <div class="stack">
@@ -22,11 +26,13 @@ initializeViewerPage({
           <div class="section-heading">
             <div>
               <h2>Collaboration State</h2>
-              <p class="muted">This page overlays execution ownership on top of the generated task backlog. It does not claim, edit, or lock tasks.</p>
+              <p class="muted">This page overlays execution ownership on top of the selected generated task backlog. It does not claim, edit, or lock tasks.</p>
             </div>
             <span class="chip ${summary.blocked ? "status-blocked" : "status-complete"}">${summary.blocked ? "blocked tasks" : "ready to assign"}</span>
           </div>
           ${renderKeyValueRows([
+            { label: "Project", value: escapeHtml(projectLabel(context)) },
+            { label: "Collaboration Path", value: `<code>${escapeHtml(collaborationPath)}</code>` },
             { label: "Schema Version", value: `<code>${escapeHtml(state.schema_version ?? "unknown")}</code>` },
             { label: "Workspace", value: `<code>${escapeHtml(state.workspace_id ?? "unknown")}</code>` },
             { label: "Actors", value: escapeHtml(String(actors.length)) },
@@ -46,12 +52,16 @@ initializeViewerPage({
 
         <section class="card">
           <h3>Task Ownership</h3>
-          ${rows.length ? renderTaskCards(rows) : '<p class="muted">No tasks exist in generated/task_backlog.json yet.</p>'}
+          ${rows.length ? renderTaskCards(rows) : '<p class="muted">No tasks exist in the selected task backlog yet.</p>'}
         </section>
       </div>
     `;
   },
 });
+
+function projectLabel(context) {
+  return context?.mode === "project" ? `${context.projectName} (${context.projectId})` : "Root Generated State";
+}
 
 function buildAssignmentMap(assignments) {
   const map = new Map();
