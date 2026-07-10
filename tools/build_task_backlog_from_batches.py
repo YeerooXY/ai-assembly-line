@@ -7,20 +7,20 @@ from typing import Any
 
 import validate_task_batches
 import validate_seed
+from workspace_paths import WorkspacePaths, discover_workspace_paths
 
 
 ROOT = Path(__file__).resolve().parents[1]
-INDEX_PATH = ROOT / "generated" / "task_batch_index.json"
-OUTPUT_PATH = ROOT / "generated" / "task_backlog.json"
+
+
+def usage() -> int:
+    print("Usage: python tools/build_task_backlog_from_batches.py [project_workspace.json]")
+    return 1
 
 
 def load_json(path: Path) -> Any:
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
-
-
-def rel(path: Path) -> str:
-    return path.relative_to(ROOT).as_posix()
 
 
 def write_json(path: Path, payload: Any) -> None:
@@ -30,25 +30,33 @@ def write_json(path: Path, payload: Any) -> None:
         handle.write("\n")
 
 
-def build_backlog(index: dict[str, Any]) -> list[dict[str, Any]]:
-    validate_task_batches.validate_batch_index(index)
+def build_backlog(index: dict[str, Any], paths: WorkspacePaths) -> list[dict[str, Any]]:
+    validate_task_batches.validate_batch_index(
+        index,
+        expected_batches_dir=paths.task_batches_dir_rel,
+        label=paths.display(paths.task_batch_index),
+    )
     validate_seed.expect(
         len(index["batches"]) > 0,
-        "task_batch_index.batches is empty; refusing to overwrite generated/task_backlog.json",
+        f"task_batch_index.batches is empty; refusing to overwrite {paths.display(paths.task_backlog)}",
     )
 
     all_tasks: dict[str, dict[str, Any]] = {}
     task_to_batch: dict[str, str] = {}
 
     for batch in index["batches"]:
-        batch_path = ROOT / batch["output_path"]
+        batch_path = paths.resolve_repo_path(batch["output_path"])
         validate_seed.expect(
             batch_path.is_file(),
             f"missing task batch file: {batch['output_path']}",
         )
-
         payload = load_json(batch_path)
-        validate_task_batches.validate_task_batch(batch_path, payload, batch)
+        validate_task_batches.validate_task_batch(
+            batch_path,
+            payload,
+            batch,
+            paths.display(batch_path),
+        )
 
         for task in payload["tasks"]:
             task_id = task["id"]
@@ -61,22 +69,28 @@ def build_backlog(index: dict[str, Any]) -> list[dict[str, Any]]:
     return [all_tasks[task_id] for task_id in ordered_task_ids]
 
 
-def main() -> int:
-    if not INDEX_PATH.is_file():
-        print(f"MISSING FAIL {rel(INDEX_PATH)}")
-        return 1
+def main(argv: list[str]) -> int:
+    if len(argv) > 2:
+        return usage()
 
+    explicit_manifest = argv[1] if len(argv) == 2 else None
     try:
-        index = load_json(INDEX_PATH)
-        backlog = build_backlog(index)
-        write_json(OUTPUT_PATH, backlog)
+        paths = discover_workspace_paths(ROOT, explicit_manifest)
+        if not paths.task_batch_index.is_file():
+            print(f"MISSING FAIL {paths.display(paths.task_batch_index)}")
+            return 1
+
+        index = load_json(paths.task_batch_index)
+        backlog = build_backlog(index, paths)
+        write_json(paths.task_backlog, backlog)
     except Exception as exc:
         print(f"RESULT FAIL {exc}")
         return 1
 
-    print(f"RESULT OK   wrote {rel(OUTPUT_PATH)} tasks={len(backlog)}")
+    mode = "workspace" if paths.manifest_path else "root-seed"
+    print(f"RESULT OK   mode={mode} wrote {paths.display(paths.task_backlog)} tasks={len(backlog)}")
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv))
