@@ -15,23 +15,28 @@ initializeViewerPage({
   requiredKeys: ["taskBacklog", "collaborationState"],
   extraSourceFiles: ["prompts/07-task-executor.md", "contracts/task_run.schema.json"],
   helperNote: "Dispatch is the primary task-pickup screen. It is still static/read-only: it does not claim, lock, edit, or write files.",
-  renderContent(container, data) {
+  renderContent(container, data, projectContext) {
     const tasks = Array.isArray(data.taskBacklog) ? data.taskBacklog : [];
     const state = data.collaborationState && typeof data.collaborationState === "object" ? data.collaborationState : {};
-    const model = buildDispatchModel(tasks, state);
+    const model = buildDispatchModel(tasks, state, projectContext ?? data.__projectContext);
 
     container.innerHTML = renderDispatchShell(model);
     bindDispatchControls(container, model);
   },
 });
 
-function buildDispatchModel(tasks, state) {
+function buildDispatchModel(tasks, state, projectContext) {
   const actors = Array.isArray(state.actors) ? state.actors : [];
   const actorMap = new Map(actors.map((actor) => [actor.actor_id, actor]));
   const assignmentMap = buildAssignmentMap(state.task_assignments);
   const claimMap = buildActiveClaimMap(state.task_claims);
   const taskMap = new Map(tasks.map((task) => [task.id, task]));
   const layers = computeTopologicalLayers(tasks);
+  const taskRunPathPrefix = projectContext?.taskRunPathPrefix ?? "generated/task_runs/";
+  const projectLabel = projectContext?.mode === "project"
+    ? `${projectContext.projectName} (${projectContext.projectId})`
+    : "Root Generated State";
+  const workspaceLabel = projectContext?.mode === "project" ? projectContext.workspaceRootPath : "root generated/";
 
   const rawRows = tasks.map((task) => {
     const assignment = assignmentMap.get(task.id);
@@ -79,6 +84,10 @@ function buildDispatchModel(tasks, state) {
     rowsById: classifiedRowsById,
     summary,
     defaultTaskId,
+    projectContext,
+    projectLabel,
+    workspaceLabel,
+    taskRunPathPrefix,
   };
 }
 
@@ -290,7 +299,8 @@ function renderDispatchShell(model) {
         <div>
           <p class="eyebrow">Static execution cockpit</p>
           <h2>Pick one task and launch a fresh AI chat</h2>
-          <p class="muted">Green cards are ready now. Click a task, copy the full execution context, and save the returned report as <code>generated/task_runs/&lt;task_id&gt;.json</code>.</p>
+          <p class="muted">Green cards are ready now. Click a task, copy the full execution context, and save the returned report as <code>${escapeHtml(model.taskRunPathPrefix)}&lt;task_id&gt;.json</code>.</p>
+          <p class="helper">Project: <strong>${escapeHtml(model.projectLabel)}</strong> · Workspace: <code>${escapeHtml(model.workspaceLabel)}</code></p>
         </div>
         <span class="chip status-available">${escapeHtml(String(model.summary.available))} ready now</span>
       </section>
@@ -384,7 +394,7 @@ function bindDispatchControls(container, model) {
 
 function renderGraph(model, activeFilter, selectedTaskId) {
   if (!model.rows.length) {
-    return '<p class="muted">No tasks exist in generated/task_backlog.json yet.</p>';
+    return '<p class="muted">No tasks exist in the selected task backlog yet.</p>';
   }
 
   const columns = model.layers.map((layer) => {
@@ -455,11 +465,12 @@ function renderTaskDetail(row, model) {
     </section>
 
     <div class="dispatch-facts">
+      ${renderFact("Project", model.projectLabel)}
       ${renderFact("Owner", row.ownerRole)}
       ${renderFact("Repo", row.repoTarget)}
       ${renderFact("Execution", row.executionStatus)}
       ${renderFact("Assignee", row.assignedTo)}
-      ${renderFact("Task run path", `generated/task_runs/${row.id}.json`, true)}
+      ${renderFact("Task run path", taskRunPath(model, row.id), true)}
     </div>
 
     <h4>Dependencies</h4>
@@ -590,10 +601,16 @@ function buildExecutionContext(row, model) {
   const dependencySummary = dependencyRows.length
     ? dependencyRows.map((dependency) => formatDependencyContext(dependency)).join("\n")
     : "- No dependencies.";
+  const projectContext = model.projectContext;
+  const projectBlock = projectContext?.mode === "project"
+    ? `Project: ${projectContext.projectName}\nProject ID: ${projectContext.projectId}\nWorkspace: ${projectContext.workspaceRootPath}`
+    : "Project: Root Generated State\nProject ID: root\nWorkspace: generated/";
 
   return `# AI Assembly Line - One Task Execution Context
 
 You are executing exactly one task from the AI Assembly Line backlog.
+
+${projectBlock}
 
 Use the task executor rules from:
 prompts/07-task-executor.md
@@ -607,7 +624,7 @@ Hard rules:
 - Return one task_run JSON object only.
 
 Expected output path:
-generated/task_runs/${row.id}.json
+${taskRunPath(model, row.id)}
 
 Dispatch status: ${row.dispatchStatus}
 Reason: ${row.dispatchReason}
@@ -657,6 +674,10 @@ Use status "review" when implementation appears complete but still needs human r
 Use status "blocked" if required context or dependencies are missing.
 Do not mark "done" without accepted proof.
 `;
+}
+
+function taskRunPath(model, taskId) {
+  return `${model.taskRunPathPrefix}${taskId}.json`;
 }
 
 function formatDependencyContext(dependency) {

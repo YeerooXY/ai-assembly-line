@@ -1,4 +1,5 @@
 import { escapeHtml, initializeViewerPage, renderCardGrid, renderChipRow, renderKeyValueRows, renderList } from "./viewer-layout.js";
+import { workspaceDisplayPath, workspaceFetchPath } from "./project-workspace.js";
 
 initializeViewerPage({
   pageId: "task-batches",
@@ -7,11 +8,18 @@ initializeViewerPage({
   description: "Read-only view of task batch index files, generated batch files, and dependency graph readiness.",
   requiredKeys: ["taskBatchIndex"],
   helperNote: "Batch files are fetched from each batch output_path. Serve the repo root locally for automatic batch loading.",
-  renderContent(container, data) {
+  renderContent(container, data, projectContext) {
+    const context = projectContext ?? data.__projectContext;
     const index = data.taskBatchIndex;
     const batches = Array.isArray(index.batches) ? index.batches : [];
     const batchSummaryId = "batchLoadSummary";
     const batchContentId = "batchContent";
+    const taskBatchIndexPath = context?.mode === "project"
+      ? workspaceDisplayPath(context, context.workspace?.paths?.generated?.task_batch_index ?? "generated/task_batch_index.json")
+      : "generated/task_batch_index.json";
+    const taskBatchesDir = context?.mode === "project"
+      ? workspaceDisplayPath(context, context.workspace?.paths?.generated?.task_batches_dir ?? "generated/task_batches")
+      : "generated/task_batches";
 
     container.innerHTML = `
       <div class="stack">
@@ -19,11 +27,14 @@ initializeViewerPage({
           <div class="section-heading">
             <div>
               <h2>Task Batch Index</h2>
-              <p class="muted">Use this page after generating <code>generated/task_batch_index.json</code> with the Task Splitter prompt.</p>
+              <p class="muted">Use this page after generating <code>${escapeHtml(taskBatchIndexPath)}</code> with the Task Splitter prompt.</p>
             </div>
             <span id="${batchSummaryId}" class="chip">Loading batch files...</span>
           </div>
           ${renderKeyValueRows([
+            { label: "Project", value: escapeHtml(projectLabel(context)) },
+            { label: "Batch Index", value: `<code>${escapeHtml(taskBatchIndexPath)}</code>` },
+            { label: "Task Batches Dir", value: `<code>${escapeHtml(taskBatchesDir)}</code>` },
             { label: "Schema Version", value: `<code>${escapeHtml(index.schema_version ?? "unknown")}</code>` },
             { label: "Source Plan", value: `<code>${escapeHtml(index.source_plan_path ?? "unknown")}</code>` },
             { label: "Batching Strategy", value: `<code>${escapeHtml(index.batching_strategy ?? "unknown")}</code>` },
@@ -36,10 +47,10 @@ initializeViewerPage({
           <h3>Copy/Paste Flow</h3>
           ${renderList([
             "Paste prompts/06-task-splitter.md into a web AI with MODE: guided and the accepted generated plan.",
-            "Save the first returned JSON block as generated/task_batch_index.json.",
+            `Save the first returned JSON block as ${taskBatchIndexPath}.`,
             "Reply continue, next, or sounds good to generate one batch file at a time.",
-            "Save each returned JSON block as generated/task_batches/<batch_id>.json.",
-            "Run python tools/validate_task_batches.py to validate files and graph order.",
+            `Save each returned JSON block under ${taskBatchesDir}/<batch_id>.json.`,
+            "Run python tools/validate_task_batches.py to validate root seed files, or project workspace validation for project-scoped files.",
           ])}
         </article>
 
@@ -51,16 +62,17 @@ initializeViewerPage({
       container.querySelector(`#${batchContentId}`),
       container.querySelector(`#${batchSummaryId}`),
       batches,
+      context,
     );
   },
 });
 
-async function renderBatchFiles(target, summaryChip, batches) {
+async function renderBatchFiles(target, summaryChip, batches, projectContext) {
   if (!target || !summaryChip) {
     return;
   }
 
-  const results = await Promise.all(batches.map((batch) => loadBatch(batch)));
+  const results = await Promise.all(batches.map((batch) => loadBatch(batch, projectContext)));
   const loaded = results.filter((result) => result.status === "loaded");
   const missing = results.filter((result) => result.status !== "loaded");
   const graph = analyzeGraph(batches, loaded);
@@ -74,21 +86,28 @@ async function renderBatchFiles(target, summaryChip, batches) {
   `;
 }
 
-async function loadBatch(batch) {
+async function loadBatch(batch, projectContext) {
   const path = batch.output_path;
   if (!path) {
-    return { batch, status: "error", error: "Missing output_path", payload: null };
+    return { batch, status: "error", error: "Missing output_path", payload: null, displayPath: "missing-output-path" };
   }
 
+  const fetchPath = projectContext?.mode === "project" ? workspaceFetchPath(projectContext, path) : `../${path}`;
+  const displayPath = projectContext?.mode === "project" ? workspaceDisplayPath(projectContext, path) : path;
+
   try {
-    const response = await fetch(`../${path}`, { cache: "no-store" });
+    const response = await fetch(fetchPath, { cache: "no-store" });
     if (!response.ok) {
-      return { batch, status: "missing", error: `${response.status} ${response.statusText}`, payload: null };
+      return { batch, status: "missing", error: `${response.status} ${response.statusText}`, payload: null, displayPath };
     }
-    return { batch, status: "loaded", error: "", payload: await response.json() };
+    return { batch, status: "loaded", error: "", payload: await response.json(), displayPath };
   } catch (error) {
-    return { batch, status: "error", error: error instanceof Error ? error.message : String(error), payload: null };
+    return { batch, status: "error", error: error instanceof Error ? error.message : String(error), payload: null, displayPath };
   }
+}
+
+function projectLabel(context) {
+  return context?.mode === "project" ? `${context.projectName} (${context.projectId})` : "Root Generated State";
 }
 
 function analyzeGraph(batches, loadedResults) {
@@ -376,7 +395,7 @@ function renderBatchCard(result) {
       <div class="section-heading">
         <div>
           <h3>${escapeHtml(batch.batch_id ?? "unknown-batch")}</h3>
-          <p class="muted"><code>${escapeHtml(batch.output_path ?? "missing-output-path")}</code></p>
+          <p class="muted"><code>${escapeHtml(result.displayPath ?? batch.output_path ?? "missing-output-path")}</code></p>
         </div>
         <span class="chip ${statusClass}">${escapeHtml(result.status)}</span>
       </div>

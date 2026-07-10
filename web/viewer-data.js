@@ -1,3 +1,5 @@
+import { loadProjectContext, workspaceDisplayPath, workspaceFetchPath } from "./project-workspace.js";
+
 export const DATA_FILES = {
   projectSpec: "../generated/project_spec.json",
   repoPlan: "../generated/repo_plan.json",
@@ -19,6 +21,8 @@ export const CONTRACT_FILES = {
   slotSchema: "../contracts/slot.schema.json",
   agentPromptSchema: "../contracts/agent_prompt.schema.json",
   collaborationStateSchema: "../contracts/collaboration_state.schema.json",
+  projectRegistrySchema: "../contracts/project_registry.schema.json",
+  projectWorkspaceSchema: "../contracts/project_workspace.schema.json",
   apiContract: "../contracts/api_contract.openapi.yaml",
 };
 
@@ -33,10 +37,25 @@ export const FILE_NAMES = {
   planningRunsIndex: "planning_runs_index.json",
 };
 
-export async function loadGeneratedState(requiredKeys) {
+const WORKSPACE_GENERATED_KEYS = {
+  projectSpec: "project_spec",
+  repoPlan: "repo_plan",
+  taskBacklog: "task_backlog",
+  taskBatchIndex: "task_batch_index",
+  collaborationState: "collaboration_state",
+  agentPrompts: "agent_prompts",
+  slotsDb: "slots_db",
+  planningRunsIndex: "planning_runs_index",
+};
+
+export async function resolveViewerProjectContext() {
+  return loadProjectContext();
+}
+
+export async function loadGeneratedState(requiredKeys, projectContext) {
   const entries = await Promise.all(
     requiredKeys.map(async (key) => {
-      const path = DATA_FILES[key];
+      const path = dataFileFetchPath(key, projectContext);
       const response = await fetch(path, { cache: "no-store" });
 
       if (!response.ok) {
@@ -51,10 +70,13 @@ export async function loadGeneratedState(requiredKeys) {
     }),
   );
 
-  return Object.fromEntries(entries);
+  return {
+    ...Object.fromEntries(entries),
+    __projectContext: projectContext,
+  };
 }
 
-export async function loadLocalState(requiredKeys, files) {
+export async function loadLocalState(requiredKeys, files, projectContext = null) {
   const fileMap = new Map(Array.from(files ?? []).map((file) => [file.name, file]));
 
   for (const key of requiredKeys) {
@@ -77,7 +99,10 @@ export async function loadLocalState(requiredKeys, files) {
     }),
   );
 
-  return Object.fromEntries(entries);
+  return {
+    ...Object.fromEntries(entries),
+    __projectContext: projectContext,
+  };
 }
 
 export async function loadTextFile(path) {
@@ -90,8 +115,52 @@ export async function loadTextFile(path) {
   return response.text();
 }
 
-export function sourceFilesForKeys(requiredKeys) {
-  return requiredKeys.map((key) => `generated/${FILE_NAMES[key]}`);
+export function sourceFilesForKeys(requiredKeys, projectContext = null) {
+  return requiredKeys.map((key) => dataFileDisplayPath(key, projectContext));
+}
+
+export function sourceFileForExtra(path, projectContext = null) {
+  if (projectContext?.mode === "project" && path.startsWith("generated/")) {
+    return workspaceDisplayPath(projectContext, path);
+  }
+
+  return path;
+}
+
+export function dataFileFetchPath(key, projectContext = null) {
+  if (projectContext?.mode === "project") {
+    const workspacePath = workspaceGeneratedPath(key, projectContext);
+    if (workspacePath) {
+      return workspaceFetchPath(projectContext, workspacePath);
+    }
+  }
+
+  return DATA_FILES[key];
+}
+
+export function dataFileDisplayPath(key, projectContext = null) {
+  if (projectContext?.mode === "project") {
+    const workspacePath = workspaceGeneratedPath(key, projectContext);
+    if (workspacePath) {
+      return workspaceDisplayPath(projectContext, workspacePath);
+    }
+  }
+
+  return `generated/${FILE_NAMES[key]}`;
+}
+
+function workspaceGeneratedPath(key, projectContext) {
+  const generatedKey = WORKSPACE_GENERATED_KEYS[key];
+  if (!generatedKey) {
+    return null;
+  }
+
+  const configuredPath = projectContext.workspace?.paths?.generated?.[generatedKey];
+  if (configuredPath) {
+    return configuredPath;
+  }
+
+  return `generated/${FILE_NAMES[key]}`;
 }
 
 export function isFileProtocol() {
