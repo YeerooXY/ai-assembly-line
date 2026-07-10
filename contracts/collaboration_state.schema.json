@@ -8,6 +8,7 @@
     "schema_version",
     "workspace_id",
     "actors",
+    "task_assignments",
     "task_claims",
     "artifact_submissions",
     "reviews",
@@ -22,9 +23,17 @@
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9\\-]*$"
     },
+    "generated_from": {
+      "type": "string",
+      "minLength": 1
+    },
     "actors": {
       "type": "array",
       "items": { "$ref": "#/$defs/actor" }
+    },
+    "task_assignments": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/task_assignment" }
     },
     "task_claims": {
       "type": "array",
@@ -70,6 +79,74 @@
         }
       }
     },
+    "task_assignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "status", "updated_at"],
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9\\-]*$"
+        },
+        "assigned_to": {
+          "type": ["string", "null"],
+          "pattern": "^[a-z0-9][a-z0-9\\-]*$"
+        },
+        "assignee_type": {
+          "type": "string",
+          "enum": ["human", "web_ai", "local_ai", "service", "unassigned"]
+        },
+        "assignee_label": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["unclaimed", "claimed", "in_progress", "review", "done", "blocked", "released"]
+        },
+        "claimed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "proof": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/proof_ref" }
+        },
+        "notes": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "proof_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "summary"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["command_output", "test_output", "screenshot", "log", "file", "manual_note", "task_run"]
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "passed", "failed", "accepted", "needs_review"]
+        },
+        "recorded_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
     "task_claim": {
       "type": "object",
       "additionalProperties": false,
@@ -81,7 +158,7 @@
         },
         "task_id": {
           "type": "string",
-          "pattern": "^[a-z0-9\\-]+$"
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9\\-]*$"
         },
         "actor_id": {
           "type": "string",
@@ -115,7 +192,7 @@
         },
         "task_id": {
           "type": "string",
-          "pattern": "^[a-z0-9\\-]+$"
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9\\-]*$"
         },
         "actor_id": {
           "type": "string",
@@ -128,6 +205,10 @@
         },
         "summary": {
           "type": "string"
+        },
+        "proof": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/proof_ref" }
         },
         "status": {
           "type": "string",
@@ -185,7 +266,7 @@
         },
         "event_type": {
           "type": "string",
-          "enum": ["claim_created", "claim_released", "artifact_submitted", "review_added", "status_changed"]
+          "enum": ["claim_created", "claim_released", "assignment_updated", "artifact_submitted", "review_added", "status_changed"]
         },
         "target_id": {
           "type": "string",
