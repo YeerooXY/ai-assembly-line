@@ -13,6 +13,11 @@ Activate the Repository Bootstrap Agent and Intake Interviewer:
 - `prompts/08-project-workspace-initializer.md`
 - `prompts/00-intake-interviewer.md`
 
+Also read:
+
+- `docs/PRODUCT_DISCOVERY_ORDER.md`
+- `docs/INTAKE_DURABILITY_AND_RESPONSE_DISCIPLINE.md`
+
 Do not activate the Planning Agent, Task Splitter, or implementation roles yet.
 
 ### The user asks to review or modify the framework itself
@@ -32,7 +37,7 @@ When repository state is unknown, the first user-facing response must be limited
 ```text
 <short acknowledgement>
 
-Intake status: started
+Product Discovery status: started
 Product idea: <brief neutral description, without expanding it>
 Repository state: not established
 
@@ -40,7 +45,7 @@ Which situation applies?
 
 A. Greenfield — this project needs a new product repository
 B. Existing repository — a product repository already exists
-C. Planning-only — continue intake without creating a repository yet
+C. Planning-only — continue discovery without creating a repository yet
 ```
 
 Then stop.
@@ -53,6 +58,38 @@ The user may answer `A`, `B`, `C`, or give a custom repository-state answer.
 
 The first repository decision changes where durable state belongs and whether normal branch/PR workflows are possible. Product design generated before that decision is unreviewed speculation and must not be presented as accepted project state.
 
+## Product Discovery order
+
+Internally the lifecycle stage remains `intake`. Present it to users as **Product Discovery**.
+
+Use this default order:
+
+```text
+Repository and lifecycle
+  -> Product identity
+  -> Target users
+  -> Core experience or workflow
+  -> Largest scope-cutting decisions
+  -> MVP boundary
+  -> Required product systems
+  -> Technology and architecture constraints
+```
+
+Ask the unresolved question with the highest expected impact on scope, architecture, cost, safety, platforms, or later refactor risk.
+
+Do not continue into lower-level feature details while higher-impact questions remain unresolved.
+
+Target users are mandatory discovery input. Establish who the product is for, their experience level, environment, devices, desired outcome, and success criteria before detailed system design.
+
+For relevant products, resolve these separately:
+
+- connectivity: offline, online, or hybrid;
+- participation: solo/single-user, local multi-user, asynchronous multi-user, or real-time multiplayer/collaboration.
+
+Do not treat online as synonymous with multiplayer.
+
+Choose or recommend the stack only after product identity, target users, platforms, participation, connectivity, core workflow, and MVP boundary are sufficiently clear, unless a technical constraint is explicitly non-negotiable.
+
 ## Lifecycle gates
 
 ### Gate 0 — Repository state unknown
@@ -63,17 +100,17 @@ Required next action: ask the A/B/C repository-state question and stop.
 
 Verify:
 
-- repository exists and is accessible
-- at least one commit exists
-- default branch exists
-- branch creation is possible
-- pull requests are possible
+- repository exists and is accessible;
+- at least one commit exists;
+- default branch exists;
+- branch creation is possible;
+- pull requests are possible.
 
-Ask or act on only the next blocking repository-readiness item. Do not begin detailed intake output or product planning.
+Ask or act on only the next blocking repository-readiness item. Do not begin detailed Product Discovery or planning.
 
 ### Gate 1.5 — Product repository entrypoints installed
 
-After `tools/bootstrap_product_repository.py` succeeds, install repository-level AI routing into the product repository before continuing intake:
+After `tools/bootstrap_product_repository.py` succeeds, install repository-level AI routing into the product repository before continuing discovery:
 
 ```text
 tools/install_product_agent_entrypoints.py
@@ -98,28 +135,33 @@ With GitHub write access, create the equivalent files directly on the bootstrap 
 
 This gate makes the questionnaire and lifecycle routing survive when a fresh AI tab later opens the product repository.
 
-### Gate 2 — Repository ready, intake incomplete
+### Gate 2 — Repository ready, Product Discovery incomplete
 
-Activate `prompts/00-intake-interviewer.md` in guided mode.
+Activate `prompts/00-intake-interviewer.md` in guided mode and follow `docs/PRODUCT_DISCOVERY_ORDER.md`.
 
 Each response must contain only:
 
-1. a short record of the answer just accepted
-2. compact intake status
-3. exactly one next high-impact question or decision card
+1. a short record of the answer just accepted;
+2. compact discovery status when useful;
+3. exactly one next highest-impact question or decision card.
 
 Then stop.
 
-Do not infer the remaining MVP from the idea. Do not silently accept agent recommendations.
+Persist every accepted answer before asking the next question when repository writes are available.
 
-### Gate 3 — Intake ready
+Do not infer the remaining MVP from the idea. Do not silently accept agent recommendations. Do not jump to stack selection while higher-weight product decisions remain unresolved.
+
+### Gate 3 — Product Discovery ready
 
 Only after blocking questions are answered:
 
-- create schema-valid `project_intake.json`
-- render matching `REQUIREMENTS.md`
-- update the handoff
-- open the requirements/bootstrap PR
+- create schema-valid `project_intake.json`;
+- create `PROJECT_DNA.md` using `docs/templates/PROJECT_DNA.md`;
+- render matching `REQUIREMENTS.md`;
+- update the handoff;
+- open the requirements/bootstrap PR.
+
+`PROJECT_DNA.md` is a concise north-star summary. It does not replace the structured intake or requirements.
 
 Do not create `project_spec.json`, `repo_plan.json`, task batches, or implementation code.
 
@@ -141,29 +183,47 @@ When one role hands off to another, explicitly reload the next role's prompt fro
 
 ## Regression examples
 
+### Incorrect discovery ordering
+
+- asks about a low-level mechanic or UI detail;
+- has not established target users;
+- has not resolved offline/online or single-user/multi-user scope;
+- recommends a stack anyway.
+
+### Correct discovery ordering
+
+- identifies product category and maturity;
+- establishes primary users and their success criteria;
+- defines core workflow;
+- resolves major scope multipliers;
+- protects the MVP;
+- asks system details from largest to smallest;
+- selects technology from accepted product needs.
+
 ### Incorrect first response
 
-- invents a project name
-- describes the gameplay loop
-- proposes upgrades and monetization
-- recommends a stack
-- then asks about the repository at the end
+- invents a project name;
+- describes the gameplay loop;
+- proposes upgrades and monetization;
+- recommends a stack;
+- then asks about the repository at the end.
 
 ### Correct first response
 
-- acknowledges the idea briefly
-- states that repository state is not established
-- asks A/B/C for greenfield, existing repository, or planning-only
-- stops immediately
+- acknowledges the idea briefly;
+- states that repository state is not established;
+- asks A/B/C for greenfield, existing repository, or planning-only;
+- stops immediately.
 
-### Incorrect guided-intake response
+### Incorrect guided response
 
-- answers the current choice
-- fills in the rest of the MVP automatically
-- outputs complete requirements
+- records the current choice;
+- adds a long interpretation or praise;
+- fills in the rest of the MVP automatically;
+- outputs complete requirements.
 
-### Correct guided-intake response
+### Correct guided response
 
-- records the user's answer
-- asks exactly one next high-impact question
-- stops
+- persists the user's answer;
+- asks exactly one next highest-impact question;
+- stops.
