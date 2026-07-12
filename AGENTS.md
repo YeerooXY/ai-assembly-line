@@ -9,9 +9,10 @@ When the user supplies a rough product idea, asks how to build or set up a proje
 Before replying, read and follow:
 
 1. `docs/AI_START_HERE.md`
-2. `docs/INTAKE_DURABILITY_AND_RESPONSE_DISCIPLINE.md`
-3. `prompts/08-project-workspace-initializer.md`
-4. `prompts/00-intake-interviewer.md`
+2. `docs/CANONICAL_PROJECT_LIFECYCLE.md`
+3. `docs/INTAKE_DURABILITY_AND_RESPONSE_DISCIPLINE.md`
+4. `prompts/08-project-workspace-initializer.md`
+5. `prompts/00-intake-interviewer.md`
 
 The framework README is descriptive context. It is not permission to improvise a product specification.
 
@@ -63,11 +64,56 @@ Use A/B/C cards strongly for high-impact decisions. Include concise pros, cons, 
 
 ## Per-decision durability
 
-Once a writable product repository branch exists, persist every accepted intake answer before asking the next question. Update `assembly/intake/intake_session.json` and optionally `assembly/intake/LIVE_INTAKE.md`, then make a focused commit.
+Once a writable product repository branch exists, persist every accepted intake answer before asking the next question. Update:
+
+- `assembly/intake/intake_session.json`
+- `assembly/intake/LIVE_DECISIONS.md`
+
+Then make a focused commit and verify the write succeeded.
 
 Do not batch ten decisions merely to reduce commits. Fine-grained commits are intentional recovery points.
 
 If writes are unavailable, explicitly mark persistence as blocked and track unsaved decisions. Never imply chat-only state is durable.
+
+## Canonical gated lifecycle
+
+Follow `docs/CANONICAL_PROJECT_LIFECYCLE.md` exactly:
+
+```text
+Idea
+  -> guided intake with per-decision commits
+  -> requirements/bootstrap PR
+  -> planning and architecture PR
+  -> task-splitting PR
+  -> dependency audit
+  -> canonical backlog
+  -> development waves
+```
+
+Do not blur stages or place later-stage artifacts in an earlier PR.
+
+- Planning starts only after the requirements PR is merged.
+- Task splitting starts only after the planning PR is merged.
+- Development starts only after the dependency audit passes and the canonical backlog is merged.
+- Every dependency must use an exact task ID before the backlog becomes canonical.
+
+## Resume contract
+
+A fresh agent must recover state from repository artifacts, not remembered chat.
+
+Read, when present:
+
+1. `project_workspace.json`
+2. `assembly/context/handoff.md`
+3. `assembly/intake/LIVE_DECISIONS.md`
+4. `assembly/intake/intake_session.json`
+5. `assembly/intake/project_intake.json`
+6. `assembly/requirements/REQUIREMENTS.md`
+7. planning artifacts
+8. canonical backlog and collaboration state
+9. relevant PR state
+
+If chat loss is suspected, stop new intake, inspect durable state, mark reconstructed material as unverified, and re-confirm it one decision at a time.
 
 ## Lifecycle router
 
@@ -87,4 +133,4 @@ Read `docs/AI_START_HERE.md` for the detailed gates and response envelopes.
 
 Chat is temporary. Git is durable. Pull requests are the approval boundary. Merged files are authoritative.
 
-Never claim a lifecycle stage is complete without reading the corresponding repository artifacts or PR state.
+Never claim a lifecycle stage is complete without reading the corresponding repository artifacts, validation output, dependency audit, and PR state.
