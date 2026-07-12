@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YeerooXY/ai-assembly-line/contracts/context_handoff.schema.json",
+  "title": "AI Assembly Line Context Handoff",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "repository",
+    "lifecycle_phase",
+    "active_role",
+    "active_branch",
+    "last_verified_commit",
+    "authoritative_artifacts",
+    "next_action",
+    "persistence",
+    "framework"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "const": "0.1.0"},
+    "project_id": {"type": "string", "minLength": 1},
+    "repository": {"type": "string", "pattern": "^[^/]+/[^/]+$"},
+    "lifecycle_phase": {
+      "type": "string",
+      "enum": ["bootstrap", "product_discovery", "requirements_review", "planning", "planning_review", "task_splitting", "task_review", "development", "release", "blocked"]
+    },
+    "active_role": {"type": "string", "minLength": 1},
+    "active_branch": {"type": "string", "minLength": 1},
+    "active_pr": {"type": ["integer", "null"], "minimum": 1},
+    "last_verified_commit": {"type": "string", "pattern": "^[0-9a-f]{7,40}$"},
+    "authoritative_artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "current_section": {"type": ["string", "null"]},
+    "last_completed_item": {"type": ["string", "null"]},
+    "current_item": {"type": ["string", "null"]},
+    "next_action": {"type": "string", "minLength": 1},
+    "blockers": {"type": "array", "items": {"type": "string"}, "default": []},
+    "persistence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "unsaved_decisions"],
+      "properties": {
+        "status": {"type": "string", "enum": ["ready", "blocked", "dirty"]},
+        "unsaved_decisions": {"type": "integer", "minimum": 0},
+        "last_persisted_at": {"type": ["string", "null"], "format": "date-time"}
+      }
+    },
+    "framework": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "installed_ref", "kit_version"],
+      "properties": {
+        "repository": {"type": "string", "pattern": "^[^/]+/[^/]+$"},
+        "installed_ref": {"type": "string", "minLength": 1},
+        "kit_version": {"type": "string", "minLength": 1}
+      }
+    },
+    "updated_at": {"type": ["string", "null"], "format": "date-time"}
+  }
+}

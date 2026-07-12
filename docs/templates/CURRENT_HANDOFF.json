@@ -1,0 +1,30 @@
+{
+  "schema_version": "0.1.0",
+  "project_id": "<project-id>",
+  "repository": "<owner>/<repository>",
+  "lifecycle_phase": "product_discovery",
+  "active_role": "intake_interviewer",
+  "active_branch": "<active-branch>",
+  "active_pr": null,
+  "last_verified_commit": "<commit-sha>",
+  "authoritative_artifacts": [
+    "assembly/intake/LIVE_DECISIONS.md",
+    "assembly/intake/intake_session.json"
+  ],
+  "current_section": "<current-section>",
+  "last_completed_item": null,
+  "current_item": "<current-question-or-task>",
+  "next_action": "<one exact next action>",
+  "blockers": [],
+  "persistence": {
+    "status": "ready",
+    "unsaved_decisions": 0,
+    "last_persisted_at": null
+  },
+  "framework": {
+    "repository": "YeerooXY/ai-assembly-line",
+    "installed_ref": "<installed-ref>",
+    "kit_version": "<kit-version>"
+  },
+  "updated_at": null
+}
