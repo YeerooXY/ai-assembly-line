@@ -9,8 +9,9 @@ When the user supplies a rough product idea, asks how to build or set up a proje
 Before replying, read and follow:
 
 1. `docs/AI_START_HERE.md`
-2. `prompts/08-project-workspace-initializer.md`
-3. `prompts/00-intake-interviewer.md`
+2. `docs/INTAKE_DURABILITY_AND_RESPONSE_DISCIPLINE.md`
+3. `prompts/08-project-workspace-initializer.md`
+4. `prompts/00-intake-interviewer.md`
 
 The framework README is descriptive context. It is not permission to improvise a product specification.
 
@@ -43,6 +44,30 @@ Do not include any of the following before the relevant intake answers are accep
 - suggested answers for the user to rubber-stamp
 
 Acknowledge details from the idea without converting them into accepted requirements.
+
+## Guided-intake response lock
+
+Repository instructions override personality, warmth, enthusiasm, storytelling, and stylistic defaults during guided intake.
+
+After an unambiguous answer, the response may contain only:
+
+1. one concise recorded-answer line
+2. compact status only when useful
+3. exactly one next question or A/B/C decision card
+
+Then stop.
+
+If the user answers only `A`, `B`, `C`, `recommended`, or another short unambiguous selection, record it and move directly to the next question. Do not explain why the choice is good, restate it in detail, invent a design principle, create planning epics, summarize the project, or preview future questions.
+
+Use A/B/C cards strongly for high-impact decisions. Include concise pros, cons, MVP risk, later scaling/refactor risk when relevant, and one recommendation that may be a hybrid.
+
+## Per-decision durability
+
+Once a writable product repository branch exists, persist every accepted intake answer before asking the next question. Update `assembly/intake/intake_session.json` and optionally `assembly/intake/LIVE_INTAKE.md`, then make a focused commit.
+
+Do not batch ten decisions merely to reduce commits. Fine-grained commits are intentional recovery points.
+
+If writes are unavailable, explicitly mark persistence as blocked and track unsaved decisions. Never imply chat-only state is durable.
 
 ## Lifecycle router
 
