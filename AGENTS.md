@@ -12,8 +12,9 @@ Before replying, read and follow:
 2. `docs/CANONICAL_PROJECT_LIFECYCLE.md`
 3. `docs/PRODUCT_DISCOVERY_ORDER.md`
 4. `docs/INTAKE_DURABILITY_AND_RESPONSE_DISCIPLINE.md`
-5. `prompts/08-project-workspace-initializer.md`
-6. `prompts/00-intake-interviewer.md`
+5. `docs/CONTEXT_HANDOFF_AND_RESUME.md`
+6. `prompts/08-project-workspace-initializer.md`
+7. `prompts/00-intake-interviewer.md`
 
 The framework README is descriptive context. It is not permission to improvise a product specification.
 
@@ -113,6 +114,33 @@ assembly/intake/PROJECT_DNA.md
 
 Use `docs/templates/PROJECT_DNA.md` as the shape. It is a concise north-star summary derived only from accepted decisions. It does not replace `project_intake.json` or `REQUIREMENTS.md`.
 
+## Always-ready context handoff
+
+Every active product repository must continuously maintain:
+
+- `assembly/context/CURRENT_HANDOFF.json`
+- `assembly/context/NEW_CHAT_RESUME.md`
+
+Update and commit them whenever the active decision, next action, lifecycle phase, role, branch, pull request, blocker, persistence status, or implementation task changes.
+
+Before ending a work turn or asking the user the next guided question, handoff persistence should normally be `ready` with zero unsaved decisions.
+
+A fresh agent must read `CURRENT_HANDOFF.json`, verify branch and commit state, read every authoritative artifact listed there, load the complete active-role prompt, and continue from the exact `next_action`.
+
+Do not ask the user to reconstruct what the previous agent knew. Do not infer missing state from personality or chat memory.
+
+Validate locally with:
+
+```text
+python assembly/tools/validate_context_handoff.py --root .
+```
+
+Expected marker:
+
+```text
+RESULT OK context_handoff_ready=true unsaved_decisions=0
+```
+
 ## Canonical gated lifecycle
 
 Follow `docs/CANONICAL_PROJECT_LIFECYCLE.md` exactly:
@@ -142,15 +170,18 @@ A fresh agent must recover state from repository artifacts, not remembered chat.
 Read, when present:
 
 1. `project_workspace.json`
-2. `assembly/context/handoff.md`
-3. `assembly/intake/LIVE_DECISIONS.md`
-4. `assembly/intake/intake_session.json`
-5. `assembly/intake/PROJECT_DNA.md`
-6. `assembly/intake/project_intake.json`
-7. `assembly/requirements/REQUIREMENTS.md`
-8. planning artifacts
-9. canonical backlog and collaboration state
-10. relevant PR state
+2. `assembly/context/CURRENT_HANDOFF.json`
+3. `assembly/context/NEW_CHAT_RESUME.md`
+4. every authoritative artifact listed in the handoff
+5. `assembly/context/handoff.md`
+6. `assembly/intake/LIVE_DECISIONS.md`
+7. `assembly/intake/intake_session.json`
+8. `assembly/intake/PROJECT_DNA.md`
+9. `assembly/intake/project_intake.json`
+10. `assembly/requirements/REQUIREMENTS.md`
+11. planning artifacts
+12. canonical backlog and collaboration state
+13. relevant PR state
 
 If chat loss is suspected, stop new intake, inspect durable state, mark reconstructed material as unverified, and re-confirm it one decision at a time.
 
@@ -172,4 +203,4 @@ Read `docs/AI_START_HERE.md` for the detailed gates and response envelopes.
 
 Chat is temporary. Git is durable. Pull requests are the approval boundary. Merged files are authoritative.
 
-Never claim a lifecycle stage is complete without reading the corresponding repository artifacts, validation output, dependency audit, and PR state.
+Never claim a lifecycle stage is complete without reading the corresponding repository artifacts, validation output, dependency audit, handoff state, and PR state.
