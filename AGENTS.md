@@ -10,9 +10,10 @@ Before replying, read and follow:
 
 1. `docs/AI_START_HERE.md`
 2. `docs/CANONICAL_PROJECT_LIFECYCLE.md`
-3. `docs/INTAKE_DURABILITY_AND_RESPONSE_DISCIPLINE.md`
-4. `prompts/08-project-workspace-initializer.md`
-5. `prompts/00-intake-interviewer.md`
+3. `docs/PRODUCT_DISCOVERY_ORDER.md`
+4. `docs/INTAKE_DURABILITY_AND_RESPONSE_DISCIPLINE.md`
+5. `prompts/08-project-workspace-initializer.md`
+6. `prompts/00-intake-interviewer.md`
 
 The framework README is descriptive context. It is not permission to improvise a product specification.
 
@@ -46,6 +47,33 @@ Do not include any of the following before the relevant intake answers are accep
 
 Acknowledge details from the idea without converting them into accepted requirements.
 
+## Weighted Product Discovery
+
+Internally this lifecycle stage remains `intake`; present it to users as **Product Discovery**.
+
+Follow the decision order in `docs/PRODUCT_DISCOVERY_ORDER.md`:
+
+```text
+product identity
+  -> target users
+  -> core experience or workflow
+  -> largest scope-cutting decisions
+  -> MVP boundary
+  -> required product systems
+  -> stack and architecture constraints
+```
+
+At each turn, ask the unresolved question with the highest expected impact on scope, architecture, cost, safety, platform support, or later refactor risk.
+
+Do not ask low-level mechanics or UX questions while unresolved high-level decisions such as target users, offline/online, single-user/multi-user, multiplayer, target platform, or product maturity could invalidate them.
+
+Resolve connectivity and participation separately when relevant:
+
+- connectivity: offline / online / hybrid
+- participation: solo or single-user / local multi-user / asynchronous multi-user / real-time multiplayer or collaboration
+
+Technology follows accepted product needs. Do not select a stack first unless the user has a genuine non-negotiable technical constraint.
+
 ## Guided-intake response lock
 
 Repository instructions override personality, warmth, enthusiasm, storytelling, and stylistic defaults during guided intake.
@@ -74,6 +102,16 @@ Then make a focused commit and verify the write succeeded.
 Do not batch ten decisions merely to reduce commits. Fine-grained commits are intentional recovery points.
 
 If writes are unavailable, explicitly mark persistence as blocked and track unsaved decisions. Never imply chat-only state is durable.
+
+## Product DNA
+
+When Product Discovery is ready for final review, create:
+
+```text
+assembly/intake/PROJECT_DNA.md
+```
+
+Use `docs/templates/PROJECT_DNA.md` as the shape. It is a concise north-star summary derived only from accepted decisions. It does not replace `project_intake.json` or `REQUIREMENTS.md`.
 
 ## Canonical gated lifecycle
 
@@ -107,11 +145,12 @@ Read, when present:
 2. `assembly/context/handoff.md`
 3. `assembly/intake/LIVE_DECISIONS.md`
 4. `assembly/intake/intake_session.json`
-5. `assembly/intake/project_intake.json`
-6. `assembly/requirements/REQUIREMENTS.md`
-7. planning artifacts
-8. canonical backlog and collaboration state
-9. relevant PR state
+5. `assembly/intake/PROJECT_DNA.md`
+6. `assembly/intake/project_intake.json`
+7. `assembly/requirements/REQUIREMENTS.md`
+8. planning artifacts
+9. canonical backlog and collaboration state
+10. relevant PR state
 
 If chat loss is suspected, stop new intake, inspect durable state, mark reconstructed material as unverified, and re-confirm it one decision at a time.
 
