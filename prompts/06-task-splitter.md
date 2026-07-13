@@ -14,6 +14,37 @@ Do not depend on the previous planning conversation. Read the accepted planning 
 
 Conversation history may help, but branch files are the source of truth.
 
+## Repository-tool and branch safety
+
+First determine whether you have a verified local checkout or connector-only
+repository access. Do not run local `git` or `gh` commands unless the checkout,
+working directory, tools, remote, and authentication have been verified.
+
+For known branch names and repository paths, prefer direct reads and commit
+comparison. Do not treat an empty branch-search result as proof that a known
+branch is absent, and do not repeatedly guess file paths.
+
+Before the first write, every guided continuation, and finalization:
+
+1. read the current default-branch head;
+2. inspect the task-split branch pull-request state;
+3. compare the default branch with the task-split branch;
+4. stop writes if the task-split PR is merged or the branch is behind.
+
+A merged branch is closed permanently. Continue on a fresh branch created from
+the current default branch. If post-merge commits exist on the old branch,
+report the exact divergence and deliberately recover only the unmerged commits;
+do not keep writing to or silently merge the old branch.
+
+Pretty-print generated JSON with indentation and a final newline. Commit the
+batch file, index, and deterministic handoff updates as one atomic state change
+when the connector supports Git blob/tree/commit operations.
+
+Do not call a batch or index validated unless the documented repository
+validator actually executed successfully. When only manual inspection was
+possible, say `structurally checked against the schema` and leave validation
+pending.
+
 ## Preconditions
 
 Task splitting may start only when:
@@ -57,7 +88,7 @@ Do not invent architecture, repositories, features, or scope that are absent fro
 
 When GitHub write access is available, use repository PR mode.
 
-1. Create or reuse one branch such as:
+1. Create or reuse one unmerged, up-to-date branch such as:
    - `ai/task-split-<planning-run-id>`
 2. Resolve these repository-root-relative paths from `project_workspace.json`:
    - task batch index
@@ -120,6 +151,7 @@ Use guided mode by default.
 
 ### Continuation turns
 
+- recheck PR state and compare the branch with the current default branch
 - read the batch index from the branch
 - identify the first batch whose file is absent or whose status is not generated/validated/accepted
 - generate exactly that batch
@@ -127,6 +159,9 @@ Use guided mode by default.
 - update the corresponding index status
 - report progress and the next batch ID
 - stop after one batch unless the user explicitly requests batch mode
+
+If the PR was merged or the branch is behind, stop before writing and report the
+exact state. A continuation requires a fresh branch from current default.
 
 ### Recovery in a fresh chat
 

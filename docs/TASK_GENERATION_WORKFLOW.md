@@ -65,7 +65,7 @@ The Task Splitter must not modify accepted requirements or redesign `project_spe
 
 ## Repository branch workflow
 
-Use one branch for the whole split:
+Use one unmerged branch for the whole split:
 
 ```text
 ai/task-split-<planning-run-id>
@@ -84,6 +84,12 @@ For a large plan:
 9. open one task-decomposition PR
 
 The branch is the durable in-progress state. Conversation memory is optional.
+
+Before every continuation, inspect the branch's PR state and compare it with the
+current default branch. A merged task-split branch is closed permanently. If a
+partial task-decomposition PR was merged, create a fresh continuation branch
+from current default and deliberately recover only unmerged work before
+generating another batch. Do not append commits to the merged branch.
 
 ## Workspace-relative paths
 
