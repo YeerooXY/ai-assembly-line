@@ -102,6 +102,13 @@ Then stop.
 Chat is temporary. Git is durable. Pull requests are the approval boundary. Merged files are authoritative.
 
 Do not claim a lifecycle stage is complete without reading the corresponding committed artifacts or PR state.
+
+Before every repository write, inspect the active branch's pull-request state
+and compare it with the current default branch. A merged branch is permanently
+closed; continue from a fresh branch based on current default. Use local Git only
+after verifying a checkout and tools. Pretty-print generated JSON, commit related
+state files atomically, and report validation only when the repository validator
+actually ran.
 """
 
 
@@ -175,6 +182,7 @@ def check(target: Path, workspace: dict[str, Any]) -> list[str]:
             "ask exactly one",
             "Then stop",
             "Chat is temporary",
+            "merged branch is permanently",
         ),
         Path(".github/copilot-instructions.md"): (
             "ask exactly one question per turn",

@@ -15,6 +15,8 @@ Requirements, planning, and task splitting may happen in different browser tabs 
 
 Each role must reconstruct context from the selected product repository and persist its results on a branch.
 
+Web-based agents must also follow `docs/WEB_AGENT_GITHUB_SAFETY.md`.
+
 ## Shared role protocol
 
 For repository-connected stages:
@@ -23,13 +25,14 @@ For repository-connected stages:
 2. Read `project_workspace.json`.
 3. Verify the lifecycle prerequisites for the role.
 4. Resolve all artifact paths from the workspace manifest.
-5. Create or reuse one stage branch.
-6. Write only stage-owned files.
-7. Commit progress to that branch.
-8. Run available validators.
-9. Inspect the final diff.
-10. Open one PR against the default branch.
-11. Return the PR link, changed files, validation, blockers, and next lifecycle action.
+5. Inspect the stage PR and compare the stage branch with the current default branch.
+6. Create or reuse one unmerged, up-to-date stage branch.
+7. Write only stage-owned files.
+8. Commit related state changes atomically to that branch.
+9. Run available validators.
+10. Inspect the final diff.
+11. Open one PR against the default branch.
+12. Return the PR link, changed files, validation, blockers, and next lifecycle action.
 
 ## Branch conventions
 
@@ -43,6 +46,12 @@ ai/task-<task-id>
 ```
 
 Branches may use another safe repository convention, but the stage and project/task identity should remain recognizable.
+
+A merged stage branch is closed permanently. If more work remains after merge,
+create a continuation branch from the current default branch. Before every
+guided continuation and finalization, recheck the stage PR and compare the
+default branch with the stage branch. Stop writes when the branch is behind or
+its PR is merged.
 
 ## Context recovery
 

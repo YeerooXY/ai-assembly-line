@@ -204,3 +204,17 @@ Read `docs/AI_START_HERE.md` for the detailed gates and response envelopes.
 Chat is temporary. Git is durable. Pull requests are the approval boundary. Merged files are authoritative.
 
 Never claim a lifecycle stage is complete without reading the corresponding repository artifacts, validation output, dependency audit, handoff state, and PR state.
+
+## Repository-tool safety
+
+Before repository-connected work, read and follow
+`docs/WEB_AGENT_GITHUB_SAFETY.md`.
+
+In particular:
+
+- use local Git only after a checkout and required tools are verified;
+- use direct connector reads for known branches and paths;
+- compare the stage branch with the current default branch before every write;
+- treat a merged branch as permanently closed and continue from a fresh branch;
+- pretty-print generated JSON and commit related state files atomically;
+- call artifacts validated only after the documented validator actually runs.
