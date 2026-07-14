@@ -69,7 +69,7 @@ If the browser blocks `file://` fetches, use the page-level file picker to load 
 
 Dispatch is the primary task-pickup surface. Assignments and Task Batches remain useful, but they have narrower roles:
 
-- `web/dispatch.html`: primary "what can I do next?" page. It renders topological task waves from the configured task backlog, overlays execution state from collaboration state, colors tasks by availability, and generates one-task execution context for a fresh AI chat.
+- `web/dispatch.html`: primary "what can I do next?" page. It renders topological task waves from the configured task backlog, overlays execution state from collaboration state, colors tasks by availability, and generates one-task execution context for a fresh AI chat. It can copy that context as Markdown or as `task_execution_context.schema.json`-compatible JSON for a later UI or tool.
 - `web/assignments.html`: audit/status page for task ownership, execution status, notes, proof references, and collaboration-state helpers.
 - `web/task-batches.html`: generation/validation page for guided task splitting, task batch index readiness, generated batch files, and dependency graph checks.
 
@@ -90,6 +90,7 @@ See `docs/VIEWER_PAGE_ROLES.md` for the page-consolidation decision.
 - `web/project-workspace.js`: standalone/registry/root workspace selection and path resolution
 - `web/viewer-data.js`: generated JSON loading and file-picker fallback
 - `web/viewer-layout.js`: shared shell, navigation, status handling, project label/selector, and helpers
+- `web/task-context.js`: versioned task-context serializer shared by Dispatch's Markdown and JSON copy actions
 - `web/page-*.js`: page-specific rendering only
 - `web/page-dispatch-keyboard.js`: keyboard helper for Enter/Space task-node activation on Dispatch
 - `web/viewer.css`: shared styling

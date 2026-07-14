@@ -11,7 +11,7 @@ from typing import Any, Iterable
 
 SOURCE_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ID_RE = re.compile(r"^[a-z0-9][a-z0-9\-]*$")
-KIT_VERSION = "0.1.0"
+KIT_VERSION = "0.1.1"
 
 CONTRACT_FILES = (
     "repository_bootstrap.schema.json",
@@ -25,6 +25,7 @@ CONTRACT_FILES = (
     "task_batch_index.schema.json",
     "task_batch.schema.json",
     "task_run.schema.json",
+    "task_execution_context.schema.json",
     "collaboration_state.schema.json",
     "slot.schema.json",
     "agent_prompt.schema.json",
@@ -48,6 +49,7 @@ TOOL_FILES = (
     "validate_task_batches.py",
     "build_task_backlog_from_batches.py",
     "validate_collaboration_state.py",
+    "prepare_task_context.py",
 )
 
 IGNORED_NAMES = {"__pycache__", ".DS_Store"}

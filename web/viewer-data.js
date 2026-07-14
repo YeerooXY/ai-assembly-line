@@ -23,6 +23,7 @@ export const CONTRACT_FILES = {
   taskBatchIndexSchema: "../contracts/task_batch_index.schema.json",
   taskBatchSchema: "../contracts/task_batch.schema.json",
   taskRunSchema: "../contracts/task_run.schema.json",
+  taskExecutionContextSchema: "../contracts/task_execution_context.schema.json",
   slotSchema: "../contracts/slot.schema.json",
   agentPromptSchema: "../contracts/agent_prompt.schema.json",
   collaborationStateSchema: "../contracts/collaboration_state.schema.json",

@@ -85,7 +85,7 @@ The framework supports:
 - planning artifacts in a separate planning PR
 - task batching and canonical backlog creation in a separate task-decomposition PR
 - file-based collaboration state
-- one-task Dispatch context
+- one-task Dispatch context in agent-friendly Markdown and UI-ready JSON
 - static read-only project views
 
 It does not yet provide:
@@ -204,6 +204,26 @@ assembly/generated/collaboration_state.json
 ```
 
 See `prompts/06-task-splitter.md` and `docs/TASK_GENERATION_WORKFLOW.md`.
+
+## Task context outputs
+
+After a task backlog exists, `tools/prepare_task_context.py` builds a read-only snapshot from the canonical task backlog, collaboration state, task-executor prompt, and any declared workspace handoff documents. It never claims a task, changes collaboration state, or edits the backlog.
+
+Use Markdown when launching focused agent work. `--web-agent` adds the connected-GitHub guidance used by browser-based task agents:
+
+```powershell
+python tools\prepare_task_context.py --ready --web-agent --format markdown --output ready-agent-contexts.md
+```
+
+Use JSON when a UI, dashboard, or another tool needs the same dispatch decision as structured data:
+
+```powershell
+python tools\prepare_task_context.py --all --format json --output task-contexts.json
+```
+
+The JSON conforms to `contracts/task_execution_context.schema.json`. It contains the selected contexts, dispatch status and dependency explanations, task-run return template, source-artifact paths, workspace handoff text, and a local Git snapshot. Each Markdown context is delimited with `--- CONTEXT <task-id> START ---` and `--- CONTEXT <task-id> END ---` so it can be copied or split safely.
+
+The product-repository bootstrap copies the tool and schema to `assembly/tools/prepare_task_context.py` and `assembly/contracts/task_execution_context.schema.json`; there it automatically discovers the repository-root `project_workspace.json`.
 
 ## Static viewer
 
