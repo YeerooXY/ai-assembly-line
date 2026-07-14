@@ -1,4 +1,9 @@
 import { escapeHtml, initializeViewerPage, renderList } from "./viewer-layout.js";
+import {
+  buildTaskContextCollection,
+  formatTaskContextJson,
+  formatTaskContextMarkdown,
+} from "./task-context.js";
 
 const LOCKED_STATUSES = new Set(["claimed", "in_progress"]);
 const REVIEW_STATUSES = new Set(["review"]);
@@ -72,6 +77,15 @@ function buildDispatchModel(tasks, state, projectContext) {
   const rowsById = new Map(rawRows.map((row) => [row.id, row]));
   const rows = rawRows.map((row) => classifyRow(row, rowsById, taskMap));
   const classifiedRowsById = new Map(rows.map((row) => [row.id, row]));
+  for (const row of rows) {
+    const dependencyRows = row.dependsOn.map((dependencyId) => classifiedRowsById.get(dependencyId)).filter(Boolean);
+    row.dependencyRows = dependencyRows;
+    row.blockedDependencies = dependencyRows.filter((dependency) => BLOCKED_STATUSES.has(dependency.executionStatus));
+    row.unfinishedDependencies = dependencyRows.filter((dependency) => !isDone(dependency));
+    if (row.dispatchStatus === "blocked") {
+      row.unavailableDetails = buildBlockedDetails(row, row.missingDependencies, row.blockedDependencies);
+    }
+  }
   const summary = summarizeRows(rows);
   const defaultTaskId = rows.find((row) => row.dispatchStatus === "available")?.id ?? rows[0]?.id ?? "";
 
@@ -361,7 +375,15 @@ function bindDispatchControls(container, model) {
         return;
       }
 
-      const text = copyButton.dataset.copyKind === "task" ? JSON.stringify(selectedRow.task, null, 2) : buildExecutionContext(selectedRow, model);
+      const context = buildTaskContextCollection([selectedRow], model, {
+        selectionMode: "task_id",
+        requestedTaskId: selectedRow.id,
+      });
+      const text = copyButton.dataset.copyKind === "task"
+        ? JSON.stringify(selectedRow.task, null, 2)
+        : (copyButton.dataset.copyKind === "context-json"
+          ? formatTaskContextJson(context)
+          : formatTaskContextMarkdown(context));
       await copyText(text, copyButton);
       return;
     }
@@ -446,6 +468,7 @@ function renderTaskDetail(row, model) {
   return `
     <div class="dispatch-detail-actions">
       <button type="button" class="dispatch-primary-action" data-copy-kind="context">Copy Full Execution Context</button>
+      <button type="button" class="dispatch-secondary-action" data-copy-kind="context-json">Copy Context JSON</button>
       <button type="button" class="dispatch-secondary-action" data-copy-kind="task">Copy Task JSON</button>
     </div>
 
@@ -593,101 +616,8 @@ function proofLabel(item) {
   return bits.length ? bits.join(" / ") : "proof";
 }
 
-function buildExecutionContext(row, model) {
-  const dependencyRows = row.dependsOn.map((dependencyId) => model.rowsById.get(dependencyId)).filter(Boolean);
-  const missingDependencySummary = row.missingDependencies.length
-    ? `\nMissing dependency reference(s): ${row.missingDependencies.join(", ")}`
-    : "";
-  const dependencySummary = dependencyRows.length
-    ? dependencyRows.map((dependency) => formatDependencyContext(dependency)).join("\n")
-    : "- No dependencies.";
-  const projectContext = model.projectContext;
-  const projectBlock = projectContext?.mode === "project"
-    ? `Project: ${projectContext.projectName}\nProject ID: ${projectContext.projectId}\nWorkspace: ${projectContext.workspaceRootPath}`
-    : "Project: Root Generated State\nProject ID: root\nWorkspace: generated/";
-
-  return `# AI Assembly Line - One Task Execution Context
-
-You are executing exactly one task from the AI Assembly Line backlog.
-
-${projectBlock}
-
-Use the task executor rules from:
-prompts/07-task-executor.md
-
-Hard rules:
-- Work only on the selected task.
-- Do not broaden scope.
-- Respect dependencies, allowed files, outputs, non-goals, and verification.
-- Do not mark done without accepted proof.
-- If required context is missing, return blocked with a clear blocker.
-- Return one task_run JSON object only.
-
-Expected output path:
-${taskRunPath(model, row.id)}
-
-Dispatch status: ${row.dispatchStatus}
-Reason: ${row.dispatchReason}
-Assigned to: ${row.assignedTo} (${row.assigneeType})
-Updated at: ${row.updatedAt || "not recorded"}
-
-## Selected Task JSON
-
-${JSON.stringify(row.task, null, 2)}
-
-## Current Assignment Metadata
-
-${JSON.stringify(row.assignment ?? { task_id: row.id, status: "unclaimed" }, null, 2)}
-
-## Active Claim Metadata
-
-${JSON.stringify(row.activeClaim ?? { task_id: row.id, status: "none" }, null, 2)}
-
-## Dependency Summary
-
-${dependencySummary}${missingDependencySummary}
-
-## Dependency Proof Summaries
-
-${dependencyRows.length ? dependencyRows.map((dependency) => `- ${dependency.id}: ${summarizeProof(dependency.proof)}`).join("\n") : "- No dependency proof required."}
-
-## Required Return Shape
-
-Return exactly one JSON object compatible with contracts/task_run.schema.json:
-
-{
-  "schema_version": "0.1.0",
-  "task_id": "${row.id}",
-  "run_id": "<unique-run-id>",
-  "actor_id": "<your-actor-id>",
-  "status": "review",
-  "implementation_summary": ["<what changed>"],
-  "files_changed": [],
-  "verification": [],
-  "proof": [],
-  "blockers": [],
-  "notes": [],
-  "updated_at": "<ISO-8601 timestamp>"
-}
-
-Use status "review" when implementation appears complete but still needs human review.
-Use status "blocked" if required context or dependencies are missing.
-Do not mark "done" without accepted proof.
-`;
-}
-
 function taskRunPath(model, taskId) {
   return `${model.taskRunPathPrefix}${taskId}.json`;
-}
-
-function formatDependencyContext(dependency) {
-  return [
-    `- ${dependency.id}: ${dependency.dispatchStatus}`,
-    `  title: ${dependency.title}`,
-    `  execution_status: ${dependency.executionStatus}`,
-    `  reason: ${dependency.dispatchReason}`,
-    `  proof: ${summarizeProof(dependency.proof)}`,
-  ].join("\n");
 }
 
 function summarizeProof(proofItems) {

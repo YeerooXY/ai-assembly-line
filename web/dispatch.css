@@ -222,7 +222,7 @@ body[data-page="dispatch"] .status-panel .helper {
 }
 
 .dispatch-detail-actions {
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   align-items: center;
   margin-bottom: 12px;
 }

@@ -21,6 +21,7 @@ REQUIRED_FILES = [
     ROOT / "contracts" / "task.schema.json",
     ROOT / "contracts" / "task_batch_index.schema.json",
     ROOT / "contracts" / "task_batch.schema.json",
+    ROOT / "contracts" / "task_execution_context.schema.json",
     ROOT / "contracts" / "slot.schema.json",
     ROOT / "contracts" / "agent_prompt.schema.json",
     ROOT / "contracts" / "collaboration_state.schema.json",
@@ -492,11 +493,11 @@ def validate_with_schema(
         "generated/project_spec.json": "contracts/project_spec.schema.json",
         "generated/repo_plan.json": "contracts/repo_plan.schema.json",
         "generated/agent_prompts.json": "contracts/agent_prompt.schema.json",
+        "generated/task_batch_index.json": "contracts/task_batch_index.schema.json",
         "examples/coc-base-builder/generated-repo-plan.json": "contracts/repo_plan.schema.json",
     }
     element_map = {
         "generated/task_backlog.json": "contracts/task.schema.json",
-        "generated/task_batch_index.json": "contracts/task_batch_index.schema.json",
         "generated/slots_db.json": "contracts/slot.schema.json",
         "examples/coc-base-builder/generated-task-backlog.json": "contracts/task.schema.json",
     }

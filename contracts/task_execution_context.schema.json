@@ -1,0 +1,379 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-assembly-line.local/contracts/task_execution_context.schema.json",
+  "title": "TaskExecutionContextCollection",
+  "description": "A read-only, UI-ready snapshot of one or more task execution contexts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "kind",
+    "generated_at",
+    "selection",
+    "workspace",
+    "snapshot",
+    "source_artifacts",
+    "workspace_context",
+    "contexts"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "kind": {
+      "type": "string",
+      "const": "task_execution_context_collection"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "selection": {
+      "$ref": "#/$defs/selection"
+    },
+    "workspace": {
+      "$ref": "#/$defs/workspace"
+    },
+    "snapshot": {
+      "$ref": "#/$defs/snapshot"
+    },
+    "source_artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/source_artifact"
+      }
+    },
+    "workspace_context": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/context_document"
+      }
+    },
+    "contexts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/task_context"
+      }
+    }
+  },
+  "$defs": {
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "requested_task_id",
+        "source_task_count",
+        "included_context_count"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["task_id", "ready", "all"]
+        },
+        "requested_task_id": {
+          "type": ["string", "null"]
+        },
+        "source_task_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "included_context_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "project_id",
+        "project_name",
+        "workspace_root",
+        "task_run_path_prefix"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["root", "project", "standalone"]
+        },
+        "project_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "project_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workspace_root": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task_run_path_prefix": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["git_commit", "git_branch", "is_dirty"],
+      "properties": {
+        "git_commit": {
+          "type": ["string", "null"]
+        },
+        "git_branch": {
+          "type": ["string", "null"]
+        },
+        "is_dirty": {
+          "type": ["boolean", "null"]
+        }
+      }
+    },
+    "source_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "format", "description"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "format": {
+          "type": "string",
+          "enum": ["json", "markdown"]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "context_document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "path", "content"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content": {
+          "type": "string"
+        }
+      }
+    },
+    "task_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "title", "summary", "task", "dispatch", "executor"],
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9\\-]*$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string"
+        },
+        "task": {
+          "type": "object"
+        },
+        "dispatch": {
+          "$ref": "#/$defs/dispatch"
+        },
+        "executor": {
+          "$ref": "#/$defs/executor"
+        }
+      }
+    },
+    "dispatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason",
+        "planning_status",
+        "execution_status",
+        "assignment",
+        "active_claim",
+        "assignee",
+        "updated_at",
+        "dependencies",
+        "missing_dependency_ids",
+        "blocked_dependency_ids",
+        "unfinished_dependency_ids"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["available", "waiting", "locked", "blocked", "done"]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "planning_status": {
+          "type": "string",
+          "minLength": 1
+        },
+        "execution_status": {
+          "type": "string",
+          "minLength": 1
+        },
+        "assignment": {
+          "type": "object"
+        },
+        "active_claim": {
+          "type": ["object", "null"]
+        },
+        "assignee": {
+          "type": ["object", "null"]
+        },
+        "updated_at": {
+          "type": ["string", "null"]
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/dependency"
+          }
+        },
+        "missing_dependency_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "blocked_dependency_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unfinished_dependency_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "title", "dispatch_status", "execution_status", "reason", "proof"],
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dispatch_status": {
+          "type": "string",
+          "enum": ["available", "waiting", "locked", "blocked", "done"]
+        },
+        "execution_status": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "proof": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "executor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "instructions_path",
+        "task_run_schema_path",
+        "expected_task_run_path",
+        "hard_rules",
+        "return_status_guidance",
+        "return_template"
+      ],
+      "properties": {
+        "target": {
+          "type": "string",
+          "enum": ["unspecified", "web_ai", "local_ai"]
+        },
+        "instructions_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task_run_schema_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_task_run_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hard_rules": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "environment_guidance": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "return_status_guidance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["review", "blocked"],
+          "properties": {
+            "review": {
+              "type": "string",
+              "minLength": 1
+            },
+            "blocked": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "return_template": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}
