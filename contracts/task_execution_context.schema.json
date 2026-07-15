@@ -10,6 +10,7 @@
     "kind",
     "generated_at",
     "selection",
+    "completion_discovery",
     "workspace",
     "snapshot",
     "source_artifacts",
@@ -19,7 +20,7 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "const": "1.0.0"
+      "const": "1.1.0"
     },
     "kind": {
       "type": "string",
@@ -31,6 +32,9 @@
     },
     "selection": {
       "$ref": "#/$defs/selection"
+    },
+    "completion_discovery": {
+      "$ref": "#/$defs/completion_discovery"
     },
     "workspace": {
       "$ref": "#/$defs/workspace"
@@ -82,6 +86,36 @@
         "included_context_count": {
           "type": "integer",
           "minimum": 0
+        }
+      }
+    },
+    "completion_discovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "matches", "warnings"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": ["state", "git", "github", "auto"]
+        },
+        "matches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["task_id", "evidence"],
+            "properties": {
+              "task_id": {"type": "string", "minLength": 1},
+              "evidence": {
+                "type": "array",
+                "items": {"type": "string", "minLength": 1}
+              }
+            }
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
         }
       }
     },
@@ -214,6 +248,7 @@
         "reason",
         "planning_status",
         "execution_status",
+        "completion_evidence",
         "assignment",
         "active_claim",
         "assignee",
@@ -239,6 +274,10 @@
         "execution_status": {
           "type": "string",
           "minLength": 1
+        },
+        "completion_evidence": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
         },
         "assignment": {
           "type": "object"
@@ -281,7 +320,7 @@
     "dependency": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["task_id", "title", "dispatch_status", "execution_status", "reason", "proof"],
+      "required": ["task_id", "title", "dispatch_status", "execution_status", "reason", "proof", "completion_evidence"],
       "properties": {
         "task_id": {
           "type": "string",
@@ -308,6 +347,10 @@
           "items": {
             "type": "object"
           }
+        },
+        "completion_evidence": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
         }
       }
     },

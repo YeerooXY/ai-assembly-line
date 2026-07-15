@@ -209,10 +209,19 @@ See `prompts/06-task-splitter.md` and `docs/TASK_GENERATION_WORKFLOW.md`.
 
 After a task backlog exists, `tools/prepare_task_context.py` builds a read-only snapshot from the canonical task backlog, collaboration state, task-executor prompt, and any declared workspace handoff documents. It never claims a task, changes collaboration state, or edits the backlog.
 
+Its default `--completion-source auto` recalculates the dependency graph from
+recorded task state, task-tagged local Git subjects, and merged GitHub PR titles
+when `gh` is authenticated. Thus, after several task PRs merge, one command
+finds every newly unblocked task and writes their complete agent contexts into
+one Markdown file. The output records the exact merge evidence it used. If
+GitHub lookup is unavailable, auto mode keeps working from local state and
+reports the lookup warning; use `--completion-source github` when GitHub merge
+discovery must succeed.
+
 Use Markdown when launching focused agent work. `--web-agent` adds the connected-GitHub guidance used by browser-based task agents:
 
 ```powershell
-python tools\prepare_task_context.py --ready --web-agent --format markdown --output ready-agent-contexts.md
+python tools\prepare_task_context.py --ready --web-agent --format markdown --output "$env:TEMP\ready-agent-contexts.md"
 ```
 
 Use JSON when a UI, dashboard, or another tool needs the same dispatch decision as structured data:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -14,7 +15,7 @@ from workspace_paths import WorkspacePaths, discover_workspace_paths, load_json,
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "1.1.0"
 LOCKED_STATUSES = {"claimed", "in_progress"}
 REVIEW_STATUSES = {"review"}
 DONE_STATUSES = {"done"}
@@ -140,6 +141,134 @@ def git_snapshot(root: Path) -> dict[str, Any]:
     }
 
 
+def task_ids_from_text(text: str, task_ids: set[str]) -> set[str]:
+    matches: set[str] = set()
+    for task_id in task_ids:
+        pattern = rf"(?<![A-Za-z0-9]){re.escape(task_id)}(?![A-Za-z0-9])"
+        if re.search(pattern, text, flags=re.IGNORECASE):
+            matches.add(task_id)
+    return matches
+
+
+def run_command(arguments: list[str], label: str) -> str:
+    result = subprocess.run(arguments, check=False, capture_output=True, text=True)
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip() or "command failed"
+        raise ValueError(f"{label} failed: {detail}")
+    return result.stdout
+
+
+def github_repository_name(root: Path, workspace: dict[str, Any]) -> str:
+    repository = workspace.get("repository")
+    if isinstance(repository, dict):
+        full_name = repository.get("full_name")
+        if isinstance(full_name, str) and full_name.strip():
+            return full_name.strip()
+
+    remote, remote_ok = git_value(root, "remote", "get-url", "origin")
+    if remote_ok and remote:
+        match = re.search(r"github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?$", remote)
+        if match:
+            return f"{match.group(1)}/{match.group(2)}"
+    raise ValueError("GitHub completion discovery needs repository.full_name or an origin GitHub remote")
+
+
+def github_default_branch(workspace: dict[str, Any]) -> str:
+    repository = workspace.get("repository")
+    if isinstance(repository, dict):
+        default_branch = repository.get("default_branch")
+        if isinstance(default_branch, str) and default_branch.strip():
+            return default_branch.strip()
+    return "main"
+
+
+def completion_matches_from_git(root: Path, task_ids: set[str]) -> dict[str, list[str]]:
+    subjects = run_command(
+        ["git", "-C", str(root), "log", "--format=%s", "HEAD"],
+        "Git completion discovery",
+    )
+    matches: dict[str, list[str]] = {}
+    for subject in subjects.splitlines():
+        for task_id in task_ids_from_text(subject, task_ids):
+            matches.setdefault(task_id, []).append(f"local Git subject: {subject}")
+    return matches
+
+
+def completion_matches_from_github(
+    root: Path,
+    workspace: dict[str, Any],
+    task_ids: set[str],
+) -> dict[str, list[str]]:
+    repository = github_repository_name(root, workspace)
+    default_branch = github_default_branch(workspace)
+    raw = run_command(
+        [
+            "gh",
+            "pr",
+            "list",
+            "--repo",
+            repository,
+            "--base",
+            default_branch,
+            "--state",
+            "merged",
+            "--limit",
+            "500",
+            "--json",
+            "number,title,mergedAt",
+        ],
+        "GitHub completion discovery",
+    )
+    pull_requests = json.loads(raw)
+    expect(isinstance(pull_requests, list), "GitHub completion discovery returned an invalid PR list")
+    matches: dict[str, list[str]] = {}
+    for pull_request in pull_requests:
+        expect(isinstance(pull_request, dict), "GitHub completion discovery returned an invalid PR")
+        number = pull_request.get("number")
+        title = pull_request.get("title")
+        expect(isinstance(number, int), "GitHub completion discovery PR number is invalid")
+        expect(isinstance(title, str), "GitHub completion discovery PR title is invalid")
+        for task_id in task_ids_from_text(title, task_ids):
+            matches.setdefault(task_id, []).append(f"merged GitHub PR #{number}: {title}")
+    return matches
+
+
+def merge_completion_matches(destination: dict[str, list[str]], source: dict[str, list[str]]) -> None:
+    for task_id, evidence in source.items():
+        destination.setdefault(task_id, [])
+        for item in evidence:
+            if item not in destination[task_id]:
+                destination[task_id].append(item)
+
+
+def discover_completion_matches(
+    root: Path,
+    workspace: dict[str, Any],
+    tasks: list[dict[str, Any]],
+    source: str,
+) -> tuple[dict[str, list[str]], list[str]]:
+    task_ids = {task["id"] for task in tasks}
+    matches: dict[str, list[str]] = {}
+    warnings: list[str] = []
+
+    if source in {"git", "auto"}:
+        try:
+            merge_completion_matches(matches, completion_matches_from_git(root, task_ids))
+        except ValueError as exc:
+            if source == "git":
+                raise
+            warnings.append(str(exc))
+    if source in {"github", "auto"}:
+        try:
+            merge_completion_matches(matches, completion_matches_from_github(root, workspace, task_ids))
+        except (ValueError, json.JSONDecodeError) as exc:
+            if source == "github":
+                raise ValueError(f"GitHub completion discovery failed: {exc}") from exc
+            warnings.append(f"GitHub completion discovery unavailable: {exc}")
+
+    return matches, warnings
+
+
 def claim_status_to_assignment_status(status: Any) -> str | None:
     if not isinstance(status, str) or not status:
         return None
@@ -151,10 +280,14 @@ def claim_status_to_assignment_status(status: Any) -> str | None:
 
 
 def is_done(row: dict[str, Any]) -> bool:
-    return row["execution_status"] in DONE_STATUSES or row["planning_status"] == "done"
+    return bool(row["completion_evidence"]) or row["execution_status"] in DONE_STATUSES or row["planning_status"] == "done"
 
 
-def build_rows(tasks: list[dict[str, Any]], state: dict[str, Any]) -> list[dict[str, Any]]:
+def build_rows(
+    tasks: list[dict[str, Any]],
+    state: dict[str, Any],
+    completion_matches: dict[str, list[str]],
+) -> list[dict[str, Any]]:
     task_map: dict[str, dict[str, Any]] = {}
     for index, task in enumerate(tasks):
         task_id = task.get("id")
@@ -225,6 +358,7 @@ def build_rows(tasks: list[dict[str, Any]], state: dict[str, Any]) -> list[dict[
                 ),
                 "depends_on": dependencies,
                 "proof": proof,
+                "completion_evidence": completion_matches.get(task_id, []),
                 "notes": non_empty_string(
                     assignment.get("notes") if assignment else (active_claim.get("notes") if active_claim else None),
                     "",
@@ -247,7 +381,11 @@ def build_rows(tasks: list[dict[str, Any]], state: dict[str, Any]) -> list[dict[
         dispatch_reason = "All dependencies are done and the task is free to take."
         if is_done(row):
             dispatch_status = "done"
-            dispatch_reason = "Done. Review proof before using this as dependency context."
+            dispatch_reason = (
+                "Completed by merged-task evidence: " + "; ".join(row["completion_evidence"])
+                if row["completion_evidence"]
+                else "Done. Review proof before using this as dependency context."
+            )
         elif row["execution_status"] in BLOCKED_STATUSES or missing_dependencies or blocked_dependencies:
             dispatch_status = "blocked"
             if missing_dependencies:
@@ -372,6 +510,7 @@ def dependency_payload(dependency: dict[str, Any]) -> dict[str, Any]:
         "execution_status": dependency["execution_status"],
         "reason": dependency["dispatch_reason"],
         "proof": dependency["proof"],
+        "completion_evidence": dependency["completion_evidence"],
     }
 
 
@@ -386,6 +525,7 @@ def context_payload(row: dict[str, Any], instructions_path: str, schema_path: st
             "reason": row["dispatch_reason"],
             "planning_status": row["planning_status"],
             "execution_status": row["execution_status"],
+            "completion_evidence": row["completion_evidence"],
             "assignment": row["assignment"] or {"task_id": row["id"], "status": "unclaimed"},
             "active_claim": row["active_claim"],
             "assignee": build_assignee(row),
@@ -419,7 +559,14 @@ def build_collection(paths: WorkspacePaths, args: argparse.Namespace) -> dict[st
     state = load_json(paths.collaboration_state)
     expect(isinstance(tasks, list), f"{paths.task_backlog} must be a JSON array")
     expect(isinstance(state, dict), f"{paths.collaboration_state} must be a JSON object")
-    task_rows = build_rows(object_list(tasks, "task_backlog"), state)
+    task_objects = object_list(tasks, "task_backlog")
+    completion_matches, completion_warnings = discover_completion_matches(
+        paths.workspace_root,
+        workspace,
+        task_objects,
+        args.completion_source,
+    )
+    task_rows = build_rows(task_objects, state, completion_matches)
     rows_by_id = {row["id"]: row for row in task_rows}
 
     prompts_dir = configured_relative_path(workspace, "paths", "prompts", fallback="prompts")
@@ -500,6 +647,14 @@ def build_collection(paths: WorkspacePaths, args: argparse.Namespace) -> dict[st
             "source_task_count": len(task_rows),
             "included_context_count": len(selected_rows),
         },
+        "completion_discovery": {
+            "source": args.completion_source,
+            "matches": [
+                {"task_id": task_id, "evidence": evidence}
+                for task_id, evidence in sorted(completion_matches.items())
+            ],
+            "warnings": completion_warnings,
+        },
         "workspace": {
             "mode": "project" if paths.manifest_path is not None else "root",
             "project_id": project_id,
@@ -530,6 +685,7 @@ def validate_collection_builtin(payload: Any) -> None:
         "kind",
         "generated_at",
         "selection",
+        "completion_discovery",
         "workspace",
         "snapshot",
         "source_artifacts",
@@ -544,6 +700,11 @@ def validate_collection_builtin(payload: Any) -> None:
         payload["selection"].get("included_context_count") == len(payload["contexts"]),
         "task context included_context_count does not match contexts",
     )
+    completion_discovery = payload["completion_discovery"]
+    expect(isinstance(completion_discovery, dict), "task context completion_discovery must be an object")
+    expect(completion_discovery.get("source") in {"state", "git", "github", "auto"}, "task context completion source is invalid")
+    expect(isinstance(completion_discovery.get("matches"), list), "task context completion matches must be a list")
+    expect(isinstance(completion_discovery.get("warnings"), list), "task context completion warnings must be a list")
     for index, context in enumerate(payload["contexts"]):
         expect(isinstance(context, dict), f"contexts[{index}] must be an object")
         expect(context.get("task_id") == context.get("task", {}).get("id"), f"contexts[{index}] task id does not match task")
@@ -607,6 +768,7 @@ def format_context_markdown(collection: dict[str, Any], context: dict[str, Any])
                     f"  title: {dependency['title']}",
                     f"  execution_status: {dependency['execution_status']}",
                     f"  reason: {dependency['reason']}",
+                    f"  completion_evidence: {'; '.join(dependency['completion_evidence']) or 'none'}",
                     f"  proof: {proof_summary(dependency['proof'])}",
                 ]
             )
@@ -634,6 +796,7 @@ def format_context_markdown(collection: dict[str, Any], context: dict[str, Any])
         )
     documents = format_context_documents(collection["workspace_context"])
     documents_section = f"\n\n{documents}" if documents else ""
+    completion_evidence = "; ".join(dispatch["completion_evidence"]) or "none"
     snapshot = collection["snapshot"]
     snapshot_line = "Git snapshot: unavailable."
     if snapshot["git_commit"]:
@@ -663,6 +826,7 @@ Expected output path:
 
 Dispatch status: {dispatch['status']}
 Reason: {dispatch['reason']}
+Merged-task completion evidence: {completion_evidence}
 Assigned to: {(dispatch['assignee'] or {}).get('display_name', 'Unassigned')} ({(dispatch['assignee'] or {}).get('kind', 'unassigned')})
 Updated at: {dispatch['updated_at'] or 'not recorded'}{documents_section}{environment_guidance}
 
@@ -753,6 +917,15 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     selector.add_argument("--task-id", help="Build context for one task, including its current dispatch state.")
     selector.add_argument("--ready", action="store_true", help="Build context for every currently available task (the default).")
     selector.add_argument("--all", dest="all_tasks", action="store_true", help="Build context for every backlog task.")
+    parser.add_argument(
+        "--completion-source",
+        choices=("state", "git", "github", "auto"),
+        default="auto",
+        help=(
+            "Completion evidence used before dependency calculation. auto combines committed state, "
+            "local Git task subjects, and merged GitHub PR titles when available."
+        ),
+    )
     parser.add_argument(
         "--workspace",
         help="Optional path to project_workspace.json. Defaults to workspace discovery from the installed tool.",
